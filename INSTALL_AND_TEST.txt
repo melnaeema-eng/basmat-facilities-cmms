@@ -1,0 +1,88 @@
+Basmat Facilities CMMS
+Sprint 1 — Foundation
+=====================
+
+IMPORTANT
+---------
+This ZIP is designed to be extracted into:
+C:\projects\basmat-facilities-cmms
+
+1) BACKUP CURRENT SOURCE
+------------------------
+PowerShell:
+
+cd C:\projects\basmat-facilities-cmms
+Copy-Item src src_backup_sprint0 -Recurse
+
+2) EXTRACT ZIP
+--------------
+From C:\projects:
+
+Expand-Archive -Path ".\basmat-facilities-cmms-sprint-1.zip" -DestinationPath ".\basmat-facilities-cmms" -Force
+
+3) INSTALL PACKAGES
+-------------------
+cd C:\projects\basmat-facilities-cmms
+npm install
+npm install @supabase/supabase-js react-router-dom
+
+4) CREATE .env.local
+--------------------
+Copy .env.example to .env.local and use:
+
+VITE_SUPABASE_URL=https://pxbtwjuerndgmppicumr.supabase.co
+VITE_SUPABASE_ANON_KEY=<YOUR_PUBLISHABLE_KEY>
+
+Do not put service_role in frontend.
+
+5) DATABASE
+-----------
+Supabase > SQL Editor > New query
+
+Open:
+sql\SPRINT1_FOUNDATION.sql
+
+Run the entire script once.
+
+6) START LOCAL
+--------------
+npm run dev
+
+Expected:
+- Dashboard loads
+- Sidebar contains:
+  Dashboard
+  Organizations
+  Clients
+  Contracts
+  Sites
+  Users & Roles
+- No blank white page
+- No missing package errors
+
+7) BUILD TEST
+-------------
+npm run build
+
+Expected:
+Build succeeds and creates dist\
+
+8) GIT AFTER SUCCESS
+--------------------
+git add .
+git commit -m "Sprint 1 Foundation - Basmat Facilities CMMS"
+git push
+
+SPRINT 1 SUCCESS CRITERIA
+-------------------------
+[ ] App starts locally
+[ ] Supabase client configured
+[ ] bf_ foundation tables created
+[ ] RLS enabled
+[ ] Dashboard and foundation navigation work
+[ ] npm run build succeeds
+[ ] GitHub push succeeds
+
+NEXT
+----
+Sprint 2: Full Authentication + Admin bootstrap + Organizations/Clients CRUD + tenant-safe RLS.
