@@ -1,10 +1,14 @@
-:root {
-  color: #172033;
-  background: #f6f7f9;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-}
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; min-height: 100vh; }
-button, input, select, textarea { font: inherit; }
-h1 { margin-top: 0; }
+:root{font-family:Inter,Arial,sans-serif;color:#172033;background:#f3f6f8;font-synthesis:none;text-rendering:optimizeLegibility}
+*{box-sizing:border-box}body{margin:0;min-width:320px;min-height:100vh}button,input,select{font:inherit}
+.app-shell{display:flex;min-height:100vh;direction:inherit}.sidebar{background:#16243b;color:#fff;padding:22px;width:260px;flex:0 0 260px;direction:inherit}.brand{display:flex;gap:12px;align-items:center}.brand h2{font-size:17px;margin:0 0 4px}.brand small{opacity:.68}.brand-mark{width:42px;height:42px;border-radius:12px;background:#f0a33a;color:#16243b;display:grid;place-items:center;font-weight:800}.brand-mark.large{width:58px;height:58px;margin:auto;font-size:20px}
+.nav-list{display:grid;gap:7px;margin-top:30px}.nav-item{color:#dbe3ef;text-decoration:none;padding:12px 14px;border-radius:9px}.nav-item.active,.nav-item:hover{background:rgba(255,255,255,.12);color:#fff}
+.main-area{min-width:0;flex:1;direction:inherit}.topbar{height:72px;background:#fff;border-bottom:1px solid #e3e8ef;display:flex;align-items:center;justify-content:space-between;padding:0 28px}.top-actions,.row-actions,.form-actions{display:flex;gap:8px}.content{padding:28px}.page-head{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px}.page-head h1{margin:0}.page-head p{margin:5px 0 0;color:#687386}
+.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.stat-card{background:#fff;border:1px solid #e3e8ef;border-radius:14px;padding:22px}.stat-card span{display:block;color:#697586}.stat-card strong{display:block;font-size:32px;margin-top:10px}
+.btn{border:0;border-radius:9px;padding:10px 14px;cursor:pointer}.btn.primary{background:#173e6e;color:#fff}.btn.secondary{background:#edf2f7;color:#24344c}.btn.danger-soft{background:#fdecec;color:#a52c2c}.btn.xs{padding:7px 10px;font-size:13px}.btn:disabled{opacity:.6;cursor:default}
+.table-wrap{overflow:auto;background:#fff;border:1px solid #e3e8ef;border-radius:14px}table{width:100%;border-collapse:collapse}th,td{padding:13px 15px;text-align:start;border-bottom:1px solid #edf0f3}th{font-size:13px;color:#687386;background:#fafbfd}.empty{text-align:center;color:#7b8491;padding:28px}
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);display:grid;place-items:center;padding:20px;z-index:50}.modal-card{background:#fff;width:min(760px,100%);border-radius:16px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.22)}.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.modal-header h3{margin:0}.icon-btn{border:0;background:transparent;font-size:28px;cursor:pointer}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.form-grid.one{grid-template-columns:1fr}.form-grid label{display:grid;gap:7px;color:#39465b;font-size:14px}.form-grid input,.form-grid select{width:100%;border:1px solid #ced6e0;border-radius:9px;padding:10px 11px;background:#fff}.span-2{grid-column:1/-1}.form-actions{grid-column:1/-1;justify-content:flex-end;margin-top:8px}
+.login-page{min-height:100vh;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#eef3f8,#f7f9fb)}.login-card{width:min(430px,100%);background:#fff;border:1px solid #e1e7ee;border-radius:18px;padding:30px;box-shadow:0 18px 50px rgba(35,52,75,.10)}.login-head{text-align:center;margin-bottom:24px}.login-head h1{font-size:24px}.login-head p,.muted{color:#6c7888}.tiny{font-size:12px}.alert{padding:10px;border-radius:9px}.alert.error{background:#fdeaea;color:#a72c2c}.center-screen{min-height:100vh;display:grid;place-items:center}
+html[dir="rtl"] body{text-align:right}html[dir="ltr"] body{text-align:left}
+@media(max-width:900px){.app-shell{flex-direction:column}.sidebar{width:100%;flex-basis:auto}.nav-list{grid-template-columns:repeat(2,minmax(0,1fr))}.stats-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.content,.topbar{padding-left:16px;padding-right:16px}.stats-grid,.form-grid{grid-template-columns:1fr}.nav-list{grid-template-columns:1fr}.page-head{align-items:flex-start}.topbar{height:auto;padding-top:12px;padding-bottom:12px}.top-actions{flex-wrap:wrap}.span-2{grid-column:auto}}

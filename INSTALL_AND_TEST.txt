@@ -1,88 +1,132 @@
 Basmat Facilities CMMS
-Sprint 1 — Foundation
-=====================
+Sprint 2 — Authentication + CRUD + RLS + Arabic/English
+=======================================================
 
-IMPORTANT
----------
-This ZIP is designed to be extracted into:
-C:\projects\basmat-facilities-cmms
+BEFORE STARTING
+---------------
+Sprint 1 must already be installed.
 
 1) BACKUP CURRENT SOURCE
 ------------------------
 PowerShell:
 
 cd C:\projects\basmat-facilities-cmms
-Copy-Item src src_backup_sprint0 -Recurse
+if (Test-Path src_backup_sprint1) { Remove-Item src_backup_sprint1 -Recurse -Force }
+Copy-Item src src_backup_sprint1 -Recurse
 
-2) EXTRACT ZIP
---------------
-From C:\projects:
+2) EXTRACT SPRINT 2 ZIP
+-----------------------
+If the ZIP is in Downloads:
 
-Expand-Archive -Path ".\basmat-facilities-cmms-sprint-1.zip" -DestinationPath ".\basmat-facilities-cmms" -Force
+Expand-Archive `
+-Path "$env:USERPROFILE\Downloads\basmat-facilities-cmms-sprint-2.zip" `
+-DestinationPath "C:\projects\basmat-facilities-cmms" `
+-Force
 
-3) INSTALL PACKAGES
--------------------
+3) DEPENDENCIES
+---------------
 cd C:\projects\basmat-facilities-cmms
 npm install
 npm install @supabase/supabase-js react-router-dom
 
-4) CREATE .env.local
+4) VERIFY .env.local
 --------------------
-Copy .env.example to .env.local and use:
+It must already contain:
 
 VITE_SUPABASE_URL=https://pxbtwjuerndgmppicumr.supabase.co
-VITE_SUPABASE_ANON_KEY=<YOUR_PUBLISHABLE_KEY>
+VITE_SUPABASE_ANON_KEY=<YOUR PUBLISHABLE KEY>
 
-Do not put service_role in frontend.
+Never put service_role in the frontend.
 
-5) DATABASE
------------
-Supabase > SQL Editor > New query
+5) RUN DATABASE SQL
+-------------------
+Supabase > SQL Editor > New Query
 
 Open:
-sql\SPRINT1_FOUNDATION.sql
+sql\SPRINT2_AUTH_RLS.sql
 
-Run the entire script once.
+Run the whole script.
 
-6) START LOCAL
---------------
+6) CREATE FIRST ADMIN USER
+--------------------------
+Supabase:
+Authentication > Users > Add user
+
+Create your admin email/password.
+
+The trigger will create bf_profiles automatically.
+
+Then in SQL Editor run:
+
+update public.bf_profiles
+set is_super_admin = true, status='active'
+where email = 'PUT_YOUR_ADMIN_EMAIL_HERE';
+
+Check:
+
+select id,email,full_name,is_super_admin,status
+from public.bf_profiles
+order by created_at desc;
+
+The admin row must show:
+is_super_admin = true
+
+7) LOCAL TEST
+-------------
+PowerShell:
+
+cd C:\projects\basmat-facilities-cmms
 npm run dev
 
-Expected:
-- Dashboard loads
-- Sidebar contains:
-  Dashboard
-  Organizations
-  Clients
-  Contracts
-  Sites
-  Users & Roles
-- No blank white page
-- No missing package errors
+Open the Vite URL.
 
-7) BUILD TEST
+TEST:
+[ ] Login screen appears
+[ ] Login works
+[ ] Arabic / English button works
+[ ] Arabic changes to RTL
+[ ] Dashboard opens after login
+[ ] Add Organization
+[ ] Add Client linked to Organization
+[ ] Add Contract linked to Client
+[ ] Add Site linked to Client/Contract
+[ ] Edit records works
+[ ] Archive works
+[ ] Logout returns to Login
+
+8) BUILD TEST
 -------------
 npm run build
 
 Expected:
-Build succeeds and creates dist\
+Build succeeds and dist\ is created.
 
-8) GIT AFTER SUCCESS
+9) GIT AFTER SUCCESS
 --------------------
 git add .
-git commit -m "Sprint 1 Foundation - Basmat Facilities CMMS"
+git commit -m "Sprint 2 Auth CRUD RLS Bilingual - Basmat Facilities CMMS"
 git push
 
-SPRINT 1 SUCCESS CRITERIA
+SPRINT 2 SUCCESS CRITERIA
 -------------------------
-[ ] App starts locally
-[ ] Supabase client configured
-[ ] bf_ foundation tables created
-[ ] RLS enabled
-[ ] Dashboard and foundation navigation work
+[ ] Authentication works
+[ ] First Super Admin works
+[ ] RLS protects bf_ tenant tables
+[ ] Organization CRUD works
+[ ] Client CRUD works
+[ ] Contract CRUD works
+[ ] Site CRUD works
+[ ] Users & Roles page loads
+[ ] Arabic + English works
+[ ] RTL + LTR works
 [ ] npm run build succeeds
 [ ] GitHub push succeeds
 
-NEXT
-----
-Sprint 2: Full Authentication + Admin bootstrap + Organizations/Clients CRUD + tenant-safe RLS.
+IMPORTANT
+---------
+Do not continue to Sprint 3 until all success criteria pass.
+
+NEXT SPRINT
+-----------
+Sprint 3 — Asset & Location Management:
+Buildings + Floors + Zones + Rooms + Asset Register + Categories + QR foundation.
