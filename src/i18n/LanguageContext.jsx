@@ -1,3 +1,4 @@
+import { dict as facilityDict } from '../lib/facilityLanguage'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 const LanguageContext = createContext(null)
@@ -172,7 +173,7 @@ export function LanguageProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
-    t: (key) => dictionary[lang][key] ?? key,
+    t: (key) => facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
     dir: lang === 'ar' ? 'rtl' : 'ltr'
   }), [lang])
 

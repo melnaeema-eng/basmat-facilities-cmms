@@ -1,132 +1,82 @@
-Basmat Facilities CMMS
-Sprint 2 — Authentication + CRUD + RLS + Arabic/English
-=======================================================
+BASMAT FACILITIES CMMS — SPRINT 3 RELEASE CANDIDATE
+====================================================
+Scope: Locations + Asset Register + Categories + QR + Security hardening.
+Prerequisite: The approved Sprint 2 project and database.
+This is not a production sign-off. Database and role isolation must be tested
+against your own Supabase project before accepting the baseline.
 
-BEFORE STARTING
----------------
-Sprint 1 must already be installed.
+1. BACKUP AND INSTALL
+Save basmat-facilities-cmms-sprint-3.zip in Downloads.
+Run the PowerShell command supplied with the ZIP. It extracts to a temporary
+folder, backs up your existing project, copies the source, installs dependencies,
+runs local tests, and executes npm run build.
+It preserves package.json, package-lock dependencies, .env.local, and Git history.
+The local environment file is created through a prompt only if missing.
+Never paste a service_role key into the frontend.
 
-1) BACKUP CURRENT SOURCE
-------------------------
-PowerShell:
+2. DATABASE — REQUIRED BEFORE OPENING THE NEW APP
+Supabase > select "melnaeema-eng's Project" > SQL Editor > New query.
+Open sql/003_SECURITY_AND_ASSETS.sql and execute the entire file ONCE.
+It runs in a transaction, creates migration marker 3, and rolls back on failure.
+It updates only bf_ tables/functions and adds no data to other projects.
+Do not run the old Sprint 1 or Sprint 2 SQL again after migration 003.
+Do not rerun migration 003 if it succeeds.
 
-cd C:\projects\basmat-facilities-cmms
-if (Test-Path src_backup_sprint1) { Remove-Item src_backup_sprint1 -Recurse -Force }
-Copy-Item src src_backup_sprint1 -Recurse
+Verify:
+select version,applied_at from public.bf_migrations where version=3;
+select count(*) from public.bf_assets;
+select tablename,rowsecurity from pg_tables
+where schemaname='public' and tablename like 'bf_%'
+order by tablename;
 
-2) EXTRACT SPRINT 2 ZIP
------------------------
-If the ZIP is in Downloads:
-
-Expand-Archive `
--Path "$env:USERPROFILE\Downloads\basmat-facilities-cmms-sprint-2.zip" `
--DestinationPath "C:\projects\basmat-facilities-cmms" `
--Force
-
-3) DEPENDENCIES
----------------
-cd C:\projects\basmat-facilities-cmms
-npm install
-npm install @supabase/supabase-js react-router-dom
-
-4) VERIFY .env.local
---------------------
-It must already contain:
-
-VITE_SUPABASE_URL=https://pxbtwjuerndgmppicumr.supabase.co
-VITE_SUPABASE_ANON_KEY=<YOUR PUBLISHABLE KEY>
-
-Never put service_role in the frontend.
-
-5) RUN DATABASE SQL
--------------------
-Supabase > SQL Editor > New Query
-
-Open:
-sql\SPRINT2_AUTH_RLS.sql
-
-Run the whole script.
-
-6) CREATE FIRST ADMIN USER
---------------------------
-Supabase:
-Authentication > Users > Add user
-
-Create your admin email/password.
-
-The trigger will create bf_profiles automatically.
-
-Then in SQL Editor run:
-
-update public.bf_profiles
-set is_super_admin = true, status='active'
-where email = 'PUT_YOUR_ADMIN_EMAIL_HERE';
-
-Check:
-
-select id,email,full_name,is_super_admin,status
-from public.bf_profiles
-order by created_at desc;
-
-The admin row must show:
-is_super_admin = true
-
-7) LOCAL TEST
--------------
-PowerShell:
-
+3. LOCAL
 cd C:\projects\basmat-facilities-cmms
 npm run dev
+Sign in with the existing Super Admin.
+Verify AR/EN and sidebar direction.
 
-Open the Vite URL.
+4. ACCEPTANCE TESTS
+[ ] Organizations/Clients/Contracts/Sites still work.
+[ ] Create Building > Floor > Zone > Room.
+[ ] Edit and archive/restore each location.
+[ ] Create and edit an asset category and a child category.
+[ ] Register an asset with both names, serial, manufacturer, model and warranty.
+[ ] Assign a location and a parent asset from the same site.
+[ ] Search/filter asset register and open asset detail.
+[ ] Generate/download/print QR, scan it with a phone, and authenticate to view.
+[ ] Edit the asset and confirm the activity history.
+[ ] Archive/restore the asset without deleting its record.
+[ ] Arabic sidebar on right; English sidebar on left.
+[ ] npm run build passes.
+[ ] No existing unrelated project tables changed.
 
-TEST:
-[ ] Login screen appears
-[ ] Login works
-[ ] Arabic / English button works
-[ ] Arabic changes to RTL
-[ ] Dashboard opens after login
-[ ] Add Organization
-[ ] Add Client linked to Organization
-[ ] Add Contract linked to Client
-[ ] Add Site linked to Client/Contract
-[ ] Edit records works
-[ ] Archive works
-[ ] Logout returns to Login
+5. SECURITY ACCEPTANCE — MANDATORY
+Use separate test Auth users created in Supabase Authentication.
+Assign a Company Admin through trusted SQL or the existing platform admin.
+Assign other staff/owner roles using the Users & Roles page.
+[ ] Company A cannot read Company B assets or locations.
+[ ] Company A cannot modify Company B records using direct REST requests.
+[ ] An ordinary user cannot update bf_profiles.is_super_admin.
+[ ] An ordinary user cannot insert into bf_user_roles or modify permissions.
+[ ] A Company Admin cannot grant Company Admin to themselves.
+[ ] Owner access is restricted to explicitly assigned client records.
+[ ] A technician cannot read commercial cost fields.
+[ ] Cross-company/site asset references are rejected by database constraints.
+[ ] Invalid parent cycles and inconsistent location hierarchies are rejected.
+Do not put real customer data into the new system before these checks pass.
+If a test fails, do not approve the sprint; send the exact error.
 
-8) BUILD TEST
--------------
-npm run build
+6. GITHUB AFTER SUCCESSFUL TESTS
+git status
+git add src public sql tests INSTALL_AND_TEST.txt INSTALL_SPRINT3.ps1 REQUIREMENTS_APPROVED.md sprint3-package.json .env.example .gitignore package.json package-lock.json
+git commit -m "Sprint 3 Assets Locations Security - Basmat Facilities CMMS"
+git push origin main
 
-Expected:
-Build succeeds and dist\ is created.
+Cloudflare Pages redeploys from main. Confirm Production environment variables
+and check the deployment build log. Never commit .env.local.
 
-9) GIT AFTER SUCCESS
---------------------
-git add .
-git commit -m "Sprint 2 Auth CRUD RLS Bilingual - Basmat Facilities CMMS"
-git push
-
-SPRINT 2 SUCCESS CRITERIA
--------------------------
-[ ] Authentication works
-[ ] First Super Admin works
-[ ] RLS protects bf_ tenant tables
-[ ] Organization CRUD works
-[ ] Client CRUD works
-[ ] Contract CRUD works
-[ ] Site CRUD works
-[ ] Users & Roles page loads
-[ ] Arabic + English works
-[ ] RTL + LTR works
-[ ] npm run build succeeds
-[ ] GitHub push succeeds
-
-IMPORTANT
----------
-Do not continue to Sprint 3 until all success criteria pass.
-
-NEXT SPRINT
------------
-Sprint 3 — Asset & Location Management:
-Buildings + Floors + Zones + Rooms + Asset Register + Categories + QR foundation.
+7. NEXT
+The corrective maintenance engine and per-asset annual PPM planning are separate
+operational sprints. The current package does not yet implement WO execution,
+automatic PPM generation, GPS attendance, inventory transactions, or PDF reporting.
+See REQUIREMENTS_APPROVED.md for the approved full product scope.

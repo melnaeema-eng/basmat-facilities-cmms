@@ -12,3 +12,41 @@
 html[dir="rtl"] body{text-align:right}html[dir="ltr"] body{text-align:left}
 @media(max-width:900px){.app-shell{flex-direction:column}.sidebar{width:100%;flex-basis:auto}.nav-list{grid-template-columns:repeat(2,minmax(0,1fr))}.stats-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.content,.topbar{padding-left:16px;padding-right:16px}.stats-grid,.form-grid{grid-template-columns:1fr}.nav-list{grid-template-columns:1fr}.page-head{align-items:flex-start}.topbar{height:auto;padding-top:12px;padding-bottom:12px}.top-actions{flex-wrap:wrap}.span-2{grid-column:auto}}
+
+
+/* Sprint 3: responsive, mirrored facility management modules */
+.facility-module{display:grid;gap:18px;min-width:0}
+.facility-panel{background:#fff;border:1px solid #e3e8ef;border-radius:14px;padding:20px;min-width:0}
+.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:14px}
+.filter-grid label{display:grid;gap:7px;font-size:14px;color:#39465b}
+.filter-grid input,.filter-grid select,.facility-module textarea{min-width:0;width:100%;border:1px solid #ced6e0;border-radius:9px;padding:10px 11px;background:#fff;color:inherit;font:inherit}
+.facility-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.facility-tabs button{padding:10px 15px;border:1px solid #dbe2ea;border-radius:9px;background:#fff;color:inherit;cursor:pointer}
+.facility-tabs button.selected{background:#173e6e;color:#fff;border-color:#173e6e}
+.facility-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.facility-toolbar input{max-width:340px;min-width:0;width:100%;padding:10px 12px;border:1px solid #ced6e0;border-radius:9px}
+.facility-dialog{max-height:min(88vh,850px);overflow-y:auto;width:min(880px,100%)}
+.form-grid .alert{grid-column:1/-1}
+.form-grid textarea{min-height:76px;resize:vertical}
+.form-section{grid-column:1/-1;border-bottom:1px solid #e3e8ef;padding-top:10px}
+.form-section h3{font-size:16px;margin:0 0 10px}
+.facility-status{display:inline-block;padding:4px 9px;border-radius:999px;background:#edf2f7;color:#39465b;font-size:12px;white-space:nowrap}
+.status-active,.status-in_service,.status-excellent,.status-good{background:#dcfce7;color:#166534}
+.status-archived,.status-disposed{background:#e5e7eb;color:#374151}
+.status-critical,.status-failed,.status-out_of_service{background:#fee2e2;color:#991b1b}
+.status-high,.status-under_maintenance,.status-fair{background:#fef3c7;color:#92400e}
+.alert.success{background:#dcfce7;color:#166534}
+.detail-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(250px,1fr);gap:18px;align-items:start}
+.detail-side{display:grid;gap:18px;min-width:0}
+.details-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px;margin-top:15px}
+.detail-row{display:grid;gap:5px;border-bottom:1px solid #edf0f3;padding:12px 0;overflow-wrap:anywhere}
+.detail-row span{color:#687386;font-size:13px}.detail-row strong{font-size:14px;font-weight:500}
+.qr-card{text-align:center}.qr-card img{max-width:260px;width:100%;height:auto;image-rendering:pixelated}
+.qr-card .row-actions{justify-content:center;flex-wrap:wrap}
+.event-list{display:grid;gap:0}.event-item{display:grid;gap:5px;border-bottom:1px solid #edf0f3;padding:12px 0;overflow-wrap:anywhere}
+.event-item small{color:#687386}
+.facility-stats{margin-bottom:0}
+.nav-list a:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+@media(max-width:900px){.detail-grid{grid-template-columns:1fr}.facility-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.facility-panel{padding:14px}.details-list{grid-template-columns:1fr}.facility-stats{grid-template-columns:1fr 1fr}.facility-stats .stat-card{padding:14px}.facility-stats .stat-card strong{font-size:25px}.facility-dialog{max-height:90vh;padding:16px}.facility-toolbar{flex-wrap:wrap}.page-head{flex-wrap:wrap}}
+@media print{.sidebar,.topbar,.row-actions,.facility-tabs,.facility-toolbar{display:none!important}.app-shell{display:block}.content{padding:0}.facility-panel{border:0;break-inside:avoid}}
