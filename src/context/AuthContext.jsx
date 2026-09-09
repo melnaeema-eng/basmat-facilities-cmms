@@ -26,9 +26,9 @@ export function AuthProvider({children}){
  const can=(permission,org=null,client=null)=>{
   if(profile?.status!=='active')return false
   if(access.super_admin)return true
-  if(!org&&!client&&['organizations.view','clients.view','contracts.view','sites.view','locations.view','assets.view'].includes(permission)&&access.clients.length)return true
+  if(!org&&!client&&['organizations.view','clients.view','contracts.view','sites.view','locations.view','assets.view','corrective.view','corrective.request'].includes(permission)&&access.clients.length)return true
   if(access.roles.some(r=>r.permission===permission&&(!org||r.organization_id===org)))return true
-  return !!client&&['clients.view','contracts.view','sites.view','locations.view','assets.view'].includes(permission)
+  return !!client&&['clients.view','contracts.view','sites.view','locations.view','assets.view','corrective.view','corrective.request'].includes(permission)
    &&access.clients.some(c=>c.client_id===client&&(!org||c.organization_id===org))
  }
  const value=useMemo(()=>({

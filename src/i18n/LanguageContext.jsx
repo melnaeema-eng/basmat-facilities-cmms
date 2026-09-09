@@ -1,3 +1,4 @@
+import { correctiveDict } from '../lib/correctiveLanguage'
 import { dict as facilityDict } from '../lib/facilityLanguage'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
@@ -173,7 +174,7 @@ export function LanguageProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
-    t: (key) => facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
+    t: (key) => correctiveDict[lang]?.[key] ?? facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
     dir: lang === 'ar' ? 'rtl' : 'ltr'
   }), [lang])
 

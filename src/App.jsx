@@ -14,6 +14,8 @@ import UsersRoles from './pages/UsersRoles'
 import LocationManagement from './pages/LocationManagement'
 import AssetCategories from './pages/AssetCategories'
 import AssetRegister from './pages/AssetRegister'
+import Corrective from './pages/Corrective'
+import CorrectiveDetails from './pages/CorrectiveDetails'
 import AssetDetails from './pages/AssetDetails'
 export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
@@ -29,7 +31,9 @@ export default function App(){
    <Route path="/asset-categories" element={guard('assets.view',<AssetCategories/>)}/>
    <Route path="/assets" element={guard('assets.view',<AssetRegister/>)}/>
    <Route path="/assets/:id" element={guard('assets.view',<AssetDetails/>)}/>
-   <Route path="/users" element={guard('users.view',<UsersRoles/>)}/>
+   <Route path="/corrective" element={guard('corrective.view',<Corrective/>)}/>
+   <Route path="/corrective/:kind/:id" element={guard('corrective.view',<CorrectiveDetails/>)}/>
+   <Route path="/users"  element={guard('users.view',<UsersRoles/>)}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
  </Routes></BrowserRouter></AuthProvider></LanguageProvider>
