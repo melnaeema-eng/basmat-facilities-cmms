@@ -1,3 +1,5 @@
+import {lifecycleDict} from '../lib/lifecycleLanguage'
+import {documentDict} from '../lib/documentLanguage'
 import {notificationDict} from '../lib/notificationLanguage'
 import {approvalDict} from '../lib/approvalLanguage'
 import {reportDict} from '../lib/reportLanguage'
@@ -182,7 +184,7 @@ export function LanguageProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
-    t: (key) => notificationDict[lang]?.[key] ?? approvalDict[lang]?.[key] ?? reportDict[lang]?.[key] ?? fieldDict[lang]?.[key] ?? advancedStockDict[lang]?.[key] ?? procurementDict[lang]?.[key] ?? inventoryDict[lang]?.[key] ?? ppmDict[lang]?.[key] ?? correctiveDict[lang]?.[key] ?? facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
+    t: (key) => lifecycleDict[lang]?.[key] ?? documentDict[lang]?.[key] ?? notificationDict[lang]?.[key] ?? approvalDict[lang]?.[key] ?? reportDict[lang]?.[key] ?? fieldDict[lang]?.[key] ?? advancedStockDict[lang]?.[key] ?? procurementDict[lang]?.[key] ?? inventoryDict[lang]?.[key] ?? ppmDict[lang]?.[key] ?? correctiveDict[lang]?.[key] ?? facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
     dir: lang === 'ar' ? 'rtl' : 'ltr'
   }), [lang])
 

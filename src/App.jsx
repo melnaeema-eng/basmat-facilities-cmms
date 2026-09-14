@@ -1,3 +1,5 @@
+import AssetLifecycle from './pages/AssetLifecycle'
+import Documents from './pages/Documents'
 import Notifications from './pages/Notifications'
 import ApprovalPortal from './pages/ApprovalPortal'
 import ManagementReports from './pages/ManagementReports'
@@ -55,6 +57,8 @@ export default function App(){
    <Route path="/reports" element={guard('reports.view',<ManagementReports/>)}/>
    <Route path="/approvals" element={<ApprovalPortal/>}/>
    <Route path="/notifications" element={<Notifications/>}/>
+   <Route path="/documents" element={<Documents/>}/>
+   <Route path="/asset-lifecycle" element={<AssetLifecycle/>}/>
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
