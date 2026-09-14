@@ -1,3 +1,11 @@
+import {notificationDict} from '../lib/notificationLanguage'
+import {approvalDict} from '../lib/approvalLanguage'
+import {reportDict} from '../lib/reportLanguage'
+import {fieldDict} from '../lib/fieldLanguage'
+import {advancedStockDict} from '../lib/advancedStockLanguage'
+import {procurementDict} from '../lib/procurementLanguage'
+import {inventoryDict} from '../lib/inventoryLanguage'
+import {ppmDict} from '../lib/ppmLanguage'
 import { correctiveDict } from '../lib/correctiveLanguage'
 import { dict as facilityDict } from '../lib/facilityLanguage'
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
@@ -174,7 +182,7 @@ export function LanguageProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
-    t: (key) => correctiveDict[lang]?.[key] ?? facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
+    t: (key) => notificationDict[lang]?.[key] ?? approvalDict[lang]?.[key] ?? reportDict[lang]?.[key] ?? fieldDict[lang]?.[key] ?? advancedStockDict[lang]?.[key] ?? procurementDict[lang]?.[key] ?? inventoryDict[lang]?.[key] ?? ppmDict[lang]?.[key] ?? correctiveDict[lang]?.[key] ?? facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
     dir: lang === 'ar' ? 'rtl' : 'ltr'
   }), [lang])
 

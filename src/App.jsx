@@ -1,3 +1,14 @@
+import Notifications from './pages/Notifications'
+import ApprovalPortal from './pages/ApprovalPortal'
+import ManagementReports from './pages/ManagementReports'
+import AdvancedStock from './pages/AdvancedStock'
+import AdvancedStockDetails from './pages/AdvancedStockDetails'
+import Procurement from './pages/Procurement'
+import ProcurementDetails from './pages/ProcurementDetails'
+import Inventory from './pages/Inventory'
+import InventoryDetails from './pages/InventoryDetails'
+import PPM from './pages/PPM'
+import PPMDetails from './pages/PPMDetails'
 import {BrowserRouter,Routes,Route,Navigate} from 'react-router-dom'
 import {AuthProvider} from './context/AuthContext'
 import {LanguageProvider} from './i18n/LanguageContext'
@@ -33,7 +44,18 @@ export default function App(){
    <Route path="/assets/:id" element={guard('assets.view',<AssetDetails/>)}/>
    <Route path="/corrective" element={guard('corrective.view',<Corrective/>)}/>
    <Route path="/corrective/:kind/:id" element={guard('corrective.view',<CorrectiveDetails/>)}/>
-   <Route path="/users"  element={guard('users.view',<UsersRoles/>)}/>
+   <Route path="/ppm" element={guard('ppm.view',<PPM/>)}/>
+   <Route path="/ppm/:kind/:id" element={guard('ppm.view',<PPMDetails/>)}/>
+   <Route path="/inventory" element={guard('inventory.view',<Inventory/>)}/>
+   <Route path="/inventory/request/:id" element={guard('inventory.view',<InventoryDetails/>)}/>
+   <Route path="/procurement" element={guard('procurement.view',<Procurement/>)}/>
+   <Route path="/procurement/:kind/:id" element={guard('procurement.view',<ProcurementDetails/>)}/>
+   <Route path="/advanced-stock" element={guard('inventory.view',<AdvancedStock/>)}/>
+   <Route path="/advanced-stock/:id" element={guard('inventory.view',<AdvancedStockDetails/>)}/>
+   <Route path="/reports" element={guard('reports.view',<ManagementReports/>)}/>
+   <Route path="/approvals" element={<ApprovalPortal/>}/>
+   <Route path="/notifications" element={<Notifications/>}/>
+   <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
  </Routes></BrowserRouter></AuthProvider></LanguageProvider>

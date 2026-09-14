@@ -1,3 +1,4 @@
+import FieldOperations from '../components/FieldOperations'
 import {useEffect,useState} from 'react'
 import {Link,useParams,useNavigate} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -66,6 +67,7 @@ export default function CorrectiveDetails(){
      </div></>}
     </div>
     {manager&&['draft','assigned'].includes(row.status)&&<div className="facility-panel"><h3>{t('setSla')}</h3><p className="muted">{t('slaNotice')}</p><div className="form-grid"><Field label={t('responseDue')}><input type="datetime-local" value={form.response_due_at} onChange={e=>set('response_due_at',e.target.value)}/></Field><Field label={t('completionDue')}><input type="datetime-local" value={form.completion_due_at} onChange={e=>set('completion_due_at',e.target.value)}/></Field></div>{button('set_sla',true,{response_due_at:form.response_due_at?new Date(form.response_due_at).toISOString():null,completion_due_at:form.completion_due_at?new Date(form.completion_due_at).toISOString():null})}</div>}
+    {(manager||executor)&&<FieldOperations workOrder={row} onRefresh={load} canExecute={executor}/>}
     <div className="facility-panel"><h3>{t('technicalRecord')}</h3><div className="form-grid">{[['diagnosis','diagnosis'],['root_cause','rootCause'],['work_performed','workPerformed'],['tests_performed','testsPerformed'],['recommendations','recommendations']].map(([key,label])=><Field label={t(label)} key={key} wide><textarea value={form[key]} onChange={e=>set(key,e.target.value)} disabled={!executor||row.status!=='in_progress'}/></Field>)}</div>{button('complete',executor&&row.status==='in_progress',{diagnosis:form.diagnosis,root_cause:form.root_cause,work_performed:form.work_performed,tests_performed:form.tests_performed,recommendations:form.recommendations},true)}<p className="muted">{t('previewOnly')}</p></div>
     {(executor||manager)&&!['closed','cancelled'].includes(row.status)&&<div className="facility-panel"><h3>{t('internalNote')}</h3><Field label={t('note')}><textarea value={form.text} onChange={e=>set('text',e.target.value)}/></Field>{button('note',!!form.text.trim()&&['assigned','accepted','in_progress','on_hold'].includes(row.status),{text:form.text})}</div>}
    </>}
