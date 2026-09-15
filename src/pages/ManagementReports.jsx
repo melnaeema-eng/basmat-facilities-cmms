@@ -1,20 +1,34 @@
 import {useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
-import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {Field,Select,Notice} from '../components/FacilityFields'
 import {reportScopes,reportQuery,reportExport,reportSections,reportColumns,reportDefinitions,percentage,formatValue} from '../lib/reporting'
-import {exportXlsx,printReport} from '../lib/reportExport'
+import {exportXlsx,printReport,printCurrentReport} from '../lib/reportExport'
 
 const labels={overview:'reportOverview',work_orders:'reportWorkOrders',ppm:'reportPPM',technicians:'reportTechnicians',materials:'reportMaterials',monthly:'reportMonthly',quality:'reportQuality'}
 const today=()=>new Date().toISOString().slice(0,10)
-const defaultStart=()=>{const d=new Date();d.setUTCDate(1);return d.toISOString().slice(0,10)}
-export default function ManagementReports(){
- const {can}=useAuth(),{t,lang}=useLanguage()
+const defaultStart=()=>{const d=new Date();d.setUTCDate(d.getUTCDate()-89);return d.toISOString().slice(0,10)}
+export default function ManagementReports({capabilities}){
+ const {t,lang}=useLanguage()
  const [scopes,setScopes]=useState(null),[filters,setFilters]=useState({organization_id:'',client_id:'',site_id:'',start_date:defaultStart(),end_date:today()})
  const [section,setSection]=useState('overview'),[result,setResult]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[exporting,setExporting]=useState(false),[progress,setProgress]=useState(0),[page,setPage]=useState(0)
  const [applied,setApplied]=useState(null)
- useEffect(()=>{reportScopes().then(s=>{setScopes(s);setFilters(f=>({...f,organization_id:s.organizations[0]?.id||''}))}).catch(e=>setError(e.message))},[])
+ useEffect(()=>{
+  let active=true
+  reportScopes().then(s=>{
+   if(!active)return
+   setScopes(s)
+   const first=s.organizations?.[0]?.id
+   if(first){
+    const next={organization_id:first,client_id:'',site_id:'',start_date:defaultStart(),end_date:today()}
+    setFilters(next);setApplied(next);setBusy(true)
+    reportQuery(next,'overview',200,0).then(data=>{if(active)setResult(data)})
+     .catch(e=>{if(active)setError(e.message)})
+     .finally(()=>{if(active)setBusy(false)})
+   }else setError(t('reportNoPermission'))
+  }).catch(e=>{if(active)setError(e.message)})
+  return()=>{active=false}
+ },[])
  const org=filters.organization_id
  const clients=(scopes?.clients||[]).filter(c=>c.organization_id===org)
  const sites=(scopes?.sites||[]).filter(s=>s.organization_id===org&&(!filters.client_id||s.client_id===filters.client_id))
@@ -39,14 +53,27 @@ export default function ManagementReports(){
  const labelsFor=Object.fromEntries(displayCols.map(c=>[c,t(c)]))
  const label=c=>labelsFor[c]===c?c.replaceAll('_',' '):labelsFor[c]
  const title=t(labels[section])
+ const selectedContext=values=>{
+  const orgItem=(scopes?.organizations||[]).find(x=>x.id===values?.organization_id)
+  const clientItem=(scopes?.clients||[]).find(x=>x.id===values?.client_id)
+  const siteItem=(scopes?.sites||[]).find(x=>x.id===values?.site_id)
+  return {
+   organization_name:orgItem?.name||'—',
+   client_name:clientItem?.name||t('reportAll'),
+   site_name:siteItem?.name||t('reportAll')
+  }
+ }
  const exportData=async(kind)=>{
-  if(!applied||!can('reports.export',org))return
+  if(!applied||!capabilities?.organizations?.some(o=>o.id===applied.organization_id&&o.can_export))return
   setExporting(true);setProgress(0);setError('')
   try{
    const data=await reportExport(applied,section,setProgress)
    data.definition=t('reportDef'+section.charAt(0).toUpperCase()+section.slice(1).replace(/_([a-z])/g,(_,c)=>c.toUpperCase()))
    const cols=section==='overview'?Object.keys(data.totals).filter(k=>k!=='report_limitations'):reportColumns[section].filter(k=>section!=='materials'||data.totals.cost_available||!['unit_cost','actual_cost'].includes(k))
-   const report=section==='overview'?{...data,rows:cols.map(key=>({metric:t(key),value:data.totals[key]}))}:data
+   const context=selectedContext(applied)
+   const report=section==='overview'
+    ? {...data,context,rows:cols.map(key=>({metric:t(key),value:data.totals[key]}))}
+    : {...data,context}
    const exportedCols=section==='overview'?['metric','value']:cols
    const names=Object.fromEntries(exportedCols.map(c=>[c,label(c)]))
    const filename='Basmat-'+section+'-'+applied.start_date+'-'+applied.end_date
@@ -62,6 +89,21 @@ export default function ManagementReports(){
   ['reportLabor',((Number(totals.labor_minutes)||0)/60).toLocaleString(lang,{maximumFractionDigits:1})+' '+t('reportHours')]
  ]:[]
  const rows=section==='overview'?[]:result?.rows||[]
+ const canExport=!!capabilities?.organizations?.some(o=>o.id===applied?.organization_id&&o.can_export)
+ const printCurrent=()=>{
+  if(!result||!applied)return
+  const cols=section==='overview'?Object.keys(result.totals||{}).filter(k=>k!=='report_limitations'):displayCols
+  const names=section==='overview'
+   ? Object.fromEntries(cols.map(c=>[c,label(c)]))
+   : Object.fromEntries(cols.map(c=>[c,label(c)]))
+  const context=selectedContext(applied)
+  const report=section==='overview'
+   ? {...result,context,rows:cols.map(key=>({metric:label(key),value:result.totals?.[key]}))}
+   : {...result,context,rows:rows}
+  const outCols=section==='overview'?['metric','value']:cols
+  const outNames=section==='overview'?{metric:t('reportMetric'),value:t('reportValue')}:names
+  printCurrentReport(report,outCols,outNames,title,lang)
+ }
  const technicianSummary=section==='technicians'?totals.technicians||[]:[]
  const monthlyMax=section==='monthly'?Math.max(1,...rows.map(x=>Number(x.created)||0)):1
  return <section className="facility-module">
@@ -83,7 +125,9 @@ export default function ManagementReports(){
   {result&&<div className="facility-panel">
    <div className="page-head"><div><h2>{title}</h2><p className="muted">{applied.start_date} — {applied.end_date} · {t('reportGenerated')}: {new Date(result.generated_at).toLocaleString(lang)}</p></div>
     <div className="row-actions">
-     {can('reports.export',org)&&<><button type="button" className="btn secondary" disabled={exporting||busy} onClick={()=>exportData('xlsx')}>{t('reportExportExcel')}</button><button type="button" className="btn secondary" disabled={exporting||busy} onClick={()=>exportData('pdf')}>{t('reportExportPDF')}</button></>}
+     <button type="button" className="btn primary" disabled={busy} onClick={printCurrent}>{t('reportPrint')}</button>
+     <button type="button" className="btn primary" disabled={exporting||busy||!canExport} title={!canExport?t('reportExportPermission'):''} onClick={()=>exportData('xlsx')}>{t('reportExportExcel')}</button>
+     <button type="button" className="btn primary" disabled={exporting||busy||!canExport} title={!canExport?t('reportExportPermission'):''} onClick={()=>exportData('pdf')}>{t('reportExportPDF')}</button>
     </div>
    </div>
    {exporting&&<p role="status">{t('reportExporting')} {progress} {t('reportRows')}</p>}

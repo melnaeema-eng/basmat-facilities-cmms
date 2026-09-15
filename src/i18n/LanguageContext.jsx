@@ -1,7 +1,34 @@
+import {productExperienceDict} from '../lib/productExperienceLanguage'
+import {accessReviewDict} from '../lib/accessReviewLanguage'
+import {governanceDict} from '../lib/governanceLanguage'
+import {softFmDict} from '../lib/softFmLanguage'
+import {organizationOnboardingDict} from '../lib/organizationOnboardingLanguage'
+import {enterpriseStructureDict} from '../lib/enterpriseStructureLanguage'
+import {enterpriseAccessDict} from '../lib/enterpriseAccessLanguage'
+import {releaseReadinessDict} from '../lib/releaseReadinessLanguage'
+import {securityReadinessDict} from '../lib/securityReadinessLanguage'
+import {mobileFieldDict} from '../lib/mobileFieldLanguage'
+import {documentControlDict} from '../lib/documentControlLanguage'
+import {ownerPortalDict} from '../lib/ownerPortalLanguage'
+import {executiveDict} from '../lib/executiveLanguage'
+import {contractRenewalDict} from '../lib/contractRenewalLanguage'
+import {hseDict} from '../lib/hseLanguage'
+import {utilitiesDict} from '../lib/utilitiesLanguage'
+import {permitDict} from '../lib/permitLanguage'
+import {complianceDict} from '../lib/complianceLanguage'
+import {reliabilityDict} from '../lib/reliabilityLanguage'
+import {backlogDict} from '../lib/backlogLanguage'
+import {workforceDict} from '../lib/workforceLanguage'
+import {supplierPerformanceDict} from '../lib/supplierPerformanceLanguage'
+import {planningDict} from '../lib/planningLanguage'
+import {auditDict} from '../lib/auditLanguage'
+import {kpiDict} from '../lib/kpiLanguage'
+import {costingDict} from '../lib/costingLanguage'
 import {lifecycleDict} from '../lib/lifecycleLanguage'
 import {documentDict} from '../lib/documentLanguage'
 import {notificationDict} from '../lib/notificationLanguage'
 import {approvalDict} from '../lib/approvalLanguage'
+import {reportFixDict} from '../lib/reportFixLanguage'
 import {reportDict} from '../lib/reportLanguage'
 import {fieldDict} from '../lib/fieldLanguage'
 import {advancedStockDict} from '../lib/advancedStockLanguage'
@@ -184,7 +211,7 @@ export function LanguageProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
-    t: (key) => lifecycleDict[lang]?.[key] ?? documentDict[lang]?.[key] ?? notificationDict[lang]?.[key] ?? approvalDict[lang]?.[key] ?? reportDict[lang]?.[key] ?? fieldDict[lang]?.[key] ?? advancedStockDict[lang]?.[key] ?? procurementDict[lang]?.[key] ?? inventoryDict[lang]?.[key] ?? ppmDict[lang]?.[key] ?? correctiveDict[lang]?.[key] ?? facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
+    t: (key) => productExperienceDict[lang]?.[key] ?? accessReviewDict[lang]?.[key] ?? governanceDict[lang]?.[key] ?? softFmDict[lang]?.[key] ?? organizationOnboardingDict[lang]?.[key] ?? enterpriseStructureDict[lang]?.[key] ?? enterpriseAccessDict[lang]?.[key] ?? releaseReadinessDict[lang]?.[key] ?? securityReadinessDict[lang]?.[key] ?? mobileFieldDict[lang]?.[key] ?? documentControlDict[lang]?.[key] ?? ownerPortalDict[lang]?.[key] ?? executiveDict[lang]?.[key] ?? contractRenewalDict[lang]?.[key] ?? hseDict[lang]?.[key] ?? utilitiesDict[lang]?.[key] ?? permitDict[lang]?.[key] ?? complianceDict[lang]?.[key] ?? reliabilityDict[lang]?.[key] ?? backlogDict[lang]?.[key] ?? workforceDict[lang]?.[key] ?? supplierPerformanceDict[lang]?.[key] ?? planningDict[lang]?.[key] ?? auditDict[lang]?.[key] ?? kpiDict[lang]?.[key] ?? costingDict[lang]?.[key] ?? lifecycleDict[lang]?.[key] ?? documentDict[lang]?.[key] ?? notificationDict[lang]?.[key] ?? approvalDict[lang]?.[key] ?? reportFixDict[lang]?.[key] ?? reportDict[lang]?.[key] ?? fieldDict[lang]?.[key] ?? advancedStockDict[lang]?.[key] ?? procurementDict[lang]?.[key] ?? inventoryDict[lang]?.[key] ?? ppmDict[lang]?.[key] ?? correctiveDict[lang]?.[key] ?? facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
     dir: lang === 'ar' ? 'rtl' : 'ltr'
   }), [lang])
 

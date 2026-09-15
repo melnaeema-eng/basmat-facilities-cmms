@@ -1,3 +1,28 @@
+import AccessReview from './pages/AccessReview'
+import GovernanceMatrix from './pages/GovernanceMatrix'
+import SoftFmOperations from './pages/SoftFmOperations'
+import OrganizationOnboarding from './pages/OrganizationOnboarding'
+import EnterpriseStructure from './pages/EnterpriseStructure'
+import EnterpriseAccess from './pages/EnterpriseAccess'
+import ReleaseReadiness from './pages/ReleaseReadiness'
+import SecurityReadiness from './pages/SecurityReadiness'
+import MobileField from './pages/MobileField'
+import DocumentControl from './pages/DocumentControl'
+import OwnerPortal from './pages/OwnerPortal'
+import ExecutiveDashboard from './pages/ExecutiveDashboard'
+import ContractRenewalDashboard from './pages/ContractRenewalDashboard'
+import HseIncidents from './pages/HseIncidents'
+import UtilitiesDashboard from './pages/UtilitiesDashboard'
+import PermitToWork from './pages/PermitToWork'
+import ComplianceRegister from './pages/ComplianceRegister'
+import ReliabilityDashboard from './pages/ReliabilityDashboard'
+import BacklogPriority from './pages/BacklogPriority'
+import WorkforceDispatch from './pages/WorkforceDispatch'
+import SupplierPerformance from './pages/SupplierPerformance'
+import PlanningCalendar from './pages/PlanningCalendar'
+import AuditCenter from './pages/AuditCenter'
+import KpiDashboard from './pages/KpiDashboard'
+import MaintenanceCosting from './pages/MaintenanceCosting'
 import AssetLifecycle from './pages/AssetLifecycle'
 import Documents from './pages/Documents'
 import Notifications from './pages/Notifications'
@@ -36,7 +61,10 @@ export default function App(){
   <Route path="/login" element={<Login/>}/>
   <Route element={<ProtectedRoute><AppShell/></ProtectedRoute>}>
    <Route index element={<Dashboard/>}/>
-   <Route path="/organizations" element={guard('organizations.view',<Organizations/>)}/>
+   <Route path="/organizations" element={guard('organizations.view',<OrganizationOnboarding/>)}/>
+   <Route path="/soft-fm" element={guard('soft-fm.view',<SoftFmOperations/>)}/>
+   <Route path="/governance" element={guard('governance.view',<GovernanceMatrix/>)}/>
+   <Route path="/access-review" element={guard('access-review.view',<AccessReview/>)}/>
    <Route path="/clients" element={guard('clients.view',<Clients/>)}/>
    <Route path="/contracts" element={guard('contracts.view',<Contracts/>)}/>
    <Route path="/sites" element={guard('sites.view',<Sites/>)}/>
@@ -59,6 +87,27 @@ export default function App(){
    <Route path="/notifications" element={<Notifications/>}/>
    <Route path="/documents" element={<Documents/>}/>
    <Route path="/asset-lifecycle" element={<AssetLifecycle/>}/>
+   <Route path="/maintenance-costing" element={<MaintenanceCosting/>}/>
+   <Route path="/kpi" element={guard('kpi.view',<KpiDashboard/>)}/>
+   <Route path="/audit" element={guard('audit.view',<AuditCenter/>)}/>
+   <Route path="/planning" element={guard('planning.view',<PlanningCalendar/>)}/>
+   <Route path="/supplier-performance" element={guard('supplier-performance.view',<SupplierPerformance/>)}/>
+   <Route path="/workforce" element={guard('workforce.view',<WorkforceDispatch/>)}/>
+   <Route path="/backlog" element={guard('backlog.view',<BacklogPriority/>)}/>
+   <Route path="/reliability" element={guard('reliability.view',<ReliabilityDashboard/>)}/>
+   <Route path="/compliance" element={guard('compliance.view',<ComplianceRegister/>)}/>
+   <Route path="/permits" element={guard('permit.view',<PermitToWork/>)}/>
+   <Route path="/utilities" element={guard('utilities.view',<UtilitiesDashboard/>)}/>
+   <Route path="/hse" element={guard('hse.view',<HseIncidents/>)}/>
+   <Route path="/contract-renewal" element={guard('contract-renewal.view',<ContractRenewalDashboard/>)}/>
+   <Route path="/executive" element={guard('executive.view',<ExecutiveDashboard/>)}/>
+   <Route path="/owner-portal" element={<OwnerPortal/>}/>
+   <Route path="/document-control" element={guard('document-control.view',<DocumentControl/>)}/>
+   <Route path="/field-mobile" element={guard('mobile-field.view',<MobileField/>)}/>
+   <Route path="/security-readiness" element={guard('security.view',<SecurityReadiness/>)}/>
+   <Route path="/release-readiness" element={guard('release.view',<ReleaseReadiness/>)}/>
+   <Route path="/enterprise-access" element={guard('enterprise-access.view',<EnterpriseAccess/>)}/>
+   <Route path="/enterprise-structure" element={guard('enterprise-structure.view',<EnterpriseStructure/>)}/>
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>

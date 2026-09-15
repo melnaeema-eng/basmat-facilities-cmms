@@ -1,48 +1,133 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
-import { useLanguage } from '../i18n/LanguageContext'
+import {useEffect,useMemo,useState} from 'react'
+import {Link} from 'react-router-dom'
+import {supabase} from '../lib/supabaseClient'
+import {useAuth} from '../context/AuthContext'
+import {useLanguage} from '../i18n/LanguageContext'
 
-export default function Dashboard() {
-  const { t } = useLanguage()
-  const [counts, setCounts] = useState({ organizations:0, clients:0, contracts:0, sites:0 })
+const closed=['closed','cancelled']
+const complete=['completed','approved','closed']
+const bilingual=(en,ar)=><>{en}<span className="bafm-bi">{ar}</span></>
 
-  useEffect(() => {
-    const load = async () => {
-      const [o,c,k,s] = await Promise.all([
-        supabase.from('bf_organizations').select('*', { count:'exact', head:true }).neq('status','archived'),
-        supabase.from('bf_clients').select('*', { count:'exact', head:true }).neq('status','archived'),
-        supabase.from('bf_contracts').select('*', { count:'exact', head:true }).eq('status','active'),
-        supabase.from('bf_sites').select('*', { count:'exact', head:true }).neq('status','archived'),
-      ])
-      setCounts({
-        organizations:o.count || 0,
-        clients:c.count || 0,
-        contracts:k.count || 0,
-        sites:s.count || 0,
-      })
+export default function Dashboard(){
+ const {profile,can}=useAuth(),{lang}=useLanguage()
+ const [data,setData]=useState({total:0,completed:0,progress:0,overdue:0,assets:0,ppmTotal:0,ppmCompleted:0,ppmOverdue:0,rows:[],assetsById:{}})
+ const [error,setError]=useState('')
+ useEffect(()=>{
+  let alive=true
+  async function count(table,build){
+   let q=supabase.from(table).select('*',{count:'exact',head:true})
+   q=build?build(q):q
+   const {count,error}=await q
+   if(error)throw error
+   return count||0
+  }
+  async function load(){
+   setError('')
+   try{
+    const [total,completed,progress,overdue,assets,ppmTotal,ppmCompleted,ppmOverdue,recent]=await Promise.all([
+     count('bf_work_orders'),
+     count('bf_work_orders',q=>q.in('status',complete)),
+     count('bf_work_orders',q=>q.eq('status','in_progress')),
+     count('bf_work_orders',q=>q.eq('sla_status','breached')),
+     count('bf_assets',q=>q.eq('status','active')),
+     count('bf_ppm_jobs',q=>q.neq('status','cancelled')),
+     count('bf_ppm_jobs',q=>q.in('status',['completed','approved','closed'])),
+     count('bf_ppm_jobs',q=>q.eq('status','scheduled').lt('due_date',new Date().toISOString().slice(0,10))),
+     supabase.from('bf_work_orders').select('id,work_order_number,title,priority,status,sla_status,asset_id,completion_due_at,created_at').order('created_at',{ascending:false}).limit(7)
+    ])
+    const rows=recent.data||[]
+    let assetsById={}
+    const ids=[...new Set(rows.map(x=>x.asset_id).filter(Boolean))]
+    if(ids.length){
+     const {data:assetRows}=await supabase.from('bf_assets').select('id,asset_tag,name_ar,name_en').in('id',ids)
+     assetsById=Object.fromEntries((assetRows||[]).map(x=>[x.id,x]))
     }
-    load()
-  }, [])
+    if(alive)setData({total,completed,progress,overdue,assets,ppmTotal,ppmCompleted,ppmOverdue,rows,assetsById})
+   }catch(e){if(alive)setError(e.message)}
+  }
+  load()
+  return()=>{alive=false}
+ },[])
+ const ppmCompliance=data.ppmTotal?Math.round(data.ppmCompleted/data.ppmTotal*100):0
+ const greeting=profile?.full_name||'BAFM User'
+ const open=data.rows.filter(x=>!closed.includes(x.status)).length
+ const critical=data.rows.filter(x=>x.priority==='P1'&&!closed.includes(x.status)).length
+ const alerts=[
+  [data.overdue,'work orders overdue','أوامر عمل متأخرة','critical'],
+  [critical,'critical work orders','أوامر عمل حرجة','warning'],
+  [data.ppmOverdue,'preventive jobs overdue','صيانة وقائية متأخرة','warning'],
+ ]
+ const quick=[
+  ['/corrective','＋','Create Work Order','إنشاء أمر عمل','corrective.manage'],
+  ['/ppm','◫','Schedule PM','جدولة صيانة وقائية','ppm.manage'],
+  ['/procurement','□','Request Material','طلب مادة','procurement.view'],
+  ['/corrective','◎','New Service Request','طلب خدمة جديد','corrective.request'],
+  ['/hse','△','Report Incident','الإبلاغ عن حادث','hse.view'],
+  ['/reports','▥','Open Reports','فتح التقارير','reports.view'],
+ ].filter(x=>can(x[4]))
+ return <section className="bafm-dashboard">
+  <div className="bafm-hero">
+   <div className="bafm-hero-copy">
+    <span>WELCOME BACK</span>
+    <h1>{greeting} <small>مرحباً بك مجدداً</small></h1>
+    <i/>
+    <p>Together for a safer, smarter and more sustainable tomorrow</p>
+    <p className="ar">معاً نحو مرافق أكثر أماناً وذكاءً واستدامة</p>
+   </div>
+   <div className="bafm-hero-tag"><strong>مرافق اليوم<br/>لمستقبل أفضل غداً</strong><span>Today's Facilities<br/>for a Better Tomorrow</span><i/></div>
+  </div>
 
-  const cards = [
-    ['activeOrganizations', counts.organizations],
-    ['activeClients', counts.clients],
-    ['activeContracts', counts.contracts],
-    ['activeSites', counts.sites],
-  ]
+  {error&&<div className="bafm-error">{error}</div>}
 
-  return (
-    <>
-      <div className="page-head">
-        <div><h1>{t('dashboard')}</h1><p>{t('welcome')}</p></div>
-      </div>
-      <div className="stats-grid">
-        {cards.map(([label, value]) => (
-          <div className="stat-card" key={label}>
-            <span>{t(label)}</span><strong>{value}</strong>
-          </div>
-        ))}
-      </div>
-    </>
-  )
+  <div className="bafm-kpi-grid">
+   {[
+    ['doc','Total Work Orders','إجمالي أوامر العمل',data.total,'blue'],
+    ['check','Completed','تم الإغلاق',data.completed,'green'],
+    ['clock','In Progress','قيد التنفيذ',data.progress,'orange'],
+    ['alert','Overdue','متأخر',data.overdue,'red'],
+    ['tools','PM Compliance','الالتزام بالصيانة الوقائية',ppmCompliance+'%','light'],
+    ['building','Total Assets','إجمالي الأصول',data.assets,'soft'],
+   ].map(([icon,en,ar,val,tone])=><div className="bafm-kpi" key={en}>
+    <div className={'bafm-kpi-icon '+tone}>{icon==='check'?'✓':icon==='clock'?'◷':icon==='alert'?'!':icon==='tools'?'⚙':icon==='building'?'▥':'▤'}</div>
+    <div><span>{en}<small>{ar}</small></span><strong>{val}</strong><em>{val===0?'—':'Live'} <small>بيانات حية</small></em></div>
+   </div>)}
+  </div>
+
+  <div className="bafm-dashboard-grid">
+   <div className="bafm-panel bafm-work-panel">
+    <div className="bafm-panel-head"><h2>Work Order Control Center <span>| مركز أوامر العمل</span></h2><Link to="/corrective">View All | عرض الكل</Link></div>
+    <div className="bafm-tabs"><button className="active">All ({data.total})</button><button>Open ({open})</button><button>In Progress ({data.progress})</button><button>Overdue ({data.overdue})</button><button>Completed ({data.completed})</button></div>
+    <div className="bafm-table-wrap"><table className="bafm-table">
+     <thead><tr><th>#</th><th>Title | العنوان</th><th>Priority | الأولوية</th><th>Status | الحالة</th><th>Asset | الأصل</th><th>Due Date | الاستحقاق</th></tr></thead>
+     <tbody>{data.rows.length?data.rows.map(x=>{
+      const a=data.assetsById[x.asset_id]
+      return <tr key={x.id}><td><Link to={'/corrective/work_order/'+x.id}>{x.work_order_number}</Link></td><td>{x.title}</td>
+       <td><span className={'bafm-chip p-'+x.priority.toLowerCase()}>{x.priority==='P1'?'High | عالية':x.priority==='P2'?'High | عالية':x.priority==='P3'?'Medium | متوسطة':'Low | منخفضة'}</span></td>
+       <td><span className={'bafm-chip s-'+x.status}>{x.status.replaceAll('_',' ')}</span></td>
+       <td>{a?.asset_tag||'—'}<small>{a?.name_en||a?.name_ar||''}</small></td>
+       <td>{x.completion_due_at?new Date(x.completion_due_at).toLocaleDateString(lang):'—'}</td></tr>
+     }):<tr><td colSpan="6" className="bafm-empty">No work orders yet | لا توجد أوامر عمل</td></tr>}</tbody>
+    </table></div>
+   </div>
+
+   <div className="bafm-right-stack">
+    <div className="bafm-panel">
+     <div className="bafm-panel-head"><h2>Preventive Maintenance <span>| الصيانة الوقائية</span></h2><small>This Month | هذا الشهر</small></div>
+     <div className="bafm-pm">
+      <div className="bafm-donut" style={{'--pct':ppmCompliance}}><div><strong>{ppmCompliance}%</strong><span>Compliance<br/>الالتزام</span></div></div>
+      <ul><li><i className="navy"/>Scheduled <span>مجدولة</span><b>{Math.max(0,data.ppmTotal-data.ppmCompleted)}</b></li><li><i className="green"/>Completed <span>مكتملة</span><b>{data.ppmCompleted}</b></li><li><i className="red"/>Overdue <span>متأخرة</span><b>{data.ppmOverdue}</b></li></ul>
+     </div>
+    </div>
+    <div className="bafm-panel">
+     <div className="bafm-panel-head"><h2>SLA & Alerts <span>| تنبيهات مستوى الخدمة</span></h2></div>
+     <div className="bafm-alerts">{alerts.map(([n,en,ar,tone])=><div key={en} className="bafm-alert-row"><i className={tone}>{tone==='critical'?'!':'△'}</i><div><strong>{n} {en}</strong><span>{n} {ar}</span></div><em className={tone}>{tone==='critical'?'Critical | حرجة':'Warning | تحذير'}</em><b>›</b></div>)}</div>
+    </div>
+   </div>
+  </div>
+
+  {!!quick.length&&<div className="bafm-panel bafm-quick-panel"><div className="bafm-panel-head"><h2>Quick Actions <span>| إجراءات سريعة</span></h2></div><div className="bafm-quick-grid">
+   {quick.map(([to,icon,en,ar])=><Link to={to} key={en} className="bafm-quick"><b>{icon}</b><strong>{en}</strong><span>{ar}</span></Link>)}
+  </div></div>}
+  <div className="bafm-dashboard-footer"><span>BAFM | Basmat Facilities CMMS</span><span>People | Assets | Safety | Sustainability · الناس | الأصول | السلامة | الاستدامة</span></div>
+ </section>
 }
