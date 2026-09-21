@@ -72,7 +72,8 @@ export default function App(){
    <Route path="/sites" element={guard('sites.view',<Sites/>)}/>
    <Route path="/locations" element={guard('locations.view',<LocationManagement/>)}/>
    <Route path="/asset-categories" element={guard('assets.view',<AssetCategories/>)}/>
-   <Route path="/asset-library" element={guard('assets.view',<MasterAssetLibrary/>)}/>
+   <Route path="/asset-library" element={guard('assets.view',<MasterAssetLibrary/>
+   <Route path="/medical" element={guard('medical.view',<MedicalMaintenanceCenter/>)} />)}/>
    <Route path="/assets" element={guard('assets.view',<AssetRegister/>)}/>
    <Route path="/assets/:id" element={guard('assets.view',<AssetDetails/>)}/>
    <Route path="/corrective" element={guard('corrective.view',<Corrective/>)}/>
@@ -114,7 +115,6 @@ export default function App(){
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
-       <Route path="/medical" element={guard('medical.view', <MedicalMaintenanceCenter />)} />
-</Routes></BrowserRouter></AuthProvider></LanguageProvider>
+ </Routes></BrowserRouter></AuthProvider></LanguageProvider>
 }
 

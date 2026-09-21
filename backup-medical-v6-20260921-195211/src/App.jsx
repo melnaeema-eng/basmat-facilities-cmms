@@ -1,4 +1,4 @@
-﻿import MasterAssetLibrary from './pages/MasterAssetLibrary'
+import MasterAssetLibrary from './pages/MasterAssetLibrary'
 import AccessReview from './pages/AccessReview'
 import GovernanceMatrix from './pages/GovernanceMatrix'
 import SoftFmOperations from './pages/SoftFmOperations'
@@ -56,7 +56,6 @@ import AssetRegister from './pages/AssetRegister'
 import Corrective from './pages/Corrective'
 import CorrectiveDetails from './pages/CorrectiveDetails'
 import AssetDetails from './pages/AssetDetails'
-import MedicalMaintenanceCenter from './pages/MedicalMaintenanceCenter'
 export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
  return <LanguageProvider><AuthProvider><BrowserRouter><Routes>
@@ -114,7 +113,5 @@ export default function App(){
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
-       <Route path="/medical" element={guard('medical.view', <MedicalMaintenanceCenter />)} />
-</Routes></BrowserRouter></AuthProvider></LanguageProvider>
+ </Routes></BrowserRouter></AuthProvider></LanguageProvider>
 }
-
