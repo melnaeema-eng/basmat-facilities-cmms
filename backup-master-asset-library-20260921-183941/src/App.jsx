@@ -1,4 +1,3 @@
-import MasterAssetLibrary from './pages/MasterAssetLibrary'
 import AccessReview from './pages/AccessReview'
 import GovernanceMatrix from './pages/GovernanceMatrix'
 import SoftFmOperations from './pages/SoftFmOperations'
@@ -71,7 +70,6 @@ export default function App(){
    <Route path="/sites" element={guard('sites.view',<Sites/>)}/>
    <Route path="/locations" element={guard('locations.view',<LocationManagement/>)}/>
    <Route path="/asset-categories" element={guard('assets.view',<AssetCategories/>)}/>
-   <Route path="/asset-library" element={guard('assets.view',<MasterAssetLibrary/>)}/>
    <Route path="/assets" element={guard('assets.view',<AssetRegister/>)}/>
    <Route path="/assets/:id" element={guard('assets.view',<AssetDetails/>)}/>
    <Route path="/corrective" element={guard('corrective.view',<Corrective/>)}/>

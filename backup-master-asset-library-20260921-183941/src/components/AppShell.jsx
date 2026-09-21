@@ -20,7 +20,6 @@ const groups=[
   ['/sites','Facilities / Sites | المرافق والمواقع','sites.view','building'],
   ['/locations','Locations | المواقع','locations.view','pin'],
   ['/asset-categories','Asset Categories | تصنيفات الأصول','assets.view','grid'],
-  ['/asset-library','Asset Library | مكتبة الأصول والصيانة','assets.view','grid'],
   ['/assets','Assets | الأصول','assets.view','asset'],
   ['/asset-lifecycle','Asset Lifecycle | دورة حياة الأصل','lifecycle.view','cycle'],
   ['/utilities','Utilities | المرافق الخدمية','utilities.view','bolt'],
