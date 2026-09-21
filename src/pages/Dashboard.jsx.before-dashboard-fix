@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {supabase} from '../lib/supabaseClient'
+import {loadCorrective} from '../lib/corrective'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 
@@ -10,89 +11,54 @@ const bilingual=(en,ar)=><>{en}<span className="bafm-bi">{ar}</span></>
 
 export default function Dashboard(){
  const {profile,can}=useAuth(),{lang}=useLanguage()
- const [data,setData]=useState({total:0,completed:0,progress:0,overdue:0,open:0,critical:0,assets:0,ppmTotal:0,ppmCompleted:0,ppmOverdue:0,ppmPending:0,rows:[],assetsById:{}})
+ const [data,setData]=useState({total:0,completed:0,progress:0,overdue:0,assets:0,ppmTotal:0,ppmCompleted:0,ppmOverdue:0,rows:[],assetsById:{}})
  const [error,setError]=useState('')
  useEffect(()=>{
   let alive=true
-
-  async function rows(table,columns='*',build){
-   const all=[]
-   for(let start=0;start<100000;start+=500){
-    let q=supabase.from(table).select(columns).range(start,start+499)
-    q=build?build(q):q
-    const {data,error}=await q
-    if(error)throw error
-    all.push(...(data||[]))
-    if((data||[]).length<500)return all
-   }
-   throw Error('Dataset limit reached. Apply a narrower filter.')
+  async function count(table,build){
+   let q=supabase.from(table).select('*',{count:'exact',head:true})
+   q=build?build(q):q
+   const {count,error}=await q
+   if(error)throw error
+   return count||0
   }
-
   async function load(){
    setError('')
    try{
-    const [workOrders,assetsRows,ppmJobs]=await Promise.all([
-     rows(
-      'bf_work_orders',
-      'id,work_order_number,title,priority,status,sla_status,asset_id,completion_due_at,created_at',
-      q=>q.order('created_at',{ascending:false})
-     ),
-     rows(
-      'bf_assets',
-      'id,asset_tag,name_ar,name_en,status',
-      q=>q.eq('status','active')
-     ),
-     rows(
-      'bf_ppm_jobs',
-      'id,status,due_date,created_at',
-      q=>q.neq('status','cancelled')
-     )
+    const corrective=await loadCorrective()
+    const workOrders=(corrective.workOrders||[]).sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0))
+
+    const [overdue,assets,ppmTotal,ppmCompleted,ppmOverdue]=await Promise.all([
+     count('bf_work_orders',q=>q.eq('sla_status','breached')),
+     count('bf_assets',q=>q.eq('status','active')),
+     count('bf_ppm_jobs',q=>q.neq('status','cancelled')),
+     count('bf_ppm_jobs',q=>q.in('status',['completed','approved','closed'])),
+     count('bf_ppm_jobs',q=>q.eq('status','scheduled').lt('due_date',new Date().toISOString().slice(0,10)))
     ])
 
-    const today=new Date().toISOString().slice(0,10)
     const total=workOrders.length
     const completed=workOrders.filter(x=>complete.includes(x.status)).length
     const progress=workOrders.filter(x=>x.status==='in_progress').length
-    const overdue=workOrders.filter(x=>x.sla_status==='breached').length
-    const open=workOrders.filter(x=>!closed.includes(x.status)).length
-    const critical=workOrders.filter(x=>x.priority==='P1'&&!closed.includes(x.status)).length
+    const rows=workOrders.slice(0,7)
 
-    const ppmTotal=ppmJobs.length
-    const ppmCompleted=ppmJobs.filter(x=>complete.includes(x.status)).length
-    const ppmOverdue=ppmJobs.filter(x=>x.status==='scheduled'&&x.due_date&&x.due_date<today).length
-    const ppmPending=ppmJobs.filter(x=>!complete.includes(x.status)).length
+    let assetsById={}
+    const ids=[...new Set(rows.map(x=>x.asset_id).filter(Boolean))]
+    if(ids.length){
+     const {data:assetRows,error:assetError}=await supabase.from('bf_assets').select('id,asset_tag,name_ar,name_en').in('id',ids)
+     if(assetError)throw assetError
+     assetsById=Object.fromEntries((assetRows||[]).map(x=>[x.id,x]))
+    }
 
-    const rows7=workOrders.slice(0,7)
-    const assetsById=Object.fromEntries(assetsRows.map(x=>[x.id,x]))
-
-    if(alive)setData({
-     total,completed,progress,overdue,open,critical,
-     assets:assetsRows.length,
-     ppmTotal,ppmCompleted,ppmOverdue,ppmPending,
-     rows:rows7,
-     assetsById
-    })
-   }catch(e){
-    if(alive)setError(e.message)
-   }
+    if(alive)setData({total,completed,progress,overdue,assets,ppmTotal,ppmCompleted,ppmOverdue,rows,assetsById})
+   }catch(e){if(alive)setError(e.message)}
   }
-
-  const refresh=()=>load()
-
   load()
-  window.addEventListener('focus',refresh)
-  const timer=window.setInterval(refresh,15000)
-
-  return()=>{
-   alive=false
-   window.removeEventListener('focus',refresh)
-   window.clearInterval(timer)
-  }
+  return()=>{alive=false}
  },[])
  const ppmCompliance=data.ppmTotal?Math.round(data.ppmCompleted/data.ppmTotal*100):0
  const greeting=profile?.full_name||'BAFM User'
- const open=data.open
- const critical=data.critical
+ const open=data.rows.filter(x=>!closed.includes(x.status)).length
+ const critical=data.rows.filter(x=>x.priority==='P1'&&!closed.includes(x.status)).length
  const alerts=[
   [data.overdue,'work orders overdue','أوامر عمل متأخرة','critical'],
   [critical,'critical work orders','أوامر عمل حرجة','warning'],
@@ -156,7 +122,7 @@ export default function Dashboard(){
      <div className="bafm-panel-head"><h2>Preventive Maintenance <span>| الصيانة الوقائية</span></h2><small>This Month | هذا الشهر</small></div>
      <div className="bafm-pm">
       <div className="bafm-donut" style={{'--pct':ppmCompliance}}><div><strong>{ppmCompliance}%</strong><span>Compliance<br/>الالتزام</span></div></div>
-      <ul><li><i className="navy"/>Scheduled <span>مجدولة</span><b>{data.ppmPending}</b></li><li><i className="green"/>Completed <span>مكتملة</span><b>{data.ppmCompleted}</b></li><li><i className="red"/>Overdue <span>متأخرة</span><b>{data.ppmOverdue}</b></li></ul>
+      <ul><li><i className="navy"/>Scheduled <span>مجدولة</span><b>{Math.max(0,data.ppmTotal-data.ppmCompleted)}</b></li><li><i className="green"/>Completed <span>مكتملة</span><b>{data.ppmCompleted}</b></li><li><i className="red"/>Overdue <span>متأخرة</span><b>{data.ppmOverdue}</b></li></ul>
      </div>
     </div>
     <div className="bafm-panel">

@@ -1,7 +1,7 @@
 export const ppmDict={
 en:{
  year:'Year',month:'Month',ppm:'Preventive maintenance',ppmProcedures:'Procedure library',ppmPlans:'Asset plans',ppmSchedule:'Annual schedule',ppmJobs:'PPM work orders',
- newProcedure:'New procedure',newPlan:'New asset plan',procedure:'Procedure',plan:'Plan',job:'Work order',procedureCode:'Procedure code',planCode:'Plan code',jobNumber:'Work order number',
+ newProcedure:'New procedure',newPlan:'New asset plan',procedure:'Procedure',plan:'Plan',job:'Work order',procedureCode:'Procedure code',planCode:'Plan code',jobNumber:'PPM job number',workOrder:'Unified work order',
  frequency:'Frequency',daily:'Daily',weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',semiannual:'Semiannual',annual:'Annual',intervalCount:'Every N intervals',startDate:'Start date',nextDue:'Next due',dueDate:'Due date',
  estimatedMinutes:'Estimated minutes',manufacturer:'Manufacturer',model:'Model',category:'Category',asset:'Asset',organization:'Company',client:'Client',site:'Site',contractNumber:'Contract',
  nameAr:'Arabic name',nameEn:'English name',description:'Description',reference:'OEM / contract reference',version:'Version',revision:'Revision',revise:'Create new revision',addStep:'Add procedure step',editStep:'Edit step',deleteStep:'Delete step',
@@ -20,7 +20,7 @@ en:{
 },
 ar:{
  year:'السنة',month:'الشهر',ppm:'الصيانة الوقائية',ppmProcedures:'مكتبة الإجراءات',ppmPlans:'خطط المعدات',ppmSchedule:'الجدول السنوي',ppmJobs:'أوامر الصيانة الوقائية',
- newProcedure:'إجراء جديد',newPlan:'خطة معدة جديدة',procedure:'الإجراء',plan:'الخطة',job:'أمر العمل',procedureCode:'كود الإجراء',planCode:'كود الخطة',jobNumber:'رقم أمر العمل',
+ newProcedure:'إجراء جديد',newPlan:'خطة معدة جديدة',procedure:'الإجراء',plan:'الخطة',job:'أمر العمل',procedureCode:'كود الإجراء',planCode:'كود الخطة',jobNumber:'رقم مهمة PPM',workOrder:'أمر العمل الموحد',
  frequency:'التكرار',daily:'يومي',weekly:'أسبوعي',monthly:'شهري',quarterly:'ربع سنوي',semiannual:'نصف سنوي',annual:'سنوي',intervalCount:'كل عدد من الفترات',startDate:'تاريخ البداية',nextDue:'الموعد التالي',dueDate:'تاريخ الاستحقاق',
  estimatedMinutes:'الدقائق التقديرية',manufacturer:'الشركة المصنعة',model:'الموديل',category:'التصنيف',asset:'المعدة',organization:'الشركة',client:'العميل',site:'الموقع',contractNumber:'العقد',
  nameAr:'الاسم بالعربية',nameEn:'الاسم بالإنجليزية',description:'الوصف',reference:'مرجع المصنع / العقد',version:'الإصدار',revision:'المراجعة',revise:'إنشاء مراجعة جديدة',addStep:'إضافة خطوة',editStep:'تعديل الخطوة',deleteStep:'حذف الخطوة',

@@ -58,7 +58,7 @@ export default function PPMDetails(){
     <h3>{t(kind)}</h3>
     {kind==='procedure'?details([['nameAr',row.name_ar],['nameEn',row.name_en],['frequency',t(row.frequency)],['category',name(data.categories.find(x=>x.id===row.category_id))],['manufacturer',row.manufacturer],['model',row.model],['reference',row.reference],['estimatedMinutes',row.estimated_minutes],['status',t(row.status)]]):
     kind==='plan'?details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['procedure',data.procedures.find(x=>x.id===row.procedure_id)?.code],['frequency',t(row.frequency)],['startDate',row.start_date],['nextDue',row.next_due],['intervalCount',row.interval_count],['status',t(row.status)]]):
-    details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||row.assigned_to],['version',row.procedure_snapshot?.version]])}
+    details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||row.assigned_to],['workOrder',row.work_order_id?<Link to={'/corrective/work_order/'+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
     {kind==='procedure'&&<p className="muted">{t('procedureNotice')}</p>}
    </div>
    {kind==='procedure'&&<>
