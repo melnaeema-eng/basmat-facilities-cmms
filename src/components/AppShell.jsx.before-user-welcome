@@ -1,8 +1,7 @@
 import {NavLink,Outlet,useLocation,useNavigate} from 'react-router-dom'
-import {useEffect,useMemo,useState} from 'react'
+import {useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
-import {supabase} from '../lib/supabaseClient'
 import '../bafm-theme.css'
 
 const groups=[
@@ -93,52 +92,7 @@ export default function AppShell(){
  const {lang,setLang}=useLanguage()
  const navigate=useNavigate(),location=useLocation()
  const [query,setQuery]=useState('')
- const [organizations,setOrganizations]=useState([])
  const visible=permission=>permission===null||permission==='__client__'||can(permission)
- const organizationIds=useMemo(()=>{
-  if(profile?.is_super_admin||access?.super_admin)return []
-  return [...new Set((access?.roles||[]).map(r=>r.organization_id).filter(Boolean))]
- },[access,profile])
-
- useEffect(()=>{
-  let alive=true
-  async function loadOrganizations(){
-   try{
-    let q=supabase.from('bf_organizations').select('id,name,code,status').order('name')
-    if(!(profile?.is_super_admin||access?.super_admin)){
-     if(!organizationIds.length){if(alive)setOrganizations([]);return}
-     q=q.in('id',organizationIds)
-    }
-    const {data,error}=await q
-    if(error)throw error
-    if(alive)setOrganizations(data||[])
-   }catch{
-    if(alive)setOrganizations([])
-   }
-  }
-  if(user)loadOrganizations()
-  return()=>{alive=false}
- },[user,profile,access,organizationIds.join('|')])
-
- const displayName=profile?.full_name||user?.email||'User'
- const organizationLabel=useMemo(()=>{
-  if(profile?.is_super_admin||access?.super_admin){
-   return lang==='ar'?'الإدارة العامة · جميع المنظمات':'General Administration · All Organizations'
-  }
-  if(!organizations.length){
-   return lang==='ar'?'لا توجد منظمة مرتبطة':'No organization assigned'
-  }
-  if(organizations.length===1)return organizations[0].name||organizations[0].code||''
-  const names=organizations.slice(0,2).map(x=>x.name||x.code).filter(Boolean).join(' · ')
-  return organizations.length>2
-   ? `${names} +${organizations.length-2}`
-   : names
- },[organizations,profile,access,lang])
-
- const welcomeText=lang==='ar'
-  ? `مرحباً ${displayName} — ${organizationLabel}`
-  : `Welcome ${displayName} — ${organizationLabel}`
-
  const allowed=useMemo(()=>groups.flatMap(g=>g.items).filter(x=>visible(x[2])),[can,access])
  const submit=e=>{
   e.preventDefault()
@@ -188,30 +142,12 @@ export default function AppShell(){
      <button className="bafm-top-btn" onClick={()=>setLang(lang==='ar'?'en':'ar')}>{lang==='ar'?'EN':'عربي'}</button>
      <button className="bafm-bell" onClick={()=>navigate('/notifications')} aria-label="Notifications"><NavIcon type="bell"/><span>•</span></button>
      <div className="bafm-user">
-      <div className="bafm-avatar">{displayName.slice(0,1).toUpperCase()}</div>
-      <div>
-       <strong>{displayName}</strong>
-       <small>{organizationLabel}</small>
-      </div>
+      <div className="bafm-avatar">{(profile?.full_name||user?.email||'U').slice(0,1).toUpperCase()}</div>
+      <div><strong>{profile?.full_name||user?.email}</strong><small>{profile?.is_super_admin?'System Administrator':'Facilities User'}</small></div>
      </div>
      <button className="bafm-signout" onClick={signOut}>↪</button>
     </div>
    </header>
-   <div style={{
-    margin:'12px 22px 0',
-    padding:'12px 16px',
-    borderRadius:14,
-    background:'linear-gradient(135deg, rgba(8,34,75,.06), rgba(30,136,229,.08))',
-    border:'1px solid rgba(8,34,75,.10)',
-    fontWeight:700,
-    color:'#08224b',
-    display:'flex',
-    alignItems:'center',
-    gap:8
-   }}>
-    <span aria-hidden="true">👋</span>
-    <span>{welcomeText}</span>
-   </div>
    <main className="bafm-content" key={location.pathname}><Outlet/></main>
   </div>
  </div>
