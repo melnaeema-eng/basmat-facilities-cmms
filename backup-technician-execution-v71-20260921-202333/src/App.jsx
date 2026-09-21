@@ -57,7 +57,6 @@ import Corrective from './pages/Corrective'
 import CorrectiveDetails from './pages/CorrectiveDetails'
 import AssetDetails from './pages/AssetDetails'
 import MedicalMaintenanceCenter from './pages/MedicalMaintenanceCenter'
-import TechnicianExecution from './pages/TechnicianExecution'
 export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
  return <LanguageProvider><AuthProvider><BrowserRouter><Routes>
@@ -116,8 +115,6 @@ export default function App(){
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
        <Route path="/medical" element={guard('medical.view', <MedicalMaintenanceCenter />)} />
-      <Route path="/technician-execution" element={guard('maintenance.execute', <TechnicianExecution />)} />
 </Routes></BrowserRouter></AuthProvider></LanguageProvider>
 }
-
 
