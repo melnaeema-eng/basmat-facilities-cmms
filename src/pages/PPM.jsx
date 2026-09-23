@@ -1,3 +1,4 @@
+
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -5,6 +6,7 @@ import {useLanguage} from '../i18n/LanguageContext'
 import {loadPPM,ppmAction,frequencies} from '../lib/ppm'
 import {Field,Select,Dialog,Notice,Status,FormActions} from '../components/FacilityFields'
 import DataTable from '../components/DataTable'
+import GuidedDevicePPM from '../components/GuidedDevicePPM'
 const blankProcedure={organization_id:'',name_ar:'',name_en:'',category_id:'',manufacturer:'',model:'',frequency:'monthly',reference:'',estimated_minutes:60}
 const blankPlan={organization_id:'',asset_id:'',procedure_id:'',contract_id:'',start_date:'',interval_count:1}
 export default function PPM(){
@@ -48,6 +50,7 @@ export default function PPM(){
  return <section className="facility-module">
   <div className="page-head"><h1>{t('ppm')}</h1><div className="row-actions"><button className="btn secondary" onClick={load}>{t('refresh')}</button>{canManage&&tab!=='jobs'&&<button className="btn primary" onClick={start}>{t(tab==='procedures'?'newProcedure':'newPlan')}</button>}</div></div>
   <Notice error={error} success={success}/>
+  <GuidedDevicePPM data={data} onRefresh={load}/>
   <div className="row-actions">{[['procedures','ppmProcedures'],['plans','ppmPlans'],['jobs','ppmSchedule']].map(([key,label])=><button key={key} className={'btn '+(tab===key?'primary':'secondary')} onClick={()=>{setTab(key);setFilter('');setQuery('')}}>{t(label)} ({(data?.[key]||[]).length})</button>)}</div>
   {tab==='jobs'&&<div className="facility-panel"><div className="filter-grid"><Field label={t('year')}><Select value={String(year)} onChange={v=>{setYear(Number(v));setMonth(0)}} options={[year-1,year,year+1].map(v=>({value:String(v),label:String(v)}))}/></Field><Field label={t('month')}><Select value={String(month)} onChange={v=>setMonth(Number(v))} options={[{value:'0',label:t('all')},...Array.from({length:12},(_,i)=>({value:String(i+1),label:new Date(2026,i,1).toLocaleString(lang,{month:'long'})}))]}/></Field></div><div className="stats-grid facility-stats">{Array.from({length:12},(_,i)=><button type="button" key={i} className={'stat-card '+(month===i+1?'active':'')} onClick={()=>setMonth(month===i+1?0:i+1)}><span>{new Date(2026,i,1).toLocaleString(lang,{month:'short'})}</span><strong>{annual.filter(j=>Number(j.due_date.slice(5,7))===i+1).length}</strong></button>)}</div></div>}
   {tab==='jobs'&&<div className="stats-grid facility-stats">{[['ppmJobs',annual.length],['scheduled',annual.filter(x=>x.status==='scheduled').length],['completed',annual.filter(x=>['completed','approved','closed'].includes(x.status)).length],['closed',annual.filter(x=>x.status==='closed').length]].map(([key,value])=><div className="stat-card" key={key}><span>{t(key)}</span><strong>{value}</strong></div>)}</div>}

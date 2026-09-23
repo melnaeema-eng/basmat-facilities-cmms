@@ -141,6 +141,19 @@ export default function AppShell(){
   : `Welcome ${displayName} — ${organizationLabel}`
 
  const allowed=useMemo(()=>groups.flatMap(g=>g.items).filter(x=>visible(x[2])),[can,access])
+ const orderedGroups=useMemo(()=>{
+  const core=groups.find(g=>g.title.startsWith('Core Operations'))
+  const admin=groups.find(g=>g.title.startsWith('Administration'))
+  const rest=groups.filter(g=>g!==core&&g!==admin)
+  const dashboardItems=core?core.items.filter(x=>x[0]==='/'):[]
+  const coreItems=core?core.items.filter(x=>x[0]!=='/'):[]
+  return [
+   {title:'Dashboard',items:dashboardItems},
+   admin,
+   core?{...core,items:coreItems}:null,
+   ...rest
+  ].filter(Boolean)
+ },[])
  const submit=e=>{
   e.preventDefault()
   const q=query.trim().toLowerCase()
@@ -158,7 +171,7 @@ export default function AppShell(){
     <div className="bafm-logo-tiny">Facility Maintenance Management System</div>
    </div>
    <nav className="bafm-nav">
-    {groups.map(group=>{
+    {orderedGroups.map(group=>{
      const items=group.items.filter(([, ,permission])=>visible(permission))
      if(!items.length)return null
      return <section className="bafm-nav-section" key={group.title}>

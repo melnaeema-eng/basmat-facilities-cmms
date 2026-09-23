@@ -1,3 +1,4 @@
+
 import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -46,11 +47,11 @@ export default function MasterAssetLibrary(){
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState('')
  const [system,setSystem]=useState(''),[type,setType]=useState(''),[manufacturer,setManufacturer]=useState(''),[org,setOrg]=useState(''),[query,setQuery]=useState(''),[longLeadOnly,setLongLeadOnly]=useState(false),[busy,setBusy]=useState(false)
  const [adminOpen,setAdminOpen]=useState(false),[adminTab,setAdminTab]=useState('asset')
-  const focusAdmin=(tab)=>{
-   if(tab)setAdminTab(tab)
-   setAdminOpen(true)
-   window.setTimeout(()=>document.getElementById('master-library-admin')?.scrollIntoView({behavior:'smooth',block:'start'}),60)
-  }
+ const focusAdmin=(tab)=>{
+  if(tab)setAdminTab(tab)
+  setAdminOpen(true)
+  window.setTimeout(()=>document.getElementById('master-library-admin')?.scrollIntoView({behavior:'smooth',block:'start'}),60)
+ }
  const emptyAsset={id:'',system_code:'GENERAL',code:'',name_ar:'',name_en:'',icon_text:'🔧',group_ar:'',group_en:'',description_ar:'',description_en:'',default_criticality:'medium',expected_life_years:'',procurement_class:'standard',default_lead_time_days:'',critical_spare:false,stock_strategy:''}
  const emptyBrand={id:'',code:'',name:'',short_name:'',website:''}
  const emptyOption={id:'',asset_type_id:'',manufacturer_id:'',model_family:'',notes:''}
@@ -162,7 +163,8 @@ export default function MasterAssetLibrary(){
    </div>
    <div className="no-print" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
     {access?.super_admin&&<button className="btn primary" onClick={()=>{if(adminOpen)setAdminOpen(false);else focusAdmin(adminTab)}}>{lang==='ar'?'⚙️ إدارة المكتبة':'⚙️ Manage Library'}</button>}
-    <button className="btn" onClick={()=>window.print()}>{lang==='ar'?'🖨️ طباعة / حفظ PDF':'🖨️ Print / Save PDF'}</button>
+    <a className="btn" href="/ppm">▶ {lang==='ar'?'تنفيذ PPM':'Run PPM'}</a>
+     <button className="btn" onClick={()=>window.print()}>{lang==='ar'?'🖨️ طباعة / حفظ PDF':'🖨️ Print / Save PDF'}</button>
    </div>
   </div>
 
@@ -337,7 +339,7 @@ export default function MasterAssetLibrary(){
       <div style={{marginTop:9,fontSize:11}}>
        <b>{lang==='ar'?'العلامات التجارية المحتملة':'Common brands'}:</b>{' '}
        {t.options.length
-        ?t.options.slice(0,12).map(o=><span className="asset-brand" key={o.id} title={o.model_family||''}>{o.manufacturer?.name||''}{o.model_family?` · ${o.model_family}`:''}</span>)
+        ?t.options.slice(0,12).map(o=><button type="button" className="asset-brand" key={o.id} title={o.model_family||''} onClick={()=>{setManufacturer(o.manufacturer_id);window.scrollTo({top:0,behavior:'smooth'})}}>{o.manufacturer?.name||''}{o.model_family?` · ${o.model_family}`:''}</button>)
         :<span>{lang==='ar'?'OEM / عام':'OEM / Generic'}</span>}
       </div>
 
