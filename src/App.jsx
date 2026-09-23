@@ -60,6 +60,7 @@ import AssetDetails from './pages/AssetDetails'
 import MedicalMaintenanceCenter from './pages/MedicalMaintenanceCenter'
 import TechnicianExecution from './pages/TechnicianExecution'
 import ReportsHub from './pages/ReportsHub'
+import './basmat-print-signature.css'
 export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
  return <LanguageProvider><AuthProvider><BrowserRouter><Routes>
