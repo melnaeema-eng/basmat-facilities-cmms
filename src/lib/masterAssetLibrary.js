@@ -1,28 +1,56 @@
 import {supabase} from './supabaseClient'
 
-export async function loadMasterAssetLibrary(){
- const defs=[
-  ['types','bf_master_asset_types'],
-  ['manufacturers','bf_master_manufacturers'],
-  ['options','bf_master_asset_options'],
-  ['templates','bf_master_ppm_templates'],
-  ['steps','bf_master_ppm_steps'],
-  ['organizations','bf_organizations']
- ]
- const out=await Promise.all(defs.map(async([key,table])=>{
-  let q=supabase.from(table).select('*')
-  if(!['bf_master_asset_options','bf_master_ppm_steps'].includes(table))q=q.order('created_at',{ascending:true})
+const PAGE_SIZE=1000
+
+async function fetchAll(table,{orderBy=null}={}){
+ const rows=[]
+ let from=0
+ while(true){
+  let q=supabase.from(table).select('*').range(from,from+PAGE_SIZE-1)
+  if(orderBy)q=q.order(orderBy,{ascending:true})
   const {data,error}=await q
   if(error)throw error
-  return [key,data||[]]
- }))
+  const batch=data||[]
+  rows.push(...batch)
+  if(batch.length<PAGE_SIZE)break
+  from+=PAGE_SIZE
+ }
+ return rows
+}
+
+export async function loadMasterAssetLibrary(){
+ const defs=[
+  ['types','bf_master_asset_types','created_at'],
+  ['manufacturers','bf_master_manufacturers','created_at'],
+  ['options','bf_master_asset_options',null],
+  ['templates','bf_master_ppm_templates','created_at'],
+  ['steps','bf_master_ppm_steps',null],
+  ['organizations','bf_organizations','created_at']
+ ]
+ const out=await Promise.all(defs.map(async([key,table,orderBy])=>[
+  key,
+  await fetchAll(table,{orderBy})
+ ]))
  return Object.fromEntries(out)
 }
 
 export async function loadMasterAssetCatalogReport(){
- const {data,error}=await supabase.from('bf_master_asset_catalog_report').select('*').order('system_code').order('name_en')
- if(error)throw error
- return data||[]
+ const rows=[]
+ let from=0
+ while(true){
+  const {data,error}=await supabase
+   .from('bf_master_asset_catalog_report')
+   .select('*')
+   .order('system_code')
+   .order('name_en')
+   .range(from,from+PAGE_SIZE-1)
+  if(error)throw error
+  const batch=data||[]
+  rows.push(...batch)
+  if(batch.length<PAGE_SIZE)break
+  from+=PAGE_SIZE
+ }
+ return rows
 }
 
 export async function adoptMasterTemplates(org,type,manufacturer=null){
