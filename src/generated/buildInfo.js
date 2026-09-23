@@ -1,1 +1,1 @@
-export const BUILD_INFO={"commit":"6a1c071","branch":"main","builtAt":"2026-09-21T17:56:59.651Z"}
+export const BUILD_INFO={"commit":"060ac81","branch":"main","builtAt":"2026-09-23T12:08:13.802Z"}

@@ -58,7 +58,8 @@ import Corrective from './pages/Corrective'
 import CorrectiveDetails from './pages/CorrectiveDetails'
 import AssetDetails from './pages/AssetDetails'
 import MedicalMaintenanceCenter from './pages/MedicalMaintenanceCenter'
-import TechnicianExecution from './pages/TechnicianExecution'
+import TechnicianExecution from './pages/TechnicianExecution'
+import ReportsHub from './pages/ReportsHub'
 export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
  return <LanguageProvider><AuthProvider><BrowserRouter><Routes>
@@ -89,7 +90,7 @@ export default function App(){
    <Route path="/procurement/:kind/:id" element={guard('procurement.view',<ProcurementDetails/>)}/>
    <Route path="/advanced-stock" element={guard('inventory.view',<AdvancedStock/>)}/>
    <Route path="/advanced-stock/:id" element={guard('inventory.view',<AdvancedStockDetails/>)}/>
-   <Route path="/reports" element={guard('reports.view',<ManagementReports/>)}/>
+   <Route path="/reports" element={guard('reports.view',<ReportsHub/>)}/>
    <Route path="/approvals" element={<ApprovalPortal/>}/>
    <Route path="/notifications" element={<Notifications/>}/>
    <Route path="/documents" element={<Documents/>}/>
