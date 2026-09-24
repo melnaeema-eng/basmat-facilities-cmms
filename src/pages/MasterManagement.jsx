@@ -1,4 +1,4 @@
-﻿import {useMemo,useState} from 'react'
+import {useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import DataTable from '../components/DataTable'
@@ -21,7 +21,7 @@ const configs={
   fields:[['organization_id','organization',true],['client_id','client',true],['contract_number','text',true],['contract_type','contractType'],['start_date','date'],['end_date','date'],['contract_value','number'],['status','status']]
  },
  sites:{
-  permission:'sites',empty:{organization_id:'',client_id:'',contract_id:'',name:'',code:'',city:'',address:'',status:'active'},
+  permission:'sites',empty:{organization_id:'',client_id:'',contract_id:'',name:'',code:'',city:'',address:'',latitude:'',longitude:'',location_source:'',status:'active'},
   fields:[['organization_id','organization',true],['client_id','client',true],['contract_id','contract'],['name','text',true],['code','reference'],['city','text'],['address','text'],['status','status']]
  }
 }
@@ -52,7 +52,7 @@ export default function MasterManagement({kind}){
   for(const k of Object.keys(cfg.empty))if(initial[k]===null||initial[k]===undefined)initial[k]=''
   if(!row&&kind!=='organizations')initial.organization_id=filterOrg||orgs.filter(isActive).find(o=>can(cfg.permission+'.manage',o.id))?.id||''
   if(!row&&kind==='sites')initial.client_id=filterClient||''
-  if(!row)initial.code='';
+  if(!row)initial.code=''
   setForm(initial);setOpen(true);setError('');setSuccess('')
  }
  const set=(key,value)=>{
@@ -66,7 +66,6 @@ export default function MasterManagement({kind}){
    const saved=await persist(form,editing)
    setOpen(false);setEditing(null);setForm(cfg.empty)
    setSuccess(t('saved'))
-   // A new record is never hidden by an old organization/client/status filter.
    if(kind==='organizations')setFilterOrg('')
    else setFilterOrg(saved.organization_id||'')
    if(kind==='clients')setFilterClient('')
@@ -90,7 +89,7 @@ export default function MasterManagement({kind}){
  const renderField=([key,type,required])=>{
   const value=form[key]??''
   return <label key={key} className={key==='address'?'span-2':''}>{name(key)}
-   {type==='reference'?<input value={value||'Auto-generated on save / ظٹظڈظ†ط´ط£ ط¹ظ†ط¯ ط§ظ„ط­ظپط¸'} readOnly aria-label={name(key)} />:
+   {type==='reference'?<input value={value||'Auto-generated on save / يُنشأ عند الحفظ'} readOnly aria-label={name(key)} />:
    ['organization','client','contract','status','contractType'].includes(type)?
     <select required={!!required} value={value} disabled={busy||(editing&&key==='organization_id')||(editing&&key==='client_id'&&['contracts','sites'].includes(kind))} onChange={e=>set(key,e.target.value)}>
      <option value="">{t('select')}</option>{options(key).map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
@@ -120,12 +119,11 @@ export default function MasterManagement({kind}){
   <DataTable columns={columns} rows={visible} emptyText={loading?t('loading'):t('noData')}/>
   <Modal open={open} title={editing?t('edit'):t('add')} onClose={()=>!busy&&setOpen(false)}>
    <form onSubmit={submit} className="form-grid">
-   <SiteGeoFields kind={kind} form={form} set={set} lang={lang}/>
     {error&&<div className="alert error span-2" role="alert">{error}</div>}
     {cfg.fields.map(renderField)}
+    <SiteGeoFields kind={kind} form={form} set={set} lang={lang}/>
     <div className="form-actions"><button type="button" className="btn secondary" disabled={busy} onClick={()=>setOpen(false)}>{t('cancel')}</button><button className="btn primary" disabled={busy}>{busy?t('loading'):t('save')}</button></div>
    </form>
   </Modal>
  </section>
 }
-

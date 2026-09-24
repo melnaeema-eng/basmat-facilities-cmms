@@ -61,7 +61,7 @@ export default function SiteGeoFields({kind,form,set,lang}){
     if(valid)markerRef.current=L.circleMarker(start,{radius:8}).addTo(map)
     map.on('click',e=>apply(e.latlng.lat,e.latlng.lng,'map'))
     mapRef.current=map
-    setTimeout(()=>map.invalidateSize(),50)
+    setTimeout(()=>map.invalidateSize(),80)
     return ()=>{
       map.remove()
       mapRef.current=null
@@ -95,22 +95,23 @@ export default function SiteGeoFields({kind,form,set,lang}){
     const c=extractCoords(link)
     if(!c){
       setMessage(ar
-        ?'الرابط لا يحتوي إحداثيات مباشرة. افتح الرابط في الخرائط وانسخ رابطاً يظهر فيه Latitude/Longitude، أو استخدم GPS/الخريطة.'
-        :'The link does not contain direct coordinates. Copy a map URL containing latitude/longitude, or use GPS/map.')
+        ?'الرابط لا يحتوي على إحداثيات مباشرة. استخدم رابط خرائط يظهر فيه Latitude/Longitude، أو استخدم GPS أو الخريطة.'
+        :'The link does not contain direct coordinates. Use a map URL containing latitude/longitude, or use GPS/map.')
       return
     }
     apply(c.lat,c.lng,'map_link')
   }
 
-  return <div style={{gridColumn:'1 / -1',borderTop:'1px solid #e4e8ee',paddingTop:14,marginTop:6}}>
+  return <div style={{gridColumn:'1 / -1',borderTop:'1px solid #e4e8ee',paddingTop:14,marginTop:8}}>
     <h3 style={{margin:'0 0 10px'}}>{ar?'الموقع الجغرافي':'Geographic Location'}</h3>
 
     <div className="form-grid">
-      <label>{ar?'رابط الموقع':'Map link'}
+      <label className="span-2">{ar?'رابط الموقع':'Map link'}
         <input value={link} onChange={e=>setLink(e.target.value)}
           placeholder="https://www.google.com/maps/@24.7136,46.6753,16z"/>
       </label>
-      <div style={{display:'flex',gap:8,alignItems:'end',flexWrap:'wrap'}}>
+
+      <div className="span-2" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
         <button type="button" className="btn secondary" onClick={parseLink}>
           {ar?'استخراج من الرابط':'Extract from link'}
         </button>
@@ -133,7 +134,7 @@ export default function SiteGeoFields({kind,form,set,lang}){
 
     <div style={{marginTop:12}}>
       <div style={{fontWeight:700,marginBottom:6}}>
-        {ar?'🗺️ اضغط على الخريطة لتحديد الموقع':'🗺️ Click the map to select the site'}
+        {ar?'🗺 اضغط على الخريطة لتحديد الموقع':'🗺 Click the map to select the site'}
       </div>
       <div ref={mapEl} style={{height:280,width:'100%',borderRadius:12,overflow:'hidden',border:'1px solid #d9e0e8'}}/>
     </div>
