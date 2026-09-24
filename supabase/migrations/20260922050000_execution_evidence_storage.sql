@@ -1,6 +1,4 @@
-
 begin;
-
 -- V7.3 — Technician evidence upload
 -- Files live in private Supabase Storage.
 -- Only storage paths + metadata are stored in PostgreSQL.
@@ -25,7 +23,6 @@ on conflict(id) do update
 set public=false,
     file_size_limit=excluded.file_size_limit,
     allowed_mime_types=excluded.allowed_mime_types;
-
 create table if not exists public.bf_maintenance_execution_attachments(
  id uuid primary key default gen_random_uuid(),
  package_id uuid not null references public.bf_maintenance_execution_packages(id) on delete cascade,
@@ -41,12 +38,9 @@ create table if not exists public.bf_maintenance_execution_attachments(
  uploaded_at timestamptz not null default now(),
  unique(bucket_id,object_path)
 );
-
 create index if not exists bf_exec_attach_pkg
 on public.bf_maintenance_execution_attachments(package_id,step_seq,uploaded_at);
-
 alter table public.bf_maintenance_execution_attachments enable row level security;
-
 drop policy if exists bf_exec_attach_read on public.bf_maintenance_execution_attachments;
 create policy bf_exec_attach_read
 on public.bf_maintenance_execution_attachments
@@ -64,10 +58,8 @@ using(
     )
  )
 );
-
 revoke all on public.bf_maintenance_execution_attachments from public,anon,authenticated;
 grant select on public.bf_maintenance_execution_attachments to authenticated;
-
 create or replace function public.bf_can_access_execution_package(p_package uuid)
 returns boolean
 language sql
@@ -87,7 +79,6 @@ as $$
      )
  )
 $$;
-
 create or replace function public.bf_register_execution_attachment(
  p_package uuid,
  p_step_seq integer,
@@ -152,7 +143,6 @@ begin
 
  return v;
 end $$;
-
 create or replace function public.bf_delete_execution_attachment(p_attachment uuid)
 returns text
 language plpgsql
@@ -181,14 +171,12 @@ begin
  delete from public.bf_maintenance_execution_attachments where id=a.id;
  return a.object_path;
 end $$;
-
 revoke all on function public.bf_can_access_execution_package(uuid) from public,anon;
 grant execute on function public.bf_can_access_execution_package(uuid) to authenticated;
 revoke all on function public.bf_register_execution_attachment(uuid,integer,text,text,text,bigint) from public,anon;
 grant execute on function public.bf_register_execution_attachment(uuid,integer,text,text,text,bigint) to authenticated;
 revoke all on function public.bf_delete_execution_attachment(uuid) from public,anon;
 grant execute on function public.bf_delete_execution_attachment(uuid) to authenticated;
-
 -- Private Storage policies.
 drop policy if exists bf_maintenance_evidence_insert on storage.objects;
 create policy bf_maintenance_evidence_insert
@@ -210,7 +198,6 @@ with check(
      )
  )
 );
-
 drop policy if exists bf_maintenance_evidence_select on storage.objects;
 create policy bf_maintenance_evidence_select
 on storage.objects
@@ -231,7 +218,6 @@ using(
      )
  )
 );
-
 drop policy if exists bf_maintenance_evidence_delete on storage.objects;
 create policy bf_maintenance_evidence_delete
 on storage.objects
@@ -252,7 +238,6 @@ using(
      )
  )
 );
-
 -- Remove URL evidence requirement from the step RPC.
 -- Photo evidence is now validated against uploaded attachment metadata.
 create or replace function public.bf_submit_execution_step(
@@ -353,6 +338,5 @@ begin
 
  return v;
 end $$;
-
 notify pgrst,'reload schema';
 commit;

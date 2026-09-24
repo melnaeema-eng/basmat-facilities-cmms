@@ -1,5 +1,4 @@
 begin;
-
 insert into public.bf_permissions(code,description) values
  ('medical.view','View medical equipment maintenance'),
  ('medical.manage','Manage medical equipment register and maintenance'),
@@ -7,13 +6,11 @@ insert into public.bf_permissions(code,description) values
  ('medical.calibration','Record medical device calibration / verification'),
  ('medical.workorders','Manage medical equipment work orders')
 on conflict(code) do nothing;
-
 insert into public.bf_role_permissions(role_id,permission_id)
 select r.id,p.id
 from public.bf_roles r cross join public.bf_permissions p
 where r.code='company_admin' and p.code like 'medical.%'
 on conflict do nothing;
-
 create table if not exists public.bf_med_manufacturers(
  id uuid primary key default gen_random_uuid(),
  code text not null unique,
@@ -21,7 +18,6 @@ create table if not exists public.bf_med_manufacturers(
  status text not null default 'active' check(status in('active','inactive')),
  created_at timestamptz not null default now()
 );
-
 create table if not exists public.bf_med_master_types(
  id uuid primary key default gen_random_uuid(),
  system_code text not null,
@@ -39,7 +35,6 @@ create table if not exists public.bf_med_master_types(
  status text not null default 'active' check(status in('active','inactive')),
  created_at timestamptz not null default now()
 );
-
 create table if not exists public.bf_med_master_options(
  id uuid primary key default gen_random_uuid(),
  asset_type_id uuid not null references public.bf_med_master_types(id) on delete cascade,
@@ -50,7 +45,6 @@ create table if not exists public.bf_med_master_options(
 );
 create unique index if not exists bf_med_master_option_uq
 on public.bf_med_master_options(asset_type_id,manufacturer_id,coalesce(model_family,''));
-
 create table if not exists public.bf_med_master_pm_templates(
  id uuid primary key default gen_random_uuid(),
  asset_type_id uuid not null references public.bf_med_master_types(id) on delete cascade,
@@ -62,7 +56,6 @@ create table if not exists public.bf_med_master_pm_templates(
  status text not null default 'active' check(status in('active','inactive')),
  created_at timestamptz not null default now()
 );
-
 create table if not exists public.bf_med_master_pm_steps(
  id uuid primary key default gen_random_uuid(),
  template_id uuid not null references public.bf_med_master_pm_templates(id) on delete cascade,
@@ -75,7 +68,6 @@ create table if not exists public.bf_med_master_pm_steps(
  safety_notes text,
  unique(template_id,seq)
 );
-
 create table if not exists public.bf_med_assets(
  id uuid primary key default gen_random_uuid(),
  organization_id uuid not null references public.bf_organizations(id),
@@ -107,7 +99,6 @@ create table if not exists public.bf_med_assets(
 );
 create index if not exists bf_med_assets_org on public.bf_med_assets(organization_id,operational_status);
 create index if not exists bf_med_assets_due on public.bf_med_assets(organization_id,next_pm_date,next_calibration_date);
-
 create table if not exists public.bf_med_pm_history(
  id uuid primary key default gen_random_uuid(),
  organization_id uuid not null references public.bf_organizations(id),
@@ -123,7 +114,6 @@ create table if not exists public.bf_med_pm_history(
  created_at timestamptz not null default now()
 );
 create index if not exists bf_med_pm_history_asset on public.bf_med_pm_history(asset_id,performed_at desc);
-
 create table if not exists public.bf_med_work_orders(
  id uuid primary key default gen_random_uuid(),
  organization_id uuid not null references public.bf_organizations(id),
@@ -147,10 +137,8 @@ create table if not exists public.bf_med_work_orders(
  unique(organization_id,work_order_number)
 );
 create index if not exists bf_med_wo_org on public.bf_med_work_orders(organization_id,status,priority);
-
 create sequence if not exists public.bf_med_wo_seq;
 revoke all on sequence public.bf_med_wo_seq from public,anon,authenticated;
-
 create or replace function public.bf_med_assign_wo_number()
 returns trigger language plpgsql security definer set search_path=''
 as $$
@@ -163,7 +151,6 @@ end $$;
 drop trigger if exists bf_med_wo_number on public.bf_med_work_orders;
 create trigger bf_med_wo_number before insert on public.bf_med_work_orders
 for each row execute function public.bf_med_assign_wo_number();
-
 alter table public.bf_med_manufacturers enable row level security;
 alter table public.bf_med_master_types enable row level security;
 alter table public.bf_med_master_options enable row level security;
@@ -172,7 +159,6 @@ alter table public.bf_med_master_pm_steps enable row level security;
 alter table public.bf_med_assets enable row level security;
 alter table public.bf_med_pm_history enable row level security;
 alter table public.bf_med_work_orders enable row level security;
-
 drop policy if exists bf_med_master_read_mfr on public.bf_med_manufacturers;
 create policy bf_med_master_read_mfr on public.bf_med_manufacturers for select to authenticated using(status='active' or public.bf_is_super_admin());
 drop policy if exists bf_med_master_read_type on public.bf_med_master_types;
@@ -183,28 +169,24 @@ drop policy if exists bf_med_master_read_tpl on public.bf_med_master_pm_template
 create policy bf_med_master_read_tpl on public.bf_med_master_pm_templates for select to authenticated using(status='active' or public.bf_is_super_admin());
 drop policy if exists bf_med_master_read_step on public.bf_med_master_pm_steps;
 create policy bf_med_master_read_step on public.bf_med_master_pm_steps for select to authenticated using(true);
-
 drop policy if exists bf_med_assets_r on public.bf_med_assets;
 create policy bf_med_assets_r on public.bf_med_assets for select to authenticated using(public.bf_can(organization_id,'medical.view'));
 drop policy if exists bf_med_assets_w on public.bf_med_assets;
 create policy bf_med_assets_w on public.bf_med_assets for all to authenticated
 using(public.bf_can(organization_id,'medical.manage'))
 with check(public.bf_can(organization_id,'medical.manage'));
-
 drop policy if exists bf_med_hist_r on public.bf_med_pm_history;
 create policy bf_med_hist_r on public.bf_med_pm_history for select to authenticated using(public.bf_can(organization_id,'medical.view'));
 drop policy if exists bf_med_hist_w on public.bf_med_pm_history;
 create policy bf_med_hist_w on public.bf_med_pm_history for all to authenticated
 using(public.bf_can(organization_id,'medical.calibration') or public.bf_can(organization_id,'medical.manage'))
 with check(public.bf_can(organization_id,'medical.calibration') or public.bf_can(organization_id,'medical.manage'));
-
 drop policy if exists bf_med_wo_r on public.bf_med_work_orders;
 create policy bf_med_wo_r on public.bf_med_work_orders for select to authenticated using(public.bf_can(organization_id,'medical.view'));
 drop policy if exists bf_med_wo_w on public.bf_med_work_orders;
 create policy bf_med_wo_w on public.bf_med_work_orders for all to authenticated
 using(public.bf_can(organization_id,'medical.workorders') or public.bf_can(organization_id,'medical.manage'))
 with check(public.bf_can(organization_id,'medical.workorders') or public.bf_can(organization_id,'medical.manage'));
-
 insert into public.bf_med_manufacturers(code,name)
 values
 ('GEHC','GE HealthCare'),
@@ -251,7 +233,6 @@ values
 ('RESMED','ResMed'),
 ('DRAEGER-NEO','Dräger Neonatal Care')
 on conflict(code) do update set name=excluded.name,status='active';
-
 insert into public.bf_med_master_types(
  system_code,code,name_ar,name_en,default_criticality,icon_text,
  default_pm_months,default_calibration_months,procurement_class,default_lead_time_days
@@ -339,7 +320,6 @@ on conflict(code) do update set
  default_criticality=excluded.default_criticality,icon_text=excluded.icon_text,
  default_pm_months=excluded.default_pm_months,default_calibration_months=excluded.default_calibration_months,
  procurement_class=excluded.procurement_class,default_lead_time_days=excluded.default_lead_time_days,status='active';
-
 with x(asset_code,manufacturer_code) as (values
 ('MED-PATIENT-MONITOR','PHILIPS-H'),
 ('MED-PATIENT-MONITOR','GEHC'),
@@ -761,7 +741,6 @@ where not exists(
  select 1 from public.bf_med_master_options o
  where o.asset_type_id=t.id and o.manufacturer_id=m.id and o.model_family is null
 );
-
 insert into public.bf_med_master_pm_templates(asset_type_id,title_ar,title_en,interval_months,calibration_required,reference)
 select t.id,
  'الصيانة الوقائية - '||t.name_ar,
@@ -772,7 +751,6 @@ select t.id,
 from public.bf_med_master_types t
 where t.status='active'
 and not exists(select 1 from public.bf_med_master_pm_templates p where p.asset_type_id=t.id and p.status='active');
-
 insert into public.bf_med_master_pm_steps(template_id,seq,title_ar,title_en,instructions_ar,instructions_en,response_type,safety_notes)
 select p.id,s.seq,s.ar,s.en,s.iar,s.ien,s.resp,s.safety
 from public.bf_med_master_pm_templates p
@@ -804,7 +782,6 @@ cross join lateral (values
 ) s(seq,ar,en,iar,ien,resp,safety)
 where not exists(select 1 from public.bf_med_master_pm_steps z where z.template_id=p.id)
 on conflict(template_id,seq) do nothing;
-
 create or replace function public.bf_med_register_asset(
  p_org uuid,p_master_type uuid,p_manufacturer uuid default null,p_asset_tag text default null,
  p_model text default null,p_serial text default null,p_department text default '',
@@ -842,7 +819,6 @@ begin
  returning id into v_id;
  return v_id;
 end $$;
-
 create or replace function public.bf_med_complete_activity(
  p_asset uuid,p_activity_type text,p_result text,p_notes text default null,
  p_certificate text default null,p_service_provider text default null,p_next_due date default null
@@ -885,7 +861,6 @@ begin
 
  return v_id;
 end $$;
-
 create or replace function public.bf_med_create_work_order(
  p_asset uuid,p_work_type text,p_title text,p_description text default '',
  p_priority text default 'normal',p_due_date date default null
@@ -907,7 +882,6 @@ begin
  ) returning id into v_id;
  return v_id;
 end $$;
-
 create or replace function public.bf_med_admin_type_upsert(
  p_id uuid default null,p_system_code text default null,p_code text default null,
  p_name_ar text default null,p_name_en text default null,p_icon text default '🏥',
@@ -932,7 +906,6 @@ begin
  end if;
  return v;
 end $$;
-
 create or replace function public.bf_med_admin_manufacturer_upsert(
  p_id uuid default null,p_code text default null,p_name text default null
 )
@@ -951,7 +924,6 @@ begin
  end if;
  return v;
 end $$;
-
 revoke all on function public.bf_med_register_asset(uuid,uuid,uuid,text,text,text,text,text,text,text,text,date,date) from public,anon;
 grant execute on function public.bf_med_register_asset(uuid,uuid,uuid,text,text,text,text,text,text,text,text,date,date) to authenticated;
 revoke all on function public.bf_med_complete_activity(uuid,text,text,text,text,text,date) from public,anon;
@@ -962,6 +934,5 @@ revoke all on function public.bf_med_admin_type_upsert(uuid,text,text,text,text,
 grant execute on function public.bf_med_admin_type_upsert(uuid,text,text,text,text,text,text,integer,integer,text,integer) to authenticated;
 revoke all on function public.bf_med_admin_manufacturer_upsert(uuid,text,text) from public,anon;
 grant execute on function public.bf_med_admin_manufacturer_upsert(uuid,text,text) to authenticated;
-
 notify pgrst,'reload schema';
 commit;

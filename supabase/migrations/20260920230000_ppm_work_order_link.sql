@@ -1,17 +1,14 @@
-﻿-- Basmat Facilities CMMS
+-- Basmat Facilities CMMS
 -- Fix 043: Link PPM assignment to unified Work Orders.
 -- Safe to run more than once.
 
 begin;
-
 -- 1) Keep a permanent link from each PPM job to its unified work order.
 alter table public.bf_ppm_jobs
   add column if not exists work_order_id uuid;
-
 create unique index if not exists bf5_ppm_job_work_order_uq
   on public.bf_ppm_jobs(work_order_id)
   where work_order_id is not null;
-
 do $$
 begin
   if not exists (
@@ -25,7 +22,6 @@ begin
       foreign key (work_order_id) references public.bf_work_orders(id);
   end if;
 end $$;
-
 -- 2) Some deployed databases have tenant_id as a required column on work orders.
 --    Fill it from organization_id before NOT NULL checks without changing older schemas.
 do $$
@@ -59,7 +55,6 @@ begin
     execute 'create trigger bf43_fill_work_order_tenant before insert on public.bf_work_orders for each row execute function public.bf43_fill_work_order_tenant()';
   end if;
 end $$;
-
 -- 3) Atomic PPM assignment + unified work order creation/reassignment.
 create or replace function public.bf5_assign_job_work_order(p_job uuid,p_user uuid)
 returns uuid
@@ -145,9 +140,6 @@ begin
 
   return j.id;
 end $$;
-
 revoke all on function public.bf5_assign_job_work_order(uuid,uuid) from public,anon;
 grant execute on function public.bf5_assign_job_work_order(uuid,uuid) to authenticated;
-
 commit;
-

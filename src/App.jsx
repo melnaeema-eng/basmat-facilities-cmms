@@ -5,6 +5,7 @@ import GovernanceMatrix from './pages/GovernanceMatrix'
 import SoftFmOperations from './pages/SoftFmOperations'
 import OrganizationOnboarding from './pages/OrganizationOnboarding'
 import EnterpriseStructure from './pages/EnterpriseStructure'
+import FacilitiesReferenceLibrary from './pages/FacilitiesReferenceLibrary'
 import EnterpriseAccess from './pages/EnterpriseAccess'
 import ReleaseReadiness from './pages/ReleaseReadiness'
 import SecurityReadiness from './pages/SecurityReadiness'
@@ -119,6 +120,7 @@ export default function App(){
    <Route path="/enterprise-access" element={guard('enterprise-access.view',<EnterpriseAccess/>)}/>
           <Route path="/project-setup" element={<ProjectSetupWizard/>}/>
    <Route path="/enterprise-structure" element={guard('enterprise-structure.view',<EnterpriseStructure/>)}/>
+   <Route path="/facility-reference-library" element={guard('enterprise-structure.view',<FacilitiesReferenceLibrary/>)}/>
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>

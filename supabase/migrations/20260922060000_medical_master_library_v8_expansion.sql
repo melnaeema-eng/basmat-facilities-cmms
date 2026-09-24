@@ -1,5 +1,4 @@
 begin;
-
 -- Basmat Facilities CMMS V8
 -- Medical Master Library Expansion
 -- 237 device classes across 30 medical specialties.
@@ -103,7 +102,6 @@ where not exists(
  select 1 from public.bf_med_manufacturers m
  where m.code=x.code or lower(m.name)=lower(x.name)
 );
-
 with x(code,name) as (values
 ('GEHC','GE HealthCare'),
 ('SIEMENS-H','Siemens Healthineers'),
@@ -199,7 +197,6 @@ update public.bf_med_manufacturers m
 set status='active'
 from x
 where m.code=x.code or lower(m.name)=lower(x.name);
-
 insert into public.bf_med_master_types(
  system_code,code,name_ar,name_en,default_criticality,icon_text,
  default_pm_months,default_calibration_months,procurement_class,default_lead_time_days
@@ -453,7 +450,6 @@ on conflict(code) do update set
  procurement_class=excluded.procurement_class,
  default_lead_time_days=excluded.default_lead_time_days,
  status='active';
-
 with x(asset_code,manufacturer_code) as (values
 ('MED-BEDSIDE-MONITOR','PHILIPS-H'),
 ('MED-BEDSIDE-MONITOR','GEHC'),
@@ -1750,7 +1746,6 @@ where not exists(
    and o.manufacturer_id=m.id
    and o.model_family is null
 );
-
 -- Ensure every active medical device class has a baseline PM template.
 insert into public.bf_med_master_pm_templates(
  asset_type_id,title_ar,title_en,interval_months,calibration_required,
@@ -1780,7 +1775,6 @@ and not exists(
  select 1 from public.bf_med_master_pm_templates p
  where p.asset_type_id=t.id and p.status='active'
 );
-
 -- Add a six-step executable baseline to any medical template without steps.
 insert into public.bf_med_master_pm_steps(
  template_id,seq,title_ar,title_en,instructions_ar,instructions_en,
@@ -1875,7 +1869,6 @@ and not exists(
  select 1 from public.bf_med_master_pm_steps z where z.template_id=p.id
 )
 on conflict(template_id,seq) do nothing;
-
 -- Coverage summary for medical master library.
 drop view if exists public.bf_medical_library_summary;
 create view public.bf_medical_library_summary
@@ -1895,8 +1888,6 @@ left join public.bf_med_master_pm_steps s on s.template_id=p.id
 where t.status='active'
 group by t.system_code
 order by t.system_code;
-
 grant select on public.bf_medical_library_summary to authenticated;
-
 notify pgrst,'reload schema';
 commit;

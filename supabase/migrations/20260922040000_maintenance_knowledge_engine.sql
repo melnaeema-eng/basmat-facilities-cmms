@@ -1,6 +1,4 @@
-
 begin;
-
 -- ============================================================
 -- Basmat Facilities CMMS V7
 -- Maintenance Knowledge Engine
@@ -13,7 +11,6 @@ insert into public.bf_permissions(code,description) values
  ('maintenance.execute','Execute assigned maintenance procedures and checklists'),
  ('maintenance.knowledge.manage','Manage maintenance knowledge, procedure sources and approvals')
 on conflict(code) do nothing;
-
 insert into public.bf_role_permissions(role_id,permission_id)
 select r.id,p.id
 from public.bf_roles r
@@ -22,7 +19,6 @@ where
  (r.code in('company_admin','facility_manager','maintenance_manager') and p.code in('maintenance.execute','maintenance.knowledge.manage'))
  or (r.code in('supervisor','technician') and p.code='maintenance.execute')
 on conflict do nothing;
-
 -- ---------------- Facilities master library metadata ----------------
 alter table public.bf_master_ppm_templates
  add column if not exists model_family text,
@@ -50,7 +46,6 @@ alter table public.bf_master_ppm_templates
  add column if not exists meter_interval numeric,
  add column if not exists environment_notes text,
  add column if not exists procedure_priority integer not null default 10;
-
 do $$ begin
  if not exists(
    select 1 from pg_constraint
@@ -69,7 +64,6 @@ do $$ begin
    check(frequency_basis in('calendar','runtime','both','condition'));
  end if;
 end $$;
-
 alter table public.bf_master_ppm_steps
  add column if not exists required boolean not null default true,
  add column if not exists min_value numeric,
@@ -80,7 +74,6 @@ alter table public.bf_master_ppm_steps
  add column if not exists escalation_role text,
  add column if not exists hold_point boolean not null default false,
  add column if not exists reference text;
-
 -- ---------------- Medical master library metadata ----------------
 alter table public.bf_med_master_pm_templates
  add column if not exists manufacturer_id uuid references public.bf_med_manufacturers(id) on delete set null,
@@ -106,7 +99,6 @@ alter table public.bf_med_master_pm_templates
  add column if not exists meter_type text,
  add column if not exists meter_interval numeric,
  add column if not exists procedure_priority integer not null default 10;
-
 do $$ begin
  if not exists(
    select 1 from pg_constraint
@@ -125,7 +117,6 @@ do $$ begin
    check(frequency_basis in('calendar','runtime','both','condition'));
  end if;
 end $$;
-
 alter table public.bf_med_master_pm_steps
  add column if not exists task_type text not null default 'inspection',
  add column if not exists required boolean not null default true,
@@ -140,7 +131,6 @@ alter table public.bf_med_master_pm_steps
  add column if not exists escalation_role text,
  add column if not exists hold_point boolean not null default false,
  add column if not exists reference text;
-
 -- ---------------- Operational procedure metadata ----------------
 alter table public.bf_ppm_procedures
  add column if not exists source_type text not null default 'internal',
@@ -164,14 +154,12 @@ alter table public.bf_ppm_procedures
  add column if not exists interval_unit text,
  add column if not exists meter_type text,
  add column if not exists meter_interval numeric;
-
 alter table public.bf_ppm_steps
  add column if not exists acceptance_text text,
  add column if not exists photo_required boolean not null default false,
  add column if not exists failure_action text,
  add column if not exists escalation_role text,
  add column if not exists hold_point boolean not null default false;
-
 -- ---------------- Normalize default frequencies ----------------
 update public.bf_master_ppm_templates
 set
@@ -193,7 +181,6 @@ set
  required_personnel=greatest(coalesce(required_personnel,1),1),
  source_type=coalesce(source_type,'generic'),
  required_skill=coalesce(required_skill,'Maintenance Technician');
-
 update public.bf_med_master_pm_templates
 set
  interval_value=coalesce(interval_value,interval_months),
@@ -203,7 +190,6 @@ set
  required_skill=coalesce(required_skill,'Biomedical Engineer / Biomedical Technician'),
  required_ppe=coalesce(required_ppe,'As required by hospital infection-control and device-service policy'),
  prerequisites=coalesce(prerequisites,'Remove device from clinical use and follow approved OEM/hospital biomedical procedure before service.');
-
 -- ---------------- Seed missing facility baseline templates ----------------
 -- Ensures every active Facilities library item has at least one executable
 -- baseline procedure. These remain source_type=generic until a verified OEM,
@@ -262,7 +248,6 @@ and not exists(
  select 1 from public.bf_master_ppm_templates p
  where p.asset_type_id=t.id and p.status='active'
 );
-
 -- Generic baseline checklist for any facility template with no steps.
 insert into public.bf_master_ppm_steps(
  template_id,seq,title_ar,title_en,instructions_ar,instructions_en,task_type,
@@ -314,7 +299,6 @@ cross join lateral (values
 where p.status='active'
 and not exists(select 1 from public.bf_master_ppm_steps z where z.template_id=p.id)
 on conflict(template_id,seq) do nothing;
-
 -- Enrich existing steps with execution controls.
 update public.bf_master_ppm_steps
 set
@@ -327,7 +311,6 @@ set
    end),
  failure_action=coalesce(failure_action,'Record the finding and escalate when the condition is unsafe or outside approved limits.'),
  escalation_role=coalesce(escalation_role,'Supervisor');
-
 update public.bf_med_master_pm_steps
 set
  required=coalesce(required,true),
@@ -341,7 +324,6 @@ set
  escalation_role=coalesce(escalation_role,'Biomedical Supervisor'),
  tools=coalesce(tools,'Approved biomedical service tools as required'),
  materials=coalesce(materials,'OEM-approved consumables/parts where applicable');
-
 -- ---------------- Runtime execution package ----------------
 create table if not exists public.bf_maintenance_execution_packages(
  id uuid primary key default gen_random_uuid(),
@@ -386,7 +368,6 @@ create table if not exists public.bf_maintenance_execution_packages(
 );
 create index if not exists bf_exec_pkg_tech on public.bf_maintenance_execution_packages(technician_id,status,created_at desc);
 create index if not exists bf_exec_pkg_org on public.bf_maintenance_execution_packages(organization_id,status,created_at desc);
-
 create table if not exists public.bf_maintenance_execution_results(
  id uuid primary key default gen_random_uuid(),
  package_id uuid not null references public.bf_maintenance_execution_packages(id) on delete cascade,
@@ -405,10 +386,8 @@ create table if not exists public.bf_maintenance_execution_results(
  unique(package_id,step_seq)
 );
 create index if not exists bf_exec_result_pkg on public.bf_maintenance_execution_results(package_id,step_seq);
-
 alter table public.bf_maintenance_execution_packages enable row level security;
 alter table public.bf_maintenance_execution_results enable row level security;
-
 drop policy if exists bf_exec_pkg_read on public.bf_maintenance_execution_packages;
 create policy bf_exec_pkg_read on public.bf_maintenance_execution_packages
 for select to authenticated
@@ -418,7 +397,6 @@ using(
  or public.bf_can(organization_id,'ppm.manage')
  or public.bf_can(organization_id,'medical.manage')
 );
-
 drop policy if exists bf_exec_res_read on public.bf_maintenance_execution_results;
 create policy bf_exec_res_read on public.bf_maintenance_execution_results
 for select to authenticated
@@ -434,12 +412,10 @@ using(
      )
  )
 );
-
 revoke all on public.bf_maintenance_execution_packages from public,anon,authenticated;
 revoke all on public.bf_maintenance_execution_results from public,anon,authenticated;
 grant select on public.bf_maintenance_execution_packages to authenticated;
 grant select on public.bf_maintenance_execution_results to authenticated;
-
 -- ---------------- Facilities adoption: copy full knowledge metadata ----------------
 create or replace function public.bf_master_adopt_templates(p_org uuid,p_asset_type uuid,p_manufacturer uuid default null)
 returns jsonb language plpgsql security definer set search_path=''
@@ -560,10 +536,8 @@ begin
    'icon',t.icon_text
  );
 end $$;
-
 revoke all on function public.bf_master_adopt_templates(uuid,uuid,uuid) from public,anon;
 grant execute on function public.bf_master_adopt_templates(uuid,uuid,uuid) to authenticated;
-
 -- ---------------- Resolve best medical procedure ----------------
 create or replace function public.bf_med_resolve_template(p_asset uuid)
 returns uuid
@@ -600,7 +574,6 @@ begin
 
  return v;
 end $$;
-
 -- ---------------- Build execution package: Facilities ----------------
 create or replace function public.bf_build_facility_execution_package(p_job uuid)
 returns uuid
@@ -674,7 +647,6 @@ begin
 
  return v;
 end $$;
-
 -- ---------------- Build execution package: Medical ----------------
 create or replace function public.bf_build_medical_execution_package(p_work_order uuid)
 returns uuid
@@ -748,7 +720,6 @@ begin
 
  return v;
 end $$;
-
 -- Assignment triggers. They intentionally do not block assignment if a legacy
 -- record lacks a resolvable procedure.
 create or replace function public.bf_exec_pkg_from_ppm_assignment()
@@ -767,12 +738,10 @@ begin
  end if;
  return new;
 end $$;
-
 drop trigger if exists bf_exec_pkg_ppm_assignment on public.bf_ppm_jobs;
 create trigger bf_exec_pkg_ppm_assignment
 after insert or update of assigned_to on public.bf_ppm_jobs
 for each row execute function public.bf_exec_pkg_from_ppm_assignment();
-
 create or replace function public.bf_exec_pkg_from_med_assignment()
 returns trigger
 language plpgsql
@@ -789,12 +758,10 @@ begin
  end if;
  return new;
 end $$;
-
 drop trigger if exists bf_exec_pkg_med_assignment on public.bf_med_work_orders;
 create trigger bf_exec_pkg_med_assignment
 after insert or update of assigned_to on public.bf_med_work_orders
 for each row execute function public.bf_exec_pkg_from_med_assignment();
-
 -- ---------------- Technician RPCs ----------------
 create or replace function public.bf_my_execution_packages()
 returns setof public.bf_maintenance_execution_packages
@@ -811,7 +778,6 @@ as $$
    case p.status when 'started' then 1 when 'assigned' then 2 when 'blocked' then 3 else 4 end,
    p.created_at desc
 $$;
-
 create or replace function public.bf_start_execution_package(p_package uuid)
 returns void
 language plpgsql
@@ -832,7 +798,6 @@ begin
  set status='started',started_at=coalesce(started_at,now()),updated_at=now()
  where id=p.id;
 end $$;
-
 create or replace function public.bf_submit_execution_step(
  p_package uuid,
  p_step_seq integer,
@@ -905,7 +870,6 @@ begin
 
  return v;
 end $$;
-
 create or replace function public.bf_complete_execution_package(p_package uuid,p_note text default null)
 returns void
 language plpgsql
@@ -950,7 +914,6 @@ begin
  set status='completed',completed_at=now(),completion_note=nullif(btrim(p_note),''),updated_at=now()
  where id=p.id;
 end $$;
-
 revoke all on function public.bf_med_resolve_template(uuid) from public,anon;
 grant execute on function public.bf_med_resolve_template(uuid) to authenticated;
 revoke all on function public.bf_build_facility_execution_package(uuid) from public,anon;
@@ -965,7 +928,6 @@ revoke all on function public.bf_submit_execution_step(uuid,integer,text,numeric
 grant execute on function public.bf_submit_execution_step(uuid,integer,text,numeric,text,text,text) to authenticated;
 revoke all on function public.bf_complete_execution_package(uuid,text) from public,anon;
 grant execute on function public.bf_complete_execution_package(uuid,text) to authenticated;
-
 -- ---------------- Coverage view ----------------
 drop view if exists public.bf_maintenance_library_coverage;
 create view public.bf_maintenance_library_coverage
@@ -1010,9 +972,7 @@ left join public.bf_med_master_pm_templates p on p.asset_type_id=t.id and p.stat
 left join public.bf_med_master_pm_steps s on s.template_id=p.id
 where t.status='active'
 group by t.id,t.code,t.name_ar,t.name_en;
-
 grant select on public.bf_maintenance_library_coverage to authenticated;
-
 -- ---------------- Knowledge-quality view ----------------
 drop view if exists public.bf_maintenance_source_quality;
 create view public.bf_maintenance_source_quality
@@ -1027,6 +987,5 @@ select
 from public.bf_maintenance_library_coverage
 group by domain;
 grant select on public.bf_maintenance_source_quality to authenticated;
-
 notify pgrst,'reload schema';
 commit;

@@ -1,5 +1,4 @@
 begin;
-
 insert into public.bf_master_asset_types(
  system_code,code,name_ar,name_en,default_criticality,expected_life_years,icon_text,
  procurement_class,default_lead_time_days,critical_spare
@@ -52,9 +51,6 @@ on conflict(code) do update set
  default_lead_time_days=excluded.default_lead_time_days,
  critical_spare=excluded.critical_spare,
  status='active';
-
-
-
 with x(code,name,short_name) as (values
 ('SAMSUNG-DISPLAY','Samsung Display','Samsung'),
 ('LG-DISPLAY','LG Business Solutions','LG'),
@@ -105,7 +101,6 @@ where not exists (
   from public.bf_master_manufacturers m
   where m.code=x.code or m.name=x.name
 );
-
 with x(code,name,short_name) as (values
 ('SAMSUNG-DISPLAY','Samsung Display','Samsung'),
 ('LG-DISPLAY','LG Business Solutions','LG'),
@@ -153,9 +148,6 @@ set short_name=coalesce(m.short_name,x.short_name),
     status='active'
 from x
 where m.name=x.name;
-
-
-
 with x(asset_code,manufacturer_name,model_family) as (values
 ('AV-VIDEO-WALL','Samsung Display',null),
 ('AV-VIDEO-WALL','LG Business Solutions',null),
@@ -496,14 +488,10 @@ where not exists(
  where o.asset_type_id=t.id and o.manufacturer_id=m.id
  and coalesce(o.model_family,'')=coalesce(x.model_family,'')
 );
-
-
 update public.bf_master_asset_types
 set group_ar=case system_code when 'AV' then 'الأوديو والفيديو والشاشات' when 'IT' then 'أجهزة تقنية المعلومات' when 'OFFICE' then 'الطباعة والنسخ والأجهزة المكتبية' else group_ar end,
     group_en=case system_code when 'AV' then 'Audio Video & Display Systems' when 'IT' then 'IT Endpoints & Compute' when 'OFFICE' then 'Printing, Copying & Office Equipment' else group_en end
 where system_code in('AV','IT','OFFICE');
-
-
 insert into public.bf_master_ppm_templates(asset_type_id,title_ar,title_en,frequency,estimated_minutes,reference,status)
 select t.id,
        'الصيانة الدورية - '||t.name_ar,
@@ -520,7 +508,6 @@ from public.bf_master_asset_types t
 where t.status='active'
 and t.system_code in('AV','IT','OFFICE')
 and not exists(select 1 from public.bf_master_ppm_templates p where p.asset_type_id=t.id and p.status='active');
-
 insert into public.bf_master_ppm_steps(template_id,seq,title_ar,title_en,instructions_ar,instructions_en,task_type,response_type,safety_notes)
 select p.id,s.seq,s.ar,s.en,s.iar,s.ien,s.task,s.resp,s.safety
 from public.bf_master_ppm_templates p
@@ -536,6 +523,5 @@ cross join lateral (values
 where t.system_code in('AV','IT','OFFICE')
 and not exists(select 1 from public.bf_master_ppm_steps z where z.template_id=p.id)
 on conflict(template_id,seq) do nothing;
-
 notify pgrst,'reload schema';
 commit;

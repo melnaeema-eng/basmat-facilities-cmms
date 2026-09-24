@@ -11,7 +11,6 @@
 -- that has an organization_id column. Existing module policies are preserved.
 
 begin;
-
 -- ---------------------------------------------------------------------------
 -- Central tenant membership guard.
 -- It is intentionally SECURITY DEFINER so RLS on profile/role tables cannot
@@ -179,10 +178,8 @@ begin
   return false;
 end
 $$;
-
 revoke all on function public.bf_tenant_access(uuid) from public, anon;
 grant execute on function public.bf_tenant_access(uuid) to authenticated;
-
 -- ---------------------------------------------------------------------------
 -- Apply tenant isolation to every Basmat business table carrying organization_id.
 -- RESTRICTIVE means this is an additional mandatory condition; it does not
@@ -227,7 +224,6 @@ begin
   end loop;
 end
 $$;
-
 -- ---------------------------------------------------------------------------
 -- Verification helper for Super Admin / administrators.
 -- Shows every table protected by this migration and whether RLS is enabled.
@@ -268,10 +264,7 @@ as $$
     and c.relname <> 'bf_user_roles'
   order by c.relname;
 $$;
-
 revoke all on function public.bf_tenant_isolation_status() from public, anon;
 grant execute on function public.bf_tenant_isolation_status() to authenticated;
-
 notify pgrst, 'reload schema';
-
 commit;

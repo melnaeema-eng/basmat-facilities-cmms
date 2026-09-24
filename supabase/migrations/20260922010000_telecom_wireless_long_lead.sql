@@ -1,10 +1,8 @@
 begin;
-
 alter table public.bf_master_asset_types add column if not exists procurement_class text not null default 'standard';
 alter table public.bf_master_asset_types add column if not exists default_lead_time_days integer;
 alter table public.bf_master_asset_types add column if not exists critical_spare boolean not null default false;
 alter table public.bf_master_asset_types add column if not exists stock_strategy text;
-
 do $$ begin
  if not exists(
   select 1 from pg_constraint where conname='bf_master_asset_procurement_class_chk'
@@ -14,8 +12,6 @@ do $$ begin
    check(procurement_class in('standard','long_lead','special_order'));
  end if;
 end $$;
-
-
 insert into public.bf_master_asset_types(
  system_code,code,name_ar,name_en,default_criticality,expected_life_years,icon_text,
  procurement_class,default_lead_time_days,critical_spare
@@ -101,8 +97,6 @@ on conflict(code) do update set
  default_lead_time_days=excluded.default_lead_time_days,
  critical_spare=excluded.critical_spare,
  status='active';
-
-
 insert into public.bf_master_manufacturers(code,name,short_name)
 values
 ('AVAYA','Avaya','Avaya'),
@@ -143,8 +137,6 @@ values
 ('COMMEND','Commend','Commend'),
 ('ZENITEL','Zenitel','Zenitel')
 on conflict(code) do update set name=excluded.name,short_name=excluded.short_name,status='active';
-
-
 with x(asset_code,manufacturer_code,model_family) as (values
 ('TEL-IP-PBX','AVAYA',null),
 ('TEL-IP-PBX','CISCO-UC',null),
@@ -650,13 +642,10 @@ where not exists(
  where o.asset_type_id=t.id and o.manufacturer_id=m.id
  and coalesce(o.model_family,'')=coalesce(x.model_family,'')
 );
-
-
 update public.bf_master_asset_types
 set group_ar=case system_code when 'TELEPHONY' then 'السنترالات والهواتف' when 'UC_AV' then 'المؤتمرات المرئية والصوتية' when 'RADIO' then 'الاتصالات اللاسلكية' when 'WIRELESS' then 'روابط وشبكات لاسلكية' when 'DAS' then 'التغطية الخلوية الداخلية DAS' when 'PAGA' then 'النداء العام والاتصال الحرج' when 'STRUCTURED_CABLING' then 'البنية التحتية للاتصالات' when 'CLOCK_PAGING' then 'الساعات المركزية والنداء' when 'LONG_LEAD_COMPONENT' then 'مكونات حرجة طويلة التوريد' else group_ar end,
     group_en=case system_code when 'TELEPHONY' then 'Telephony & Unified Communications' when 'UC_AV' then 'Unified Communications & AV' when 'RADIO' then 'Two-Way Radio Communications' when 'WIRELESS' then 'Wireless Communications' when 'DAS' then 'In-Building Cellular / DAS' when 'PAGA' then 'PAGA / Critical Communications' when 'STRUCTURED_CABLING' then 'Structured Cabling' when 'CLOCK_PAGING' then 'Master Clock & Paging' when 'LONG_LEAD_COMPONENT' then 'Critical Long Lead Components' else group_en end
 where system_code in('TELEPHONY','UC_AV','RADIO','WIRELESS','DAS','PAGA','STRUCTURED_CABLING','CLOCK_PAGING','LONG_LEAD_COMPONENT');
-
 update public.bf_master_asset_types set procurement_class='long_lead',default_lead_time_days=150,critical_spare=true where code='HVAC-CHILLER-AIR';
 update public.bf_master_asset_types set procurement_class='long_lead',default_lead_time_days=180,critical_spare=true where code='HVAC-CHILLER-WATER';
 update public.bf_master_asset_types set procurement_class='long_lead',default_lead_time_days=90,critical_spare=true where code='HVAC-AHU';
@@ -680,7 +669,6 @@ update public.bf_master_asset_types set procurement_class='long_lead',default_le
 update public.bf_master_asset_types set procurement_class='long_lead',default_lead_time_days=75,critical_spare=true where code='BMS-CONTROLLER';
 update public.bf_master_asset_types set procurement_class='long_lead',default_lead_time_days=75,critical_spare=true where code='SEC-VMS';
 update public.bf_master_asset_types set procurement_class='long_lead',default_lead_time_days=90,critical_spare=true where code='ICT-CORE-SWITCH';
-
 update public.bf_master_asset_types
 set stock_strategy=case
  when critical_spare and procurement_class='long_lead' then 'Maintain approved critical spare / contingency plan or framework agreement.'
@@ -688,7 +676,6 @@ set stock_strategy=case
  else 'Order against approved maintenance need and OEM specification.'
 end
 where stock_strategy is null;
-
 insert into public.bf_master_ppm_templates(asset_type_id,title_ar,title_en,frequency,estimated_minutes,reference,status)
 select t.id,'الصيانة الدورية - '||t.name_ar,'Periodic Maintenance - '||t.name_en,
        case when t.system_code in('TELEPHONY','RADIO','WIRELESS','DAS','PAGA') then 'monthly' else 'quarterly' end,
@@ -699,7 +686,6 @@ from public.bf_master_asset_types t
 where t.status='active'
 and t.system_code in('TELEPHONY','UC_AV','RADIO','WIRELESS','DAS','PAGA','STRUCTURED_CABLING','CLOCK_PAGING','LONG_LEAD_COMPONENT')
 and not exists(select 1 from public.bf_master_ppm_templates p where p.asset_type_id=t.id and p.status='active');
-
 insert into public.bf_master_ppm_steps(template_id,seq,title_ar,title_en,instructions_ar,instructions_en,task_type,response_type,safety_notes)
 select p.id,s.seq,s.ar,s.en,s.iar,s.ien,s.task,s.resp,s.safety
 from public.bf_master_ppm_templates p
@@ -714,9 +700,7 @@ cross join lateral (values
 where t.system_code in('TELEPHONY','UC_AV','RADIO','WIRELESS','DAS','PAGA','STRUCTURED_CABLING','CLOCK_PAGING','LONG_LEAD_COMPONENT')
 and not exists(select 1 from public.bf_master_ppm_steps z where z.template_id=p.id)
 on conflict(template_id,seq) do nothing;
-
 drop view if exists public.bf_master_asset_catalog_report;
-
 create view public.bf_master_asset_catalog_report
 with (security_invoker=true) as
 select
@@ -731,7 +715,6 @@ left join public.bf_master_manufacturers m on m.id=o.manufacturer_id and m.statu
 left join public.bf_master_ppm_templates p on p.asset_type_id=t.id and p.status='active'
 where t.status='active'
 group by t.id;
-
 grant select on public.bf_master_asset_catalog_report to authenticated;
 notify pgrst,'reload schema';
 commit;

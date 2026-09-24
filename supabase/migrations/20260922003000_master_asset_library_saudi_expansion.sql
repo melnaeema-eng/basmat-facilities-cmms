@@ -1,15 +1,11 @@
 begin;
-
 alter table public.bf_master_asset_types add column if not exists icon_text text not null default '🔧';
 alter table public.bf_master_asset_types add column if not exists group_ar text;
 alter table public.bf_master_asset_types add column if not exists group_en text;
 alter table public.bf_master_manufacturers add column if not exists short_name text;
-
 alter table public.bf_asset_categories add column if not exists icon_text text;
 alter table public.bf_asset_categories add column if not exists master_asset_type_id uuid references public.bf_master_asset_types(id) on delete set null;
 alter table public.bf_asset_categories add column if not exists preferred_manufacturer_id uuid references public.bf_master_manufacturers(id) on delete set null;
-
-
 insert into public.bf_master_asset_types(system_code,code,name_ar,name_en,default_criticality,expected_life_years,icon_text)
 values
 ('HVAC','HVAC-WINDOW','مكيف شباك','Window AC','medium',10,'❄️'),
@@ -207,8 +203,6 @@ on conflict(code) do update set
  expected_life_years=excluded.expected_life_years,
  icon_text=excluded.icon_text,
  status='active';
-
-
 insert into public.bf_master_manufacturers(code,name,short_name)
 values
 ('ZAMIL','Zamil Air Conditioners','Zamil'),
@@ -321,8 +315,6 @@ values
 ('CULLIGAN','Culligan','Culligan'),
 ('DANFOSS','Danfoss','Danfoss')
 on conflict(code) do update set name=excluded.name,short_name=excluded.short_name,status='active';
-
-
 with x(asset_code,manufacturer_code,model_family) as (values
 ('HVAC-WINDOW','ZAMIL',null),
 ('HVAC-WINDOW','CARRIER',null),
@@ -1601,13 +1593,9 @@ where not exists(
  where o.asset_type_id=t.id and o.manufacturer_id=m.id
  and coalesce(o.model_family,'')=coalesce(x.model_family,'')
 );
-
-
 update public.bf_master_asset_types
 set group_ar=case system_code when 'HVAC' then 'التكييف والتهوية' when 'BMS' then 'إدارة المباني والتحكم' when 'FIRE_ALARM' then 'إنذار الحريق' when 'FIRE_SUPPRESSION' then 'مكافحة وإطفاء الحريق' when 'ELECTRICAL' then 'الأنظمة الكهربائية' when 'ENERGY' then 'الطاقة والاستدامة' when 'PLUMBING' then 'السباكة والمياه' when 'WATER' then 'معالجة المياه' when 'IRRIGATION' then 'الري والمناظر الطبيعية' when 'VERTICAL' then 'النقل الرأسي' when 'SECURITY' then 'الأمن والمراقبة' when 'ELV' then 'الأنظمة منخفضة التيار' when 'ICT' then 'الشبكات والاتصالات' when 'DATACENTER' then 'مراكز البيانات' when 'PARKING' then 'المواقف وإدارة المركبات' when 'GENERAL' then 'الأبواب والعناصر المعمارية' when 'KITCHEN' then 'معدات المطابخ' when 'LAUNDRY' then 'معدات المغاسل' when 'GAS' then 'الغاز والوقود' when 'POOL' then 'المسابح والنوافير' when 'HEALTHCARE' then 'أنظمة المرافق الصحية' when 'PUBLIC' then 'مرافق عامة خاصة' else coalesce(group_ar,system_code) end,
     group_en=case system_code when 'HVAC' then 'HVAC & Ventilation' when 'BMS' then 'BMS & Controls' when 'FIRE_ALARM' then 'Fire Alarm' when 'FIRE_SUPPRESSION' then 'Fire Fighting & Suppression' when 'ELECTRICAL' then 'Electrical' when 'ENERGY' then 'Energy & Sustainability' when 'PLUMBING' then 'Plumbing' when 'WATER' then 'Water Treatment' when 'IRRIGATION' then 'Irrigation & Landscape' when 'VERTICAL' then 'Vertical Transportation' when 'SECURITY' then 'Security & CCTV' when 'ELV' then 'ELV / AV' when 'ICT' then 'ICT & Networks' when 'DATACENTER' then 'Data Center' when 'PARKING' then 'Parking' when 'GENERAL' then 'Doors & Architectural' when 'KITCHEN' then 'Commercial Kitchen' when 'LAUNDRY' then 'Laundry' when 'GAS' then 'Gas & Fuel' when 'POOL' then 'Pools & Fountains' when 'HEALTHCARE' then 'Healthcare Facility Systems' when 'PUBLIC' then 'Public Facility Systems' else coalesce(group_en,system_code) end;
-
-
 insert into public.bf_master_ppm_templates(asset_type_id,title_ar,title_en,frequency,estimated_minutes,reference,status)
 select t.id,
        'الصيانة الدورية - '||t.name_ar,
@@ -1623,8 +1611,6 @@ select t.id,
 from public.bf_master_asset_types t
 where t.status='active'
 and not exists(select 1 from public.bf_master_ppm_templates p where p.asset_type_id=t.id and p.status='active');
-
-
 insert into public.bf_master_ppm_steps(template_id,seq,title_ar,title_en,instructions_ar,instructions_en,task_type,response_type,safety_notes)
 select p.id,s.seq,s.ar,s.en,s.iar,s.ien,s.task,s.resp,s.safety
 from public.bf_master_ppm_templates p
@@ -1638,8 +1624,6 @@ cross join lateral (values
 ) s(seq,ar,en,iar,ien,task,resp,safety)
 where not exists(select 1 from public.bf_master_ppm_steps z where z.template_id=p.id)
 on conflict(template_id,seq) do nothing;
-
-
 create or replace view public.bf_master_asset_catalog_report
 with (security_invoker=true) as
 select
@@ -1654,8 +1638,6 @@ left join public.bf_master_ppm_templates p on p.asset_type_id=t.id and p.status=
 where t.status='active'
 group by t.id;
 grant select on public.bf_master_asset_catalog_report to authenticated;
-
-
 create or replace function public.bf_master_adopt_templates(p_org uuid,p_asset_type uuid,p_manufacturer uuid default null)
 returns jsonb language plpgsql security definer set search_path=''
 as $$
@@ -1713,9 +1695,7 @@ begin
 
  return jsonb_build_object('category_id',cat,'procedures_created',n,'asset_type',t.name_en,'manufacturer',m.name,'icon',t.icon_text);
 end $$;
-
 revoke all on function public.bf_master_adopt_templates(uuid,uuid,uuid) from public,anon;
 grant execute on function public.bf_master_adopt_templates(uuid,uuid,uuid) to authenticated;
-
 notify pgrst,'reload schema';
 commit;

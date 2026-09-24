@@ -1,5 +1,4 @@
 begin;
-
 create table if not exists public.bf_master_asset_types(
  id uuid primary key default gen_random_uuid(),
  system_code text not null,
@@ -52,13 +51,11 @@ create table if not exists public.bf_master_ppm_steps(
  unit text,safety_notes text,tools text,materials text,
  unique(template_id,seq)
 );
-
 alter table public.bf_master_asset_types enable row level security;
 alter table public.bf_master_manufacturers enable row level security;
 alter table public.bf_master_asset_options enable row level security;
 alter table public.bf_master_ppm_templates enable row level security;
 alter table public.bf_master_ppm_steps enable row level security;
-
 do $$ declare t text; begin
  foreach t in array array['bf_master_asset_types','bf_master_manufacturers','bf_master_asset_options','bf_master_ppm_templates','bf_master_ppm_steps'] loop
   execute format('drop policy if exists bf_master_read on public.%I',t);
@@ -67,7 +64,6 @@ do $$ declare t text; begin
   execute format('grant select on public.%I to authenticated',t);
  end loop;
 end $$;
-
 insert into public.bf_master_asset_types(system_code,code,name_ar,name_en,default_criticality,expected_life_years) values
 ('HVAC','HVAC-SPLIT','مكيف سبليت','Split AC','medium',12),
 ('HVAC','HVAC-PACKAGE','مكيف باكيج','Package AC Unit','high',15),
@@ -118,7 +114,6 @@ insert into public.bf_master_asset_types(system_code,code,name_ar,name_en,defaul
 ('GENERAL','RO-SYSTEM','نظام تناضح عكسي RO','Reverse Osmosis System','high',15),
 ('GENERAL','STP','محطة معالجة صرف','Sewage Treatment Plant','critical',25)
 on conflict(code) do update set name_ar=excluded.name_ar,name_en=excluded.name_en,default_criticality=excluded.default_criticality,expected_life_years=excluded.expected_life_years;
-
 insert into public.bf_master_manufacturers(code,name) values
 ('ZAMIL','Zamil Air Conditioners'),('CARRIER','Carrier'),('TRANE','Trane'),('YORK','YORK / Johnson Controls'),('DAIKIN','Daikin'),('MITSUBISHI','Mitsubishi Electric'),('LG','LG'),('SAMSUNG','Samsung'),
 ('JCI','Johnson Controls'),('HONEYWELL','Honeywell'),('SIEMENS','Siemens'),('SCHNEIDER','Schneider Electric'),('ABB','ABB'),('EATON','Eaton'),('LEGRAND','Legrand'),
@@ -129,7 +124,6 @@ insert into public.bf_master_manufacturers(code,name) values
 ('KONE','KONE'),('OTIS','Otis'),('SCHINDLER','Schindler'),('TKE','TK Elevator'),
 ('AXIS','Axis Communications'),('HIKVISION','Hikvision'),('DAHUA','Dahua')
 on conflict(code) do update set name=excluded.name;
-
 -- Common manufacturer/type options.
 insert into public.bf_master_asset_options(asset_type_id,manufacturer_id,model_family)
 select t.id,m.id,x.family from (values
@@ -142,7 +136,6 @@ select t.id,m.id,x.family from (values
 join public.bf_master_asset_types t on t.code=x.type_code
 join public.bf_master_manufacturers m on m.code=x.mfg_code
 on conflict do nothing;
-
 -- Generic PPM templates for key facility assets.
 insert into public.bf_master_ppm_templates(asset_type_id,title_ar,title_en,frequency,estimated_minutes,reference)
 select t.id,x.ar,x.en,x.freq,x.mins,'Master facility maintenance library' from (values
@@ -167,7 +160,6 @@ select t.id,x.ar,x.en,x.freq,x.mins,'Master facility maintenance library' from (
 ) x(code,ar,en,freq,mins)
 join public.bf_master_asset_types t on t.code=x.code
 where not exists(select 1 from public.bf_master_ppm_templates p where p.asset_type_id=t.id and p.title_en=x.en);
-
 -- Reusable checklist steps by template title.
 insert into public.bf_master_ppm_steps(template_id,seq,title_ar,title_en,task_type,response_type,unit,safety_notes)
 select p.id,s.seq,s.ar,s.en,s.task,s.resp,s.unit,s.safety from public.bf_master_ppm_templates p
@@ -240,7 +232,6 @@ join (values
 ('Monthly Precision Cooling Maintenance',3,'تسجيل الحرارة والرطوبة','Record temperature and humidity','test','text',null,null)
 ) s(template_en,seq,ar,en,task,resp,unit,safety) on p.title_en=s.template_en
 on conflict(template_id,seq) do nothing;
-
 create or replace function public.bf_master_adopt_templates(p_org uuid,p_asset_type uuid,p_manufacturer uuid default null)
 returns jsonb language plpgsql security definer set search_path=''
 as $$
@@ -266,6 +257,5 @@ begin
 end $$;
 revoke all on function public.bf_master_adopt_templates(uuid,uuid,uuid) from public,anon;
 grant execute on function public.bf_master_adopt_templates(uuid,uuid,uuid) to authenticated;
-
 notify pgrst,'reload schema';
 commit;

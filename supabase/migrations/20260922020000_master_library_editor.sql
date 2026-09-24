@@ -1,5 +1,4 @@
 begin;
-
 -- Master Library editor RPCs.
 -- Only the platform Super Admin may change the shared master library.
 
@@ -87,7 +86,6 @@ begin
  notify pgrst,'reload schema';
  return v_id;
 end $$;
-
 create or replace function public.bf_master_admin_manufacturer_upsert(
  p_id uuid default null,
  p_code text default null,
@@ -136,7 +134,6 @@ begin
  end if;
  return v_id;
 end $$;
-
 create or replace function public.bf_master_admin_option_upsert(
  p_id uuid default null,
  p_asset_type_id uuid default null,
@@ -188,7 +185,6 @@ begin
  end if;
  return v_id;
 end $$;
-
 create or replace function public.bf_master_admin_template_upsert(
  p_id uuid default null,
  p_asset_type_id uuid default null,
@@ -242,7 +238,6 @@ begin
  end if;
  return v_id;
 end $$;
-
 create or replace function public.bf_master_admin_step_upsert(
  p_id uuid default null,
  p_template_id uuid default null,
@@ -311,7 +306,6 @@ begin
  end if;
  return v_id;
 end $$;
-
 create or replace function public.bf_master_admin_archive(p_entity text,p_id uuid,p_active boolean default false)
 returns boolean
 language plpgsql
@@ -333,24 +327,17 @@ begin
  end case;
  return true;
 end $$;
-
 revoke all on function public.bf_master_admin_asset_upsert(uuid,text,text,text,text,text,text,text,text,text,text,integer,text,integer,boolean,text) from public,anon;
 grant execute on function public.bf_master_admin_asset_upsert(uuid,text,text,text,text,text,text,text,text,text,text,integer,text,integer,boolean,text) to authenticated;
-
 revoke all on function public.bf_master_admin_manufacturer_upsert(uuid,text,text,text,text) from public,anon;
 grant execute on function public.bf_master_admin_manufacturer_upsert(uuid,text,text,text,text) to authenticated;
-
 revoke all on function public.bf_master_admin_option_upsert(uuid,uuid,uuid,text,text) from public,anon;
 grant execute on function public.bf_master_admin_option_upsert(uuid,uuid,uuid,text,text) to authenticated;
-
 revoke all on function public.bf_master_admin_template_upsert(uuid,uuid,uuid,text,text,text,integer,text) from public,anon;
 grant execute on function public.bf_master_admin_template_upsert(uuid,uuid,uuid,text,text,text,integer,text) to authenticated;
-
 revoke all on function public.bf_master_admin_step_upsert(uuid,uuid,integer,text,text,text,text,text,text,text,text,text,text) from public,anon;
 grant execute on function public.bf_master_admin_step_upsert(uuid,uuid,integer,text,text,text,text,text,text,text,text,text,text) to authenticated;
-
 revoke all on function public.bf_master_admin_archive(text,uuid,boolean) from public,anon;
 grant execute on function public.bf_master_admin_archive(text,uuid,boolean) to authenticated;
-
 notify pgrst,'reload schema';
 commit;

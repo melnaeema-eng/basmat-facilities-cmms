@@ -1,6 +1,4 @@
-
 begin;
-
 -- V7.2
 -- Backfill execution packages for jobs that were already assigned before V7
 -- and tighten direct access to internal package-build functions.
@@ -76,15 +74,12 @@ begin
    'skipped',skipped
  );
 end $$;
-
 -- Internal builders should not be callable directly by ordinary authenticated users.
 revoke all on function public.bf_build_facility_execution_package(uuid) from public,anon,authenticated;
 revoke all on function public.bf_build_medical_execution_package(uuid) from public,anon,authenticated;
-
 -- The explicit backfill function is Super-Admin only by its own guard.
 revoke all on function public.bf_backfill_execution_packages() from public,anon;
 grant execute on function public.bf_backfill_execution_packages() to authenticated;
-
 -- Backfill once during migration.
 do $$
 declare
@@ -124,6 +119,5 @@ begin
    end loop;
  end if;
 end $$;
-
 notify pgrst,'reload schema';
 commit;

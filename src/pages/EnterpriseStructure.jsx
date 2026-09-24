@@ -39,7 +39,7 @@ export default function EnterpriseStructure(){
  const submitMember=e=>{e.preventDefault();run(async()=>{await addTeamMember(member);setMember({team_id:'',user_id:'',role_id:'',member_type:'worker',is_lead:false})})}
 
  return <section className="facility-module">
-  <div className="page-head"><h1>{t('enterpriseStructureTitle')}</h1><button className="btn secondary" onClick={()=>load()}>{t('esRefresh')}</button></div>
+  <div className="page-head"><h1>{t('enterpriseStructureTitle')}</h1><div className="row-actions"><button className="btn secondary" type="button" onClick={()=>window.location.href='/facility-reference-library'}>مكتبة المرافق | Facilities Library</button><button className="btn secondary" onClick={()=>load()}>{t('esRefresh')}</button></div></div>
   {error&&<div className="facility-panel" role="alert">{error}</div>}
   <div className="facility-panel"><div className="form-grid"><label>{t('esOrg')}<select value={org} onChange={e=>setOrg(e.target.value)}>{dir.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label></div><button className="btn secondary" onClick={()=>run(()=>seedServiceLines(org))}>{t('esSeed')}</button></div>
 
