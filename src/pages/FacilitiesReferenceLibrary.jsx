@@ -89,13 +89,10 @@ export default function FacilitiesReferenceLibrary(){
   }
   try{
    setBusy(true);setError('');setSuccess('')
-   const {error}=await supabase.from('bf_project_contractors').upsert({
-    project_id:projectId,
-    contractor_ref_id:x.id,
-    relationship_role:'primary_fm_contractor',
-    contract_reference:null,
-    notes:'Selected from Facilities Reference Library'
-   },{onConflict:'project_id,contractor_ref_id,relationship_role'})
+   const {error}=await supabase.rpc('bf_link_project_contractor',{
+    p_project:projectId,
+    p_contractor:x.id
+   })
    if(error)throw error
    setSuccess(ar?'تم ربط شركة الصيانة بالمشروع.':'FM company linked to the project.')
   }catch(e){setError(e.message)}finally{setBusy(false)}
