@@ -97,3 +97,10 @@ body{background:var(--bafm-bg)}
 /* BASMAT SMART LANGUAGE PROFESSIONAL V1 */
 .smart-language-warning{outline:2px solid #b45309 !important;outline-offset:1px}
 
+
+
+/* BASMAT GLOBAL EMAIL VALIDATION V1 */
+.smart-email-invalid{
+  outline:2px solid #b91c1c !important;
+  outline-offset:1px;
+}
