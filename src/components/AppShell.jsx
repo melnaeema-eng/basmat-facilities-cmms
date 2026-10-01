@@ -25,6 +25,7 @@ const groups=[
   ['/locations','Locations | المواقع','locations.view','pin'],
   ['/asset-categories','Asset Categories | تصنيفات الأصول','assets.view','grid'],
   ['/asset-library','Asset Library | مكتبة الأصول والصيانة','assets.view','grid'],
+  ['/library-deployment','Library → Project → PPM | المكتبة → المشروع → PPM','assets.view','calendar'],
   ['/assets','Assets | الأصول','assets.view','asset'],
   ['/asset-lifecycle','Asset Lifecycle | دورة حياة الأصل','lifecycle.view','cycle'],
   ['/utilities','Utilities | المرافق الخدمية','utilities.view','bolt'],
@@ -34,6 +35,7 @@ const groups=[
   ['/advanced-stock','Advanced Stock | المخزون المتقدم','inventory.view','stack'],
   ['/procurement','Procurement | المشتريات','procurement.view','cart'],
   ['/supplier-performance','Vendors | الموردون','supplier-performance.view','truck'],
+  ['/facility-reference-library','Facilities Maintenance Companies | شركات صيانة المرافق','facilities.assets.view','building'],
   ['/maintenance-costing','Maintenance Cost | تكاليف الصيانة','costing.view','money'],
   ['/contracts','Contracts | العقود','contracts.view','contract'],
   ['/contract-renewal','Contract Renewal | تجديد العقود','contract-renewal.view','renew'],
@@ -302,3 +304,4 @@ export default function AppShell(){
   </div>
  </div>
 }
+

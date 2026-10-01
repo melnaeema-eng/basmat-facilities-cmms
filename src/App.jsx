@@ -1,5 +1,6 @@
 import AssetPassport from './pages/AssetPassport'
 import MasterAssetLibrary from './pages/MasterAssetLibrary'
+import LibraryDeployment from './pages/LibraryDeployment'
 import AccessReview from './pages/AccessReview'
 import GovernanceMatrix from './pages/GovernanceMatrix'
 import SoftFmOperations from './pages/SoftFmOperations'
@@ -126,6 +127,7 @@ export default function App(){
    <Route path="/facility-reference-library" element={guard('enterprise-structure.view',<FacilitiesReferenceLibrary/>)}/>
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
    <Route path="/roles-permissions" element={guard('roles.view',<RolesPermissions/>)}/>
+   <Route path="/library-deployment" element={guard('assets.view',<LibraryDeployment/>)} />
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
        <Route path="/medical" element={guard('medical.view', <MedicalMaintenanceCenter />)} />
