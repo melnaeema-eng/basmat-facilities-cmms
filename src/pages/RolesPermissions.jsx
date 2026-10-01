@@ -8,7 +8,32 @@ export default function RolesPermissions(){
  const [data,setData]=useState(null)
  const [busy,setBusy]=useState(false)
  const [error,setError]=useState('')
- const orgs=access?.organizations||[]
+ const [orgs,setOrgs]=useState([])
+
+ useEffect(()=>{
+  let active=true
+
+  async function loadOrganizations(){
+   const fromAccess=access?.organizations||[]
+
+   if(fromAccess.length){
+    if(active)setOrgs(fromAccess)
+    return
+   }
+
+   if(access?.super_admin){
+    const {data,error}=await supabase
+     .from('bf_organizations')
+     .select('*')
+     .order('name')
+
+    if(!error&&active)setOrgs(data||[])
+   }
+  }
+
+  loadOrganizations()
+  return()=>{active=false}
+ },[access])
 
  useEffect(()=>{
   if(!org&&orgs.length)setOrg(orgs[0].organization_id||orgs[0].id||'')
@@ -152,3 +177,4 @@ export default function RolesPermissions(){
   </>}
  </section>
 }
+
