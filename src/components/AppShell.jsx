@@ -18,6 +18,7 @@ const groups=[
   ['/workforce','Workforce | القوى العاملة','workforce.view','users'],
   ['/planning','Operations Calendar | التقويم التشغيلي','planning.view','calendar'],
   ['/notifications','Notifications | الإشعارات','notifications.view','bell'],
+  ['/roles-permissions','Roles & Permissions | الأدوار والصلاحيات','roles.view','lock'],
  ]},
  {title:'Assets & Facilities | الأصول والمرافق',items:[
   ['/sites','Facilities / Sites | المرافق والمواقع','sites.view','building'],

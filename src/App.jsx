@@ -64,6 +64,7 @@ import TechnicianExecution from './pages/TechnicianExecution'
 import ReportsHub from './pages/ReportsHub'
 import './basmat-print-signature.css'
 import ProjectSetupWizard from './pages/ProjectSetupWizard'
+import RolesPermissions from './pages/RolesPermissions'
 export default function App(){
  const guard=(permission,element)=><PermissionRoute permission={permission}>{element}</PermissionRoute>
  return <LanguageProvider><AuthProvider><BrowserRouter><Routes>
@@ -124,11 +125,13 @@ export default function App(){
    <Route path="/enterprise-structure" element={guard('enterprise-structure.view',<EnterpriseStructure/>)}/>
    <Route path="/facility-reference-library" element={guard('enterprise-structure.view',<FacilitiesReferenceLibrary/>)}/>
    <Route path="/users"       element={guard('users.view',<UsersRoles/>)}/>
+   <Route path="/roles-permissions" element={guard('roles.view',<RolesPermissions/>)}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>
   </Route>
        <Route path="/medical" element={guard('medical.view', <MedicalMaintenanceCenter />)} />
       <Route path="/technician-execution" element={guard('maintenance.execute', <TechnicianExecution />)} />
 </Routes></BrowserRouter></AuthProvider></LanguageProvider>
 }
+
 
 

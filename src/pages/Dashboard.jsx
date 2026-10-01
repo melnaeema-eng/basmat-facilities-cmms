@@ -3,6 +3,7 @@ import {Link} from 'react-router-dom'
 import {supabase} from '../lib/supabaseClient'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
+import DashboardIdentity from '../components/DashboardIdentity'
 
 const closed=['closed','cancelled']
 const complete=['completed','approved','closed']
@@ -98,6 +99,7 @@ export default function Dashboard(){
  ].filter(x=>can(x[4]))
 
  return <section className="bafm-dashboard">
+   <DashboardIdentity/>
   <div className="bafm-hero">
    <div className="bafm-hero-copy">
     <span>WELCOME BACK</span>
