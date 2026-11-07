@@ -5,6 +5,11 @@ export const frequencies=['daily','weekly','monthly','quarterly','semiannual','a
 export const dateOnly=d=>d?new Date(d).toLocaleDateString():'—'
 
 export async function ppmAction(kind,id,command,payload={}){
+  if(kind==='job'&&command==='assign'&&payload.project_id){
+    const {data,error}=await supabase.rpc('bf44_assign_ppm',{p_job:id,p_user:payload.user_id,p_project:payload.project_id})
+    if(error)throw error
+    return data
+  }
   if(kind==='job'&&command==='assign'){
     const {data,error}=await supabase.rpc('bf5_assign_job_work_order',{p_job:id,p_user:payload.user_id})
     if(error)throw error
@@ -45,7 +50,7 @@ export async function loadPPM(){
     ['jobs','bf_ppm_jobs'],
     ['results','bf_ppm_results'],
     ['followups','bf_ppm_followups'],
-    ['workOrders','bf_work_orders','id,organization_id,client_id,site_id,asset_id,work_order_number,title,status,assigned_at'],
+    ['workOrders','bf_work_orders'],
     ['organizations','bf_organizations','id,name,code,status'],
     ['clients','bf_clients','id,organization_id,name,code,status'],
     ['sites','bf_sites','id,organization_id,client_id,contract_id,name,code,status'],

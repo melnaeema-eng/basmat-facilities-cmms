@@ -1,0 +1,130 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
+import {PGlite} from '@electric-sql/pglite'
+const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`
+test('Integrated database cycle enforces the complete chain in PostgreSQL',async t=>{
+ const db=new PGlite()
+ const sql=file=>readFileSync(new URL(file,import.meta.url),'utf8')
+ const q=(s,p=[])=>db.query(s,p)
+ const scalar=async(s,p=[])=>Object.values((await q(s,p)).rows[0])[0]
+ const actor=uid=>q("select set_config('test.user_id',$1,false)",[uid])
+ const reject=(s,p,pattern)=>assert.rejects(()=>q(s,p),pattern)
+ const manager=id(1),owner=id(2),consultant=id(3),tech=id(4),superAdmin=id(5),org=id(10),client=id(11),contract=id(12),site=id(13),project=id(14),asset=id(15)
+ try{
+  await db.exec(sql('./fixtures/cycle-schema.sql'))
+  await db.exec(sql('../sql/044_INTEGRATED_MAINTENANCE_CYCLE.sql'))
+  await db.exec(sql('../sql/044_INTEGRATED_MAINTENANCE_CYCLE.sql'))
+  await q('insert into auth.users values($1),($2),($3),($4),($5)',[manager,owner,consultant,tech,superAdmin])
+  for(const [uid,name] of [[manager,'Manager'],[owner,'Owner'],[consultant,'Consultant'],[tech,'Technician'],[superAdmin,'Unassigned super admin']])await q("insert into bf_profiles(id,full_name,email,status,is_super_admin) values($1,$2,$3,'active',$4)",[uid,name,`${name}@test.invalid`,uid===superAdmin])
+  await q("insert into bf_organizations values($1,'Provider')",[org]);await q("insert into bf_clients values($1,$2,'Owner organization')",[client,org]);await q("insert into bf_contracts values($1,$2,$3,'CON-1')",[contract,org,client]);await q("insert into bf_sites values($1,$2,$3,'Site A')",[site,org,client]);await q("insert into bf35_projects(id,organization_id,client_id,contract_id,name) values($1,$2,$3,$4,'Project A')",[project,org,client,contract]);await q('insert into bf35_project_sites values($1,$2,$3,$4)',[project,site,org,client])
+  await q("insert into bf_assets(id,organization_id,client_id,site_id,name_en,name_ar,asset_tag,serial_number) values($1,$2,$3,$4,'Pump','مضخة','AST-1','SERIAL-1')",[asset,org,client,site])
+  await q('insert into bf_client_access values($1,$2,$3)',[owner,org,client]);await q('insert into bf11_consultant_access values($1,$2,$3)',[consultant,org,client]);await q('insert into bf_roles values($1,null),($2,null)',[id(20),id(21)]);await q('insert into bf_user_roles values($1,$2,$3),($4,$2,$5)',[manager,org,id(20),tech,id(21)])
+  for(const permission of ['corrective.view','corrective.manage','corrective.request','contracts.manage','documents.generate','approvals.request','costing.manage','ppm.view','ppm.manage','inventory.request','inventory.manage','inventory.approve']){
+   const pid=await scalar('insert into bf_permissions(code) values($1) returning id',[permission]);await q('insert into bf_role_permissions values($1,$2)',[id(20),pid]);if(permission==='corrective.view')await q('insert into bf_role_permissions values($1,$2)',[id(21),pid])
+  }
+  await actor(manager)
+  await q("select bf44_policy_save($1,$2,$3,'SAR')",[project,owner,consultant])
+  await t.test('Only selected owner activates; unassigned super admin gets no inherited access',async()=>{
+   await reject('select bf44_policy_activate($1)',[project],/owner representative/)
+   await actor(superAdmin);assert.equal(await scalar("select bf44_staff($1,'costing.manage')",[project]),false)
+   await actor(owner);await q('select bf44_policy_activate($1)',[project]);await actor(manager)
+  })
+  const wo=id(30),request=id(31)
+  await q("insert into bf_service_requests(id,organization_id,client_id,contract_id,site_id,asset_id,project_id,title,request_number) values($1,$2,$3,$4,$5,$6,$7,'Pump fault','SR-1')",[request,org,client,contract,site,asset,project])
+  const converted=await scalar('select bf44_convert_request($1)',[request])
+  await t.test('Request conversion is idempotent and direct duplicate insert is rejected',async()=>{
+   assert.equal(await scalar('select bf44_convert_request($1)',[request]),converted)
+   await reject("insert into bf_work_orders(organization_id,client_id,contract_id,site_id,asset_id,request_id) values($1,$2,$3,$4,$5,$6)",[org,client,contract,site,asset,request],/duplicate key/)
+  })
+  await q("insert into bf_work_orders(id,organization_id,client_id,contract_id,site_id,asset_id,work_order_number,title,status) values($1,$2,$3,$4,$5,$6,'WO-1','Pump repair','approved')",[wo,org,client,contract,site,asset])
+  const material=id(40),line=id(41),part=id(42)
+  await q("insert into bf8_material_requests values($1,$2,'MR-1','approved')",[material,wo]);await q("insert into bf_inv_parts values($1,'ختم','Seal','SEAL-1')",[part]);await q('insert into bf8_material_lines(id,request_id,part_id,quantity,issued_qty,received_qty,consumed_qty) values($1,$2,$3,2,2,2,1)',[line,material,part])
+  await t.test('Stock reconciliation and final statement approval block premature report/closure',async()=>{
+   await reject("select bf44_closeout_action($1,'generate_report')",[wo],/Reconcile/)
+   await reject("update bf_work_orders set status='closed' where id=$1",[wo],/owner-approved statement/)
+   await q("update bf8_material_requests set status='closed' where id=$1",[material]);await q('update bf8_material_lines set consumed_qty=2 where id=$1',[line])
+  })
+  await t.test('Corrective reports require factual execution evidence',async()=>{
+   await reject("select bf44_closeout_action($1,'generate_report')",[wo],/verified execution evidence/)
+   await q('update bf_work_orders set completed_at=now() where id=$1',[wo])
+   await q("insert into bf9_visits(id,work_order_id,technician_id,visit_number,status) values($1,$2,$3,'V-1','finished')",[id(43),wo,tech])
+   await q('insert into bf9_labor values($1,60)',[id(43)])
+   await q("insert into bf9_evidence(id,work_order_id,file_name,status) values($1,$2,'repair.jpg','ready')",[id(44),wo])
+  })
+  const report=await scalar("select bf44_closeout_action($1,'generate_report')",[wo])
+  await t.test('One immutable report includes asset trace and actual parts consumption',async()=>{
+   assert.equal(await scalar("select bf44_closeout_action($1,'generate_report')",[wo]),report)
+   const snap=await scalar('select snapshot from bf13_documents where id=$1',[report]);assert.equal(snap.serial_number,'SERIAL-1');assert.equal(snap.service_provider,'Provider');assert.equal(snap.materials[0].consumed,2)
+   await reject('update bf13_documents set title=$1 where id=$2',['Altered',report],/immutable/)
+   await reject('update bf8_material_lines set consumed_qty=1 where id=$1',[line],/frozen/)
+  })
+  let consultantApproval,ownerApproval,certificate,statement
+  await t.test('Consultant review must precede owner and only appointed reviewers can decide',async()=>{
+   await reject("select bf11_action('create',null,jsonb_build_object('organization_id',$1::uuid,'client_id',$2::uuid,'site_id',$3::uuid,'entity_type','work_order','entity_id',$4::uuid,'reviewer_type','owner'))",[org,client,site,wo],/Consultant review/)
+   consultantApproval=await scalar("select bf44_closeout_action($1,'submit_external')",[wo])
+   await actor(owner);await reject("select bf11_action('approve',$1,'{}')",[consultantApproval],/Appointed/)
+   await actor(consultant);await q("select bf11_action('approve',$1,'{}')",[consultantApproval]);await actor(manager)
+   ownerApproval=await scalar("select bf44_closeout_action($1,'submit_external')",[wo])
+   await reject("select bf44_closeout_action($1,'issue_certificate')",[wo],/Owner acceptance/)
+   await actor(owner);await q("select bf11_action('approve',$1,'{}')",[ownerApproval]);await actor(manager)
+   certificate=await scalar("select bf44_closeout_action($1,'issue_certificate')",[wo])
+   assert.equal(await scalar("select bf44_closeout_action($1,'issue_certificate')",[wo]),certificate)
+   await reject("update bf_work_orders set status='assigned' where id=$1",[wo],/Certified work is immutable/)
+  })
+  await t.test('Certificate cannot be billed twice and included work cannot carry charges',async()=>{
+   const payload={project_id:project,period_start:'2020-01-01',period_end:'2099-12-31'}
+   statement=await scalar("select bf44_statement_action('create',null,$1)",[payload]);const second=await scalar("select bf44_statement_action('create',null,$1)",[payload])
+   await reject("select bf44_statement_action('add_line',$1,$2)",[statement,{certificate_id:certificate,coverage:'included',labor:100,basis:'Included in contract'}],/check constraint/)
+   await q("select bf44_statement_action('add_line',$1,$2)",[statement,{certificate_id:certificate,coverage:'billable',labor:100,parts:25,basis:'Contract rate card item 1'}])
+   await reject("select bf44_statement_action('add_line',$1,$2)",[second,{certificate_id:certificate,coverage:'billable',labor:100,basis:'Duplicate certificate'}],/already included/)
+   assert.equal(await scalar('select net_amount from bf44_statement_lines where statement_id=$1',[statement]),'125.00')
+   await q("select bf44_statement_action('submit',$1,'{}')",[statement])
+   await reject("select bf44_statement_action('add_line',$1,$2)",[statement,{certificate_id:certificate,coverage:'billable',labor:1,basis:'Attempted change'}],/amounts are locked/)
+  })
+  await t.test('Owner-approved statement closes the same work order and freezes certified value',async()=>{
+   await actor(consultant);await q("select bf44_statement_action('approve',$1,'{}')",[statement]);assert.equal(await scalar('select status from bf_work_orders where id=$1',[wo]),'approved')
+   await actor(owner);await q("select bf44_statement_action('approve',$1,'{}')",[statement]);assert.equal(await scalar('select status from bf_work_orders where id=$1',[wo]),'closed')
+   await reject("update bf44_statements set comment='tampered' where id=$1",[statement],/immutable/)
+   await reject("update bf44_statement_lines set labor=1 where statement_id=$1",[statement],/immutable/)
+   const snap=await scalar('select approved_snapshot from bf44_statements where id=$1',[statement]);assert.equal(snap.net_amount,125)
+   await reject("select bf44_statement_action('approve',$1,'{}')",[statement],/not awaiting/)
+  })
+  await t.test('Dossier resolves names and financial read is denied to technicians',async()=>{
+   await actor(tech);const dossier=await scalar('select bf44_dossier($1)',[wo]);assert.equal(dossier.trace.serial_number,'SERIAL-1');assert.equal(dossier.statement.status,'approved')
+   await reject('select bf44_statement_read($1)',[statement],/Statement access/)
+   await actor(superAdmin);await reject('select bf44_dossier($1)',[wo],/access required/)
+  })
+  await t.test('RLS hides statements and certificate rows from unauthorized actors',async()=>{
+   await q('grant select on public.bf_work_orders to authenticated')
+   await actor(tech);await db.exec('set role authenticated')
+   assert.equal((await q('select * from public.bf44_certificates')).rows.length,1)
+   assert.equal((await q('select * from public.bf44_statements')).rows.length,0)
+   assert.equal((await q('select * from public.bf44_statement_lines')).rows.length,0)
+   await db.exec('reset role');await actor(superAdmin);await db.exec('set role authenticated')
+   assert.equal((await q('select * from public.bf44_certificates')).rows.length,0)
+   assert.equal((await q('select * from public.bf44_review_links')).rows.length,0)
+   await db.exec('reset role');await actor(manager)
+  })
+  await t.test('Scoped roles cannot act across a different site',async()=>{
+   await actor(manager);await q('insert into bf34_access_scopes(user_id,organization_id,role_id,is_active,site_id) values($1,$2,$3,true,$4)',[manager,org,id(20),id(99)])
+   assert.equal(await scalar("select bf44_staff($1,'corrective.manage',$2)",[project,site]),false)
+   await q('delete from bf34_access_scopes')
+  })
+  await t.test('PPM execution mirrors to one existing work order',async()=>{
+   const ppmWO=id(50),job=id(51),plan=id(52),procedure=id(53),step=id(54)
+   await q("insert into bf_work_orders(id,organization_id,client_id,contract_id,site_id,asset_id,work_order_number,title,status) values($1,$2,$3,$4,$5,$6,'WO-PPM','Periodic service','assigned')",[ppmWO,org,client,contract,site,asset]);await q('insert into bf_ppm_plans(id,contract_id) values($1,$2)',[plan,contract]);await q("insert into bf_ppm_procedures values($1,1,'approved')",[procedure]);await q("insert into bf_ppm_jobs(id,plan_id,organization_id,client_id,site_id,asset_id,work_order_id,job_number,status,procedure_snapshot) values($1,$2,$3,$4,$5,$6,$7,'PPM-1','assigned','{\"steps\":[]}')",[job,plan,org,client,site,asset,ppmWO])
+   await reject("update bf_work_orders set status='in_progress' where id=$1",[ppmWO],/linked approved PPM checklist/)
+   await q("update bf_ppm_jobs set status='in_progress',started_at=now() where id=$1",[job]);assert.equal(await scalar('select status from bf_work_orders where id=$1',[ppmWO]),'in_progress')
+   await q("update bf_ppm_jobs set status='completed',completed_at=now() where id=$1",[job]);assert.equal(await scalar('select status from bf_work_orders where id=$1',[ppmWO]),'completed')
+   await q("update bf_ppm_jobs set status='approved',procedure_id=$2,procedure_snapshot=$3 where id=$1",[job,procedure,{procedure_id:procedure,version:1,name_en:'Pump procedure',steps:[{id:step,seq:1,title_en:'Inspect seals'}]}])
+   await reject("select bf44_closeout_action($1,'generate_report')",[ppmWO],/complete PPM results/)
+   await q("insert into bf_ppm_results(job_id,step_id,result,updated_by) values($1,$2,'pass',$3)",[job,step,manager])
+   const ppmReport=await scalar("select bf44_closeout_action($1,'generate_report')",[ppmWO]);assert.ok(ppmReport)
+   const stale=await scalar("select bf44_closeout_action($1,'submit_external')",[ppmWO])
+   await q("update bf_ppm_jobs set status='in_progress' where id=$1",[job]);assert.equal(await scalar('select revision from bf44_workflows where work_order_id=$1',[ppmWO]),2)
+   await actor(consultant);await reject("select bf11_action('approve',$1,'{}')",[stale],/earlier revision/);await actor(manager)
+   await reject("update bf13_documents set title='changed' where id=$1",[ppmReport],/immutable/)
+  })
+ }finally{await db.close()}
+})

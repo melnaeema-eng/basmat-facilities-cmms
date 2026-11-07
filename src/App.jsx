@@ -10,6 +10,9 @@ import Login from './pages/Login'
 import {modules} from './config/modules'
 import './basmat-print-signature.css'
 const pages = {
+ MaintenanceDossier:lazy(()=>import('./pages/MaintenanceDossier.jsx')),
+ MaintenanceStatements:lazy(()=>import('./pages/MaintenanceStatements.jsx')),
+ MaintenanceStatementDetails:lazy(()=>import('./pages/MaintenanceStatementDetails.jsx')),
  AccessReview:lazy(()=>import('./pages/AccessReview.jsx')),
  AdvancedStock:lazy(()=>import('./pages/AdvancedStock.jsx')),
  AdvancedStockDetails:lazy(()=>import('./pages/AdvancedStockDetails.jsx')),

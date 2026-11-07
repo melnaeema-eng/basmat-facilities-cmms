@@ -21,10 +21,13 @@ export const modules = [
     "page": "WorkOrdersHub",
     "permission": [
       "corrective.view",
-      "ppm.view"
+      "ppm.view",
+      "clients.view",
+      "contracts.view",
+      "costing.view"
     ],
-    "en": "Maintenance center",
-    "ar": "مركز الصيانة",
+    "en": "Maintenance cycle",
+    "ar": "دورة الصيانة",
     "icon": "work",
     "group": "operations",
     "nav": true
@@ -598,6 +601,47 @@ export const modules = [
     "icon": "users",
     "group": "administration",
     "nav": true
+  },
+  {
+    "path": "/maintenance-cycle/:id",
+    "page": "MaintenanceDossier",
+    "permission": [
+      "corrective.view",
+      "ppm.view",
+      "clients.view",
+      "contracts.view",
+      "costing.view"
+    ],
+    "en": "Maintenance dossier",
+    "ar": "ملف دورة الصيانة",
+    "group": "operations",
+    "nav": false
+  },
+  {
+    "path": "/statements",
+    "page": "MaintenanceStatements",
+    "permission": [
+      "costing.view",
+      "clients.view",
+      "contracts.view"
+    ],
+    "en": "Maintenance statements",
+    "ar": "مستخلصات الصيانة",
+    "group": "supply",
+    "nav": true
+  },
+  {
+    "path": "/statements/:id",
+    "page": "MaintenanceStatementDetails",
+    "permission": [
+      "costing.view",
+      "clients.view",
+      "contracts.view"
+    ],
+    "en": "Maintenance statement",
+    "ar": "مستخلص الصيانة",
+    "group": "supply",
+    "nav": false
   }
 ]
 
