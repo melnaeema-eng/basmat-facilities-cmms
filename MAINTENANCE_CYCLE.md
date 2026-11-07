@@ -36,6 +36,27 @@ approval and final closure of the same work order (and linked PPM job).
 Historical snapshots deliberately preserve the evidence at issuance. They do
 not create another editable asset, work order, procedure or stock balance.
 
+## Compatibility correction 044.2
+
+The deployed database uses the `bf_acl_*` tables. The revised 044 file requires
+active organization membership, an enabled Facilities/shared module, explicit
+role and organization permission grants, and an active project/company binding
+and user project assignment. Site-only assignments do not authorize a whole
+project statement. Super-user flags and legacy role rows do not bypass these
+checks. Facilities permissions never fall back to Medical permissions.
+
+The missing `bf11_consultant_access` table is not required or recreated. Owner
+eligibility uses the existing `bf_acl_user_is_owner(user, organization, owner)`.
+Consultants must already have active project access and a consultant role or an
+active consultant organization relationship. Owner activation confirms the
+specific selected reviewer. The new `bf44_approval_action` uses existing
+`bf11_approvals` and `bf11_events`; it does not overwrite legacy authorization
+functions or create a second approval store. The dossier uses this endpoint.
+
+If the first 044 attempt stopped at its prerequisite check, rerun the complete
+corrected 044 file. No old migration bundle or separate repair SQL is needed.
+The preflight now reports all missing required objects together.
+
 ## Installation: manual SQL only
 
 1. Deploy main from this repository through the existing hosting pipeline.
@@ -49,7 +70,7 @@ not create another editable asset, work order, procedure or stock balance.
    manager prepares the chain using the exact emails of authorized reviewers.
 5. The selected owner representative signs in and activates the chain. An
    owner must already have owner portal access; an optional consultant must
-   already have consultant access for this owner/company. This release does
+   already have an active consultant role/relationship and assignment to this project. This release does
    not silently grant access or give super admins automatic project authority.
 6. Create a new asset fault or explicitly enroll an eligible existing open WO.
    Existing unbound/historical records stay unchanged until chosen. New WOs in
@@ -95,8 +116,8 @@ and line snapshots are immutable after approval.
 ## Security and verification
 
 New mutations use checked security-definer RPCs with empty search_path, exact
-project/owner/contract/site validation, explicit assigned permissions, existing
-access scopes and appointed reviewer identities. New tables are read-only via
+project/owner/contract/site validation, explicit assigned permissions, active ACL project
+assignments and appointed reviewer identities. New tables are read-only via
 RLS. Financial statement rows are unavailable to technicians. Legacy close,
 approval and material paths are protected by database triggers for enrolled WOs.
 

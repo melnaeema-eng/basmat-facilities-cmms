@@ -1,11 +1,18 @@
 -- MANUAL INSTALL ONLY. Additive, transactional, rerunnable. Never auto-run by the app.
 -- One asset / one work order / approved report / completion certificate / payment statement.
 begin;
-do $$ declare t text;
+-- Compatibility revision 044.2: deployed bf_acl_* permissions, no legacy consultant table.
+do $$ declare missing text[];missing_functions text[];
 begin
- foreach t in array array['bf35_projects','bf35_project_sites','bf34_access_scopes','bf_work_orders','bf_service_requests','bf_ppm_jobs','bf_ppm_plans','bf_ppm_results','bf11_approvals','bf13_documents','bf8_material_requests','bf8_material_lines','bf9_evidence','bf9_visits','bf9_labor','bf_inv_requests','bf_roles','bf_role_permissions','bf_permissions','bf_profiles','bf_client_access','bf11_consultant_access','bf_ppm_events','bf_ppm_procedures','bf_assets','bf_inv_parts','bf_corrective_events','bf_work_order_assignments','bf_buildings','bf_floors','bf_zones','bf_rooms'] loop
-  if to_regclass('public.'||t) is null then raise exception '044 prerequisite missing: %',t; end if;
- end loop;
+ select array_agg(name order by name) into missing from unnest(array['bf35_projects','bf35_project_sites','bf_work_orders','bf_service_requests','bf_ppm_jobs','bf_ppm_plans','bf_ppm_results','bf11_approvals','bf11_events','bf13_documents','bf13_document_seq','bf8_material_requests','bf8_material_lines','bf9_evidence','bf9_visits','bf9_labor','bf_inv_requests','bf_profiles','bf_ppm_events','bf_ppm_procedures','bf_assets','bf_inv_parts','bf_corrective_events','bf_work_order_assignments','bf_buildings','bf_floors','bf_zones','bf_rooms','bf_acl_user_organizations','bf_acl_user_projects','bf_acl_project_organizations','bf_acl_user_roles','bf_acl_roles','bf_acl_role_permissions','bf_acl_permissions','bf_acl_organization_permissions','bf_acl_organization_modules']) name
+ where to_regclass('public.'||name) is null;
+ select array_agg(name order by name) into missing_functions from unnest(array[
+ 'public.bf_acl_user_is_owner(uuid,uuid,uuid)',
+ 'public.bf4_action(text,uuid,text,jsonb)',
+ 'public.bf5_assign_job_work_order(uuid,uuid)']) name where to_regprocedure(name) is null;
+ if missing is not null or missing_functions is not null then
+  raise exception '044 prerequisites missing. Objects: % ; functions: %',coalesce(array_to_string(missing,', '),'none'),coalesce(array_to_string(missing_functions,', '),'none');
+ end if;
  if not exists(select 1 from information_schema.columns where table_schema='public' and table_name='bf_ppm_jobs' and column_name='work_order_id') then raise exception 'Install 043_PPM_WORK_ORDER_LINK.sql first'; end if;
 end $$;
 alter table public.bf_work_orders add column if not exists project_id uuid references public.bf35_projects(id);
@@ -70,34 +77,91 @@ create index if not exists bf44_events_project on public.bf44_events(project_id,
 create sequence if not exists public.bf44_certificate_seq;
 create sequence if not exists public.bf44_statement_seq;
 
--- Explicit assigned roles; no super-admin bypass. Existing active access scopes constrain each role.
+-- Match the deployed bf_acl_* model. Explicit membership, module, role and project
+-- scope are required. No global/super-user bypass and no legacy consultant table.
+create or replace function public.bf44_project_member(p_user uuid,p_project uuid,p_site uuid default null,p_org uuid default null)
+returns boolean language sql stable security definer set search_path='' as $$
+ select exists(select 1 from public.bf_profiles u
+ join public.bf_acl_user_organizations uo on uo.user_id=u.id and uo.is_active
+ join public.bf_acl_user_projects up on up.user_id=u.id and up.organization_id=uo.organization_id and up.project_id=p_project
+ join public.bf_acl_project_organizations po on po.project_id=up.project_id and po.organization_id=up.organization_id
+ where u.id=p_user and u.status='active' and (p_org is null or uo.organization_id=p_org)
+ and up.is_active and po.is_active and up.module_code in('shared','facilities') and po.module_code in('shared','facilities')
+ and (up.valid_from is null or up.valid_from<=current_date) and (up.valid_until is null or up.valid_until>=current_date)
+ and (po.valid_from is null or po.valid_from<=current_date) and (po.valid_until is null or po.valid_until>=current_date)
+ and (up.site_id is null or up.site_id=p_site) and (po.site_id is null or po.site_id=p_site)
+ and up.discipline_code is null and po.discipline_code is null
+ and exists(select 1 from public.bf_acl_organization_modules om where om.organization_id=uo.organization_id
+  and om.module_code in('shared','facilities') and om.is_enabled
+  and (om.valid_from is null or om.valid_from<=current_date) and (om.valid_until is null or om.valid_until>=current_date)))
+$$;
+create or replace function public.bf44_permission_keys(p_permission text)
+returns text[] language sql immutable set search_path='' as $$
+ select case p_permission
+ when 'corrective.view' then array['corrective.view','facilities.work_orders.view']
+ when 'corrective.request' then array['corrective.request','facilities.work_orders.manage']
+ when 'corrective.manage' then array['corrective.manage','facilities.work_orders.manage']
+ when 'corrective.execute' then array['corrective.execute','facilities.work_orders.manage']
+ when 'corrective.approve' then array['corrective.approve','facilities.work_orders.approve']
+ when 'ppm.view' then array['ppm.view','facilities.ppm.view']
+ when 'ppm.manage' then array['ppm.manage','facilities.ppm.manage']
+ when 'ppm.execute' then array['ppm.execute','facilities.ppm.manage']
+ when 'ppm.approve' then array['ppm.approve','facilities.ppm.manage']
+ when 'contracts.manage' then array['contracts.manage','projects.manage']
+ when 'documents.generate' then array['documents.generate','reports.export']
+ when 'approvals.request' then array['approvals.request','facilities.work_orders.manage']
+ when 'costing.manage' then array['costing.manage','facilities.statements.manage']
+ when 'inventory.request' then array['inventory.request','facilities.inventory.request','facilities.inventory.manage']
+ when 'inventory.manage' then array['inventory.manage','facilities.inventory.manage']
+ when 'inventory.approve' then array['inventory.approve','facilities.inventory.approve']
+ else array[p_permission] end
+$$;
 create or replace function public.bf44_user_can(p_user uuid,p_project uuid,p_permission text,p_site uuid default null)
 returns boolean language sql stable security definer set search_path='' as $$
  select exists(select 1 from public.bf35_projects pr
- join public.bf_user_roles ur on ur.organization_id=pr.organization_id and ur.user_id=p_user
- join public.bf_profiles u on u.id=ur.user_id and u.status='active'
- join public.bf_roles role on role.id=ur.role_id and (role.organization_id is null or role.organization_id=pr.organization_id)
- join public.bf_role_permissions rp on rp.role_id=ur.role_id
- join public.bf_permissions pe on pe.id=rp.permission_id and pe.code=p_permission
- where pr.id=p_project
- and coalesce(to_jsonb(ur)->>'status','active')='active'
- and coalesce((to_jsonb(ur)->>'is_active')::boolean,true)
- and (not exists(select 1 from public.bf34_access_scopes s where s.user_id=ur.user_id and s.organization_id=ur.organization_id and s.role_id=ur.role_id)
- or exists(select 1 from public.bf34_access_scopes s where s.user_id=ur.user_id and s.organization_id=ur.organization_id and s.role_id=ur.role_id
- and s.is_active and (s.valid_from is null or s.valid_from<=current_date) and (s.valid_until is null or s.valid_until>=current_date)
- and (s.client_id is null or s.client_id=pr.client_id) and (s.contract_id is null or s.contract_id=pr.contract_id)
- and (s.site_id is null or s.site_id=p_site) and s.discipline_code is null)))
+ join public.bf_acl_user_organizations uo on uo.organization_id=pr.organization_id and uo.user_id=p_user and uo.is_active
+ join public.bf_profiles u on u.id=uo.user_id and u.status='active'
+ join public.bf_acl_user_roles ur on ur.user_id=u.id and ur.organization_id=uo.organization_id and ur.is_active
+ join public.bf_acl_roles r on r.id=ur.role_id and r.is_active and (r.organization_id is null or r.organization_id=ur.organization_id)
+ join public.bf_acl_role_permissions rp on rp.role_id=r.id and rp.is_allowed
+ join public.bf_acl_permissions pe on pe.permission_key=rp.permission_key and pe.is_active
+ join public.bf_acl_organization_permissions op on op.organization_id=ur.organization_id and op.permission_key=pe.permission_key and op.is_allowed
+ where pr.id=p_project and pe.permission_key=any(public.bf44_permission_keys(p_permission))
+ and pe.module_code in('shared','facilities')
+ and (ur.valid_from is null or ur.valid_from<=current_date) and (ur.valid_until is null or ur.valid_until>=current_date)
+ and public.bf44_project_member(p_user,pr.id,p_site,pr.organization_id)
+ and exists(select 1 from public.bf_acl_organization_modules om where om.organization_id=pr.organization_id
+  and om.module_code in('shared',pe.module_code) and om.is_enabled
+  and (om.valid_from is null or om.valid_from<=current_date) and (om.valid_until is null or om.valid_until>=current_date)))
 $$;
 create or replace function public.bf44_staff(p_project uuid,p_permission text,p_site uuid default null)
 returns boolean language sql stable security definer set search_path='' as $$select public.bf44_user_can(auth.uid(),p_project,p_permission,p_site)$$;
+create or replace function public.bf44_reviewer_eligible(p_user uuid,p_project uuid,p_kind text)
+returns boolean language sql stable security definer set search_path='' as $$
+ select exists(select 1 from public.bf35_projects pr where pr.id=p_project and
+ ((p_kind='owner' and public.bf44_project_member(p_user,pr.id,null,pr.organization_id)
+   and public.bf_acl_user_is_owner(p_user,pr.organization_id,pr.client_id))
+ or (p_kind='consultant' and exists(
+  select 1 from public.bf_acl_user_organizations uo
+  join public.bf_acl_user_roles ur on ur.user_id=uo.user_id and ur.organization_id=uo.organization_id and ur.is_active
+  join public.bf_acl_roles r on r.id=ur.role_id and r.is_active and (r.organization_id is null or r.organization_id=ur.organization_id)
+  where uo.user_id=p_user and uo.is_active and r.module_code in('shared','facilities')
+   and (ur.valid_from is null or ur.valid_from<=current_date) and (ur.valid_until is null or ur.valid_until>=current_date)
+   and public.bf44_project_member(p_user,pr.id,null,uo.organization_id)
+   and (r.role_code in('consultant','consultant_rep','consultant_engineer','consultant_manager')
+    or exists(select 1 from public.bf_acl_project_organizations po where po.project_id=pr.id and po.organization_id=uo.organization_id
+     and po.relationship_type='consultant' and po.is_active and po.module_code in('shared','facilities')
+     and po.site_id is null and po.discipline_code is null
+     and (po.valid_from is null or po.valid_from<=current_date) and (po.valid_until is null or po.valid_until>=current_date)))
+ ))))
+$$;
 create or replace function public.bf44_reviewer(p_project uuid,p_kind text)
 returns boolean language sql stable security definer set search_path='' as $$
- select exists(select 1 from public.bf44_policies po join public.bf35_projects pr on pr.id=po.project_id
- join public.bf_profiles u on u.id=auth.uid() and u.status='active'
- where po.project_id=p_project and
- ((p_kind='owner' and po.owner_reviewer=u.id and public.bf11_owner(pr.organization_id,pr.client_id))
- or(p_kind='consultant' and po.consultant_reviewer=u.id and public.bf11_consultant(pr.organization_id,pr.client_id))))
+ select exists(select 1 from public.bf44_policies po where po.project_id=p_project
+ and ((p_kind='owner' and po.owner_reviewer=auth.uid()) or(p_kind='consultant' and po.consultant_reviewer=auth.uid()))
+ and public.bf44_reviewer_eligible(auth.uid(),po.project_id,p_kind))
 $$;
+
 create or replace function public.bf44_view(p_project uuid,p_site uuid default null)
 returns boolean language sql stable security definer set search_path='' as $$
  select public.bf44_staff(p_project,'corrective.view',p_site) or public.bf44_staff(p_project,'ppm.view',p_site)
@@ -112,8 +176,8 @@ begin
  if not found or pr.contract_id is null then raise exception 'Project must have a contract';end if;
  if not(public.bf44_staff(pr.id,'contracts.manage') or public.bf44_reviewer(pr.id,'owner')) then raise exception 'Contract management permission required' using errcode='42501';end if;
  if exists(select 1 from public.bf44_policies where project_id=pr.id and status='active') then raise exception 'Active approval chain is frozen; use a controlled contract amendment';end if;
- if not exists(select 1 from public.bf_profiles u join public.bf_client_access a on a.user_id=u.id where u.id=p_owner and u.status='active' and a.organization_id=pr.organization_id and a.client_id=pr.client_id) then raise exception 'Owner reviewer must have active owner access';end if;
- if p_consultant is not null and not exists(select 1 from public.bf_profiles u join public.bf11_consultant_access a on a.user_id=u.id where u.id=p_consultant and u.status='active' and a.organization_id=pr.organization_id and a.client_id=pr.client_id) then raise exception 'Consultant must have owner consultant access';end if;
+ if not public.bf44_reviewer_eligible(p_owner,pr.id,'owner') then raise exception 'Owner reviewer must have active owner_rep role, organization membership and this project assignment';end if;
+ if p_consultant is not null and not public.bf44_reviewer_eligible(p_consultant,pr.id,'consultant') then raise exception 'Consultant requires an active consultant role/relationship, organization membership and this project assignment';end if;
  insert into public.bf44_policies(project_id,contract_id,owner_reviewer,consultant_reviewer,currency,prepared_by)
  values(pr.id,pr.contract_id,p_owner,p_consultant,upper(p_currency),auth.uid())
  on conflict(project_id) do update set owner_reviewer=excluded.owner_reviewer,consultant_reviewer=excluded.consultant_reviewer,currency=excluded.currency,prepared_by=excluded.prepared_by,prepared_at=now();
@@ -275,6 +339,49 @@ begin
   then raise exception 'Finished technician visit, actual labor and verified execution evidence required';end if;
  end if;
 end $$;
+-- Integrated decisions reuse bf11_approvals/events, with the deployed ACL engine.
+-- Legacy bf11_* authorization functions are left unchanged for other workflows.
+create or replace function public.bf44_approval_action(p_action text,p_id uuid default null,p_data jsonb default '{}'::jsonb)
+returns uuid language plpgsql security definer set search_path='' as $$
+declare w public.bf_work_orders;f public.bf44_workflows;a public.bf11_approvals;kind text;next_round integer;wo uuid;eligible boolean;
+begin
+ if auth.uid() is null or not exists(select 1 from public.bf_profiles where id=auth.uid() and status='active') then raise exception 'Authentication required' using errcode='42501';end if;
+ if p_data is null or jsonb_typeof(p_data)<>'object' or pg_column_size(p_data)>32768 then raise exception 'Invalid payload';end if;
+ if p_action='create' then
+  if p_data->>'entity_type' is distinct from 'work_order' then raise exception 'Unified work order required';end if;
+  wo:=nullif(p_data->>'entity_id','')::uuid;
+ else select entity_id into wo from public.bf11_approvals where id=p_id and entity_type='work_order';end if;
+ select * into w from public.bf_work_orders where id=wo for update;
+ select * into f from public.bf44_workflows where work_order_id=w.id for update;
+ if f.work_order_id is null then raise exception 'Integrated work order required';end if;
+ if p_action='create' then
+  if not public.bf44_staff(f.project_id,'approvals.request',w.site_id) then raise exception 'Project approval request permission required' using errcode='42501';end if;
+  kind:=p_data->>'reviewer_type';
+  if kind is null or kind not in('owner','consultant') then raise exception 'Invalid reviewer type';end if;
+  select public.bf44_reviewer_eligible(case when kind='owner' then po.owner_reviewer else po.consultant_reviewer end,f.project_id,kind) into eligible from public.bf44_policies po where po.project_id=f.project_id;
+  if not coalesce(eligible,false) then
+   raise exception 'Appointed reviewer no longer has active project access';end if;
+  select ap.* into a from public.bf11_approvals ap join public.bf44_review_links l on l.approval_id=ap.id
+   where l.work_order_id=w.id and l.revision=f.revision and ap.reviewer_type=kind and ap.status='pending';
+  if a.id is not null then return a.id;end if;
+  select coalesce(max(round),0)+1 into next_round from public.bf11_approvals where entity_type='work_order' and entity_id=w.id and reviewer_type=kind;
+  insert into public.bf11_approvals(organization_id,client_id,site_id,entity_type,entity_id,reviewer_type,round,subject,request_comment,requested_by)
+   values(w.organization_id,w.client_id,w.site_id,'work_order',w.id,kind,next_round,left('Maintenance acceptance '||w.work_order_number,250),coalesce(p_data->>'request_comment',''),auth.uid()) returning * into a;
+ elsif p_action in('approve','reject') then
+  select * into a from public.bf11_approvals where id=p_id for update;
+  if a.status<>'pending' then raise exception 'Approval is not pending';end if;
+  if a.requested_by=auth.uid() then raise exception 'Independent approval required';end if;
+  if not public.bf44_reviewer(f.project_id,a.reviewer_type) then raise exception 'Appointed project reviewer required' using errcode='42501';end if;
+  if p_action='reject' and length(btrim(coalesce(p_data->>'comment','')))<5 then raise exception 'Rejection comment is required';end if;
+  if length(coalesce(p_data->>'comment',''))>4000 then raise exception 'Comment too long';end if;
+  update public.bf11_approvals set status=case when p_action='approve' then 'approved' else 'rejected' end,
+   decided_by=auth.uid(),decided_at=now(),decision_comment=nullif(btrim(coalesce(p_data->>'comment','')),'') where id=a.id;
+ else raise exception 'Invalid integrated approval action';end if;
+ insert into public.bf11_events(organization_id,approval_id,actor_id,action,details)
+ values(w.organization_id,a.id,auth.uid(),p_action,jsonb_build_object('workflow','integrated_maintenance','revision',f.revision,'comment',p_data->>'comment'));
+ return a.id;
+end $$;
+
 create or replace function public.bf44_closeout_action(p_work_order uuid,p_action text)
 returns uuid language plpgsql security definer set search_path='' as $$
 declare w public.bf_work_orders;f public.bf44_workflows;po public.bf44_policies;doc uuid;snap jsonb;target text;cert uuid;
@@ -302,7 +409,7 @@ begin
   if public.bf44_review_ok(w.id,target) then return w.id;end if;
   select a.id into doc from public.bf11_approvals a join public.bf44_review_links l on l.approval_id=a.id where l.work_order_id=w.id and l.revision=f.revision and a.reviewer_type=target and a.status='pending';
   if doc is not null then return doc;end if;
-  doc:=public.bf11_action('create',null,jsonb_build_object('organization_id',w.organization_id,'client_id',w.client_id,'site_id',w.site_id,'entity_type','work_order','entity_id',w.id,'reviewer_type',target,'subject','Maintenance acceptance '||w.work_order_number));
+  doc:=public.bf44_approval_action('create',null,jsonb_build_object('organization_id',w.organization_id,'client_id',w.client_id,'site_id',w.site_id,'entity_type','work_order','entity_id',w.id,'reviewer_type',target,'subject','Maintenance acceptance '||w.work_order_number));
  elsif p_action='issue_certificate' then
   select id into cert from public.bf44_certificates where work_order_id=w.id;if cert is not null then return cert;end if;
   if not public.bf44_review_ok(w.id,'owner') or (po.consultant_reviewer is not null and not public.bf44_review_ok(w.id,'consultant')) then raise exception 'Owner acceptance and configured consultant review required';end if;
@@ -539,8 +646,7 @@ begin
  if p_kind not in('owner','consultant') or length(btrim(coalesce(p_email,'')))<5 then raise exception 'Exact reviewer email required';end if;
  select jsonb_build_object('id',p.id,'name',p.full_name) into result from public.bf_profiles p
  where lower(p.email)=lower(btrim(p_email)) and p.status='active' and
- ((p_kind='owner' and exists(select 1 from public.bf_client_access a where a.user_id=p.id and a.organization_id=pr.organization_id and a.client_id=pr.client_id))
- or(p_kind='consultant' and exists(select 1 from public.bf11_consultant_access a where a.user_id=p.id and a.organization_id=pr.organization_id and a.client_id=pr.client_id)));
+ public.bf44_reviewer_eligible(p.id,pr.id,p_kind);
  if result is null then raise exception 'Active reviewer with the matching owner access was not found';end if;return result;
 end $$;
 create or replace function public.bf44_statement_read(p_id uuid)
@@ -665,6 +771,7 @@ begin
  end loop;
 end $$;
 grant execute on function public.bf44_staff(uuid,text,uuid),public.bf44_reviewer(uuid,text),public.bf44_view(uuid,uuid) to authenticated;
+grant execute on function public.bf44_approval_action(text,uuid,jsonb) to authenticated;
 grant execute on function public.bf44_policy_save(uuid,uuid,uuid,text),public.bf44_policy_activate(uuid),public.bf44_enroll(uuid,uuid),public.bf44_report_fault(uuid,uuid,text,text,text),public.bf44_convert_request(uuid),public.bf44_assign_ppm(uuid,uuid,uuid),public.bf44_closeout_action(uuid,text),public.bf44_statement_action(text,uuid,jsonb),public.bf44_dossier(uuid),public.bf44_lookup_reviewer(uuid,text,text),public.bf44_statement_read(uuid),public.bf44_center(uuid) to authenticated;
 revoke all on sequence public.bf44_certificate_seq,public.bf44_statement_seq from public,anon,authenticated;
 commit;

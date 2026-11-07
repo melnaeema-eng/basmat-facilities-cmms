@@ -19,9 +19,20 @@ test('Integrated database cycle enforces the complete chain in PostgreSQL',async
   for(const [uid,name] of [[manager,'Manager'],[owner,'Owner'],[consultant,'Consultant'],[tech,'Technician'],[superAdmin,'Unassigned super admin']])await q("insert into bf_profiles(id,full_name,email,status,is_super_admin) values($1,$2,$3,'active',$4)",[uid,name,`${name}@test.invalid`,uid===superAdmin])
   await q("insert into bf_organizations values($1,'Provider')",[org]);await q("insert into bf_clients values($1,$2,'Owner organization')",[client,org]);await q("insert into bf_contracts values($1,$2,$3,'CON-1')",[contract,org,client]);await q("insert into bf_sites values($1,$2,$3,'Site A')",[site,org,client]);await q("insert into bf35_projects(id,organization_id,client_id,contract_id,name) values($1,$2,$3,$4,'Project A')",[project,org,client,contract]);await q('insert into bf35_project_sites values($1,$2,$3,$4)',[project,site,org,client])
   await q("insert into bf_assets(id,organization_id,client_id,site_id,name_en,name_ar,asset_tag,serial_number) values($1,$2,$3,$4,'Pump','مضخة','AST-1','SERIAL-1')",[asset,org,client,site])
-  await q('insert into bf_client_access values($1,$2,$3)',[owner,org,client]);await q('insert into bf11_consultant_access values($1,$2,$3)',[consultant,org,client]);await q('insert into bf_roles values($1,null),($2,null)',[id(20),id(21)]);await q('insert into bf_user_roles values($1,$2,$3),($4,$2,$5)',[manager,org,id(20),tech,id(21)])
-  for(const permission of ['corrective.view','corrective.manage','corrective.request','contracts.manage','documents.generate','approvals.request','costing.manage','ppm.view','ppm.manage','inventory.request','inventory.manage','inventory.approve']){
-   const pid=await scalar('insert into bf_permissions(code) values($1) returning id',[permission]);await q('insert into bf_role_permissions values($1,$2)',[id(20),pid]);if(permission==='corrective.view')await q('insert into bf_role_permissions values($1,$2)',[id(21),pid])
+  // Modern roles deliberately have no matching rows in legacy bf_user_roles.
+  await q("insert into bf_acl_organization_modules(organization_id,module_code) values($1,'facilities')",[org])
+  await q("insert into bf_acl_project_organizations(project_id,owner_organization_id,organization_id,relationship_type,module_code) values($1,$2,$2,'service_provider','facilities')",[project,org])
+  for(const [uid,rid,code] of [[manager,id(20),'maintenance_manager'],[owner,id(22),'owner_rep'],[consultant,id(23),'consultant_rep'],[tech,id(21),'technician']]){
+   await q('insert into bf_acl_user_organizations(user_id,organization_id) values($1,$2)',[uid,org])
+   await q("insert into bf_acl_user_projects(user_id,organization_id,project_id,module_code) values($1,$2,$3,'facilities')",[uid,org,project])
+   await q("insert into bf_acl_roles(id,organization_id,role_code,module_code) values($1,$2,$3,'facilities')",[rid,org,code])
+   await q('insert into bf_acl_user_roles(user_id,organization_id,role_id) values($1,$2,$3)',[uid,org,rid])
+  }
+  for(const permission of ['facilities.work_orders.view','facilities.work_orders.manage','projects.manage','reports.export','costing.manage','facilities.ppm.view','facilities.ppm.manage','facilities.inventory.request','facilities.inventory.manage','facilities.inventory.approve']){
+   await q("insert into bf_acl_permissions(permission_key,module_code) values($1,'facilities')",[permission])
+   await q('insert into bf_acl_organization_permissions(organization_id,permission_key) values($1,$2)',[org,permission])
+   await q('insert into bf_acl_role_permissions(role_id,permission_key) values($1,$2)',[id(20),permission])
+   if(permission==='facilities.work_orders.view')await q('insert into bf_acl_role_permissions(role_id,permission_key) values($1,$2)',[id(21),permission])
   }
   await actor(manager)
   await q("select bf44_policy_save($1,$2,$3,'SAR')",[project,owner,consultant])
@@ -29,6 +40,26 @@ test('Integrated database cycle enforces the complete chain in PostgreSQL',async
    await reject('select bf44_policy_activate($1)',[project],/owner representative/)
    await actor(superAdmin);assert.equal(await scalar("select bf44_staff($1,'costing.manage')",[project]),false)
    await actor(owner);await q('select bf44_policy_activate($1)',[project]);await actor(manager)
+  })
+  await t.test('Missing legacy consultant table is not required or recreated',async()=>{
+   assert.equal(await scalar("select to_regclass('public.bf11_consultant_access')"),null)
+   await actor(consultant);assert.equal(await scalar('select bf11_consultant($1,$2)',[org,client]),false)
+   assert.equal(await scalar("select bf44_reviewer($1,'consultant')",[project]),true)
+   await actor(manager)
+  })
+  await t.test('Modern membership, module and permission revocation take effect immediately',async()=>{
+   await q('update bf_acl_user_organizations set is_active=false where user_id=$1',[manager])
+   assert.equal(await scalar("select bf44_staff($1,'contracts.manage')",[project]),false)
+   await q('update bf_acl_user_organizations set is_active=true where user_id=$1',[manager])
+   await q("update bf_acl_organization_modules set is_enabled=false where organization_id=$1",[org])
+   assert.equal(await scalar("select bf44_staff($1,'contracts.manage')",[project]),false)
+   await q('update bf_acl_organization_modules set is_enabled=true where organization_id=$1',[org])
+   await q("update bf_acl_organization_permissions set is_allowed=false where organization_id=$1 and permission_key='projects.manage'",[org])
+   assert.equal(await scalar("select bf44_staff($1,'contracts.manage')",[project]),false)
+   await q("update bf_acl_organization_permissions set is_allowed=true where organization_id=$1 and permission_key='projects.manage'",[org])
+   await q("update bf_acl_user_projects set valid_until=current_date-1 where user_id=$1",[manager])
+   assert.equal(await scalar("select bf44_staff($1,'contracts.manage')",[project]),false)
+   await q('update bf_acl_user_projects set valid_until=null where user_id=$1',[manager])
   })
   const wo=id(30),request=id(31)
   await q("insert into bf_service_requests(id,organization_id,client_id,contract_id,site_id,asset_id,project_id,title,request_number) values($1,$2,$3,$4,$5,$6,$7,'Pump fault','SR-1')",[request,org,client,contract,site,asset,project])
@@ -61,13 +92,13 @@ test('Integrated database cycle enforces the complete chain in PostgreSQL',async
   })
   let consultantApproval,ownerApproval,certificate,statement
   await t.test('Consultant review must precede owner and only appointed reviewers can decide',async()=>{
-   await reject("select bf11_action('create',null,jsonb_build_object('organization_id',$1::uuid,'client_id',$2::uuid,'site_id',$3::uuid,'entity_type','work_order','entity_id',$4::uuid,'reviewer_type','owner'))",[org,client,site,wo],/Consultant review/)
+   await reject("select bf44_approval_action('create',null,jsonb_build_object('organization_id',$1::uuid,'client_id',$2::uuid,'site_id',$3::uuid,'entity_type','work_order','entity_id',$4::uuid,'reviewer_type','owner'))",[org,client,site,wo],/Consultant review/)
    consultantApproval=await scalar("select bf44_closeout_action($1,'submit_external')",[wo])
-   await actor(owner);await reject("select bf11_action('approve',$1,'{}')",[consultantApproval],/Appointed/)
-   await actor(consultant);await q("select bf11_action('approve',$1,'{}')",[consultantApproval]);await actor(manager)
+   await actor(owner);await reject("select bf44_approval_action('approve',$1,'{}')",[consultantApproval],/Appointed/)
+   await actor(consultant);await q("select bf44_approval_action('approve',$1,'{}')",[consultantApproval]);await actor(manager)
    ownerApproval=await scalar("select bf44_closeout_action($1,'submit_external')",[wo])
    await reject("select bf44_closeout_action($1,'issue_certificate')",[wo],/Owner acceptance/)
-   await actor(owner);await q("select bf11_action('approve',$1,'{}')",[ownerApproval]);await actor(manager)
+   await actor(owner);await q("select bf44_approval_action('approve',$1,'{}')",[ownerApproval]);await actor(manager)
    certificate=await scalar("select bf44_closeout_action($1,'issue_certificate')",[wo])
    assert.equal(await scalar("select bf44_closeout_action($1,'issue_certificate')",[wo]),certificate)
    await reject("update bf_work_orders set status='assigned' where id=$1",[wo],/Certified work is immutable/)
@@ -107,9 +138,11 @@ test('Integrated database cycle enforces the complete chain in PostgreSQL',async
    await db.exec('reset role');await actor(manager)
   })
   await t.test('Scoped roles cannot act across a different site',async()=>{
-   await actor(manager);await q('insert into bf34_access_scopes(user_id,organization_id,role_id,is_active,site_id) values($1,$2,$3,true,$4)',[manager,org,id(20),id(99)])
+   await actor(manager)
+   await q('update bf_acl_user_projects set site_id=$1 where user_id=$2',[id(99),manager])
    assert.equal(await scalar("select bf44_staff($1,'corrective.manage',$2)",[project,site]),false)
-   await q('delete from bf34_access_scopes')
+   assert.equal(await scalar("select bf44_staff($1,'costing.manage')",[project]),false)
+   await q('update bf_acl_user_projects set site_id=null where user_id=$1',[manager])
   })
   await t.test('PPM execution mirrors to one existing work order',async()=>{
    const ppmWO=id(50),job=id(51),plan=id(52),procedure=id(53),step=id(54)
@@ -123,7 +156,7 @@ test('Integrated database cycle enforces the complete chain in PostgreSQL',async
    const ppmReport=await scalar("select bf44_closeout_action($1,'generate_report')",[ppmWO]);assert.ok(ppmReport)
    const stale=await scalar("select bf44_closeout_action($1,'submit_external')",[ppmWO])
    await q("update bf_ppm_jobs set status='in_progress' where id=$1",[job]);assert.equal(await scalar('select revision from bf44_workflows where work_order_id=$1',[ppmWO]),2)
-   await actor(consultant);await reject("select bf11_action('approve',$1,'{}')",[stale],/earlier revision/);await actor(manager)
+   await actor(consultant);await reject("select bf44_approval_action('approve',$1,'{}')",[stale],/earlier revision/);await actor(manager)
    await reject("update bf13_documents set title='changed' where id=$1",[ppmReport],/immutable/)
   })
  }finally{await db.close()}

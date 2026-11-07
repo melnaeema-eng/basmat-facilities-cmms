@@ -1,3 +1,4 @@
+import {hasFacilitiesPermission} from '../lib/facilitiesPermissions'
 import {createContext,useContext,useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 
@@ -67,9 +68,7 @@ export function AuthProvider({children}){
  const can=(permission,org=null)=>{
   if(profile?.status!=='active')return false
   if(access?.super_admin)return true
-  return (access?.permissions||[]).some(x=>
-    x.permission_key===permission&&(!org||x.organization_id===org)
-  )
+  return hasFacilitiesPermission(access?.permissions,permission,org)
  }
 
  const canScoped=(permission,scope={})=>{

@@ -8,3 +8,7 @@ select t.tgname as guard,t.tgenabled as enabled
 from pg_trigger t where not t.tgisinternal and t.tgname like 'bf44_%' order by t.tgname;
 select p.proname as function_name,has_function_privilege('anon',p.oid,'EXECUTE') as anonymous_execute
 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'bf44_%';
+
+-- Corrected installation has the new endpoint and does not require the old table.
+select to_regprocedure('public.bf44_approval_action(text,uuid,jsonb)') is not null as integrated_approval_installed,
+       to_regprocedure('public.bf44_reviewer_eligible(uuid,uuid,text)') is not null as modern_reviewer_check_installed;

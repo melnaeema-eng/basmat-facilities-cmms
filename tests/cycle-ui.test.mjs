@@ -1,3 +1,5 @@
+import {readFileSync} from 'node:fs'
+import {hasFacilitiesPermission} from '../src/lib/facilitiesPermissions.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {cycleSteps,reviewApproved} from '../src/lib/cycleProgress.js'
@@ -16,4 +18,19 @@ test('Financial statement formatting preserves decimal strings and large values 
  assert.equal(formatCycleMoney('9007199254740993.01','en'),'9,007,199,254,740,993.01')
  assert.equal(formatCycleMoney('125.5','en'),'125.50')
  assert.equal(formatCycleMoney('not-a-number'),'—')
+})
+
+test('Modern Facilities roles can open the existing operational pages',()=>{
+ const permissions=[{organization_id:'provider',permission_key:'facilities.work_orders.view'},{organization_id:'provider',permission_key:'facilities.ppm.manage'}]
+ assert.equal(hasFacilitiesPermission(permissions,'corrective.view','provider'),true)
+ assert.equal(hasFacilitiesPermission(permissions,'ppm.execute','provider'),true)
+ assert.equal(hasFacilitiesPermission(permissions,'corrective.approve','provider'),false)
+})
+test('Medical grants do not become Facilities permissions and organization scope remains exact',()=>{
+ assert.equal(hasFacilitiesPermission([{organization_id:'medical',permission_key:'medical.work_orders.view'}],'corrective.view'),false)
+ assert.equal(hasFacilitiesPermission([{organization_id:'other',permission_key:'facilities.work_orders.view'}],'corrective.view','provider'),false)
+})
+test('The integrated review client calls the ACL-aware endpoint',()=>{
+ const source=readFileSync(new URL('../src/lib/maintenanceCycle.js',import.meta.url),'utf8')
+ assert.match(source,/decideApproval.*cycleRpc\('bf44_approval_action'/)
 })
