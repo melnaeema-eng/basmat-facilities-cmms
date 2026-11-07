@@ -53,8 +53,8 @@ export const modules = [
     "path": "/governance",
     "page": "GovernanceMatrix",
     "permission": "governance.view",
-    "en": "GovernanceMatrix",
-    "ar": "GovernanceMatrix",
+    "en": "Governance matrix",
+    "ar": "مصفوفة الحوكمة",
     "icon": "work",
     "group": "administration",
     "nav": true
@@ -63,8 +63,8 @@ export const modules = [
     "path": "/access-review",
     "page": "AccessReview",
     "permission": "access-review.view",
-    "en": "AccessReview",
-    "ar": "AccessReview",
+    "en": "Access review",
+    "ar": "مراجعة الوصول",
     "icon": "work",
     "group": "administration",
     "nav": true
@@ -463,8 +463,8 @@ export const modules = [
     "path": "/enterprise-access",
     "page": "EnterpriseAccess",
     "permission": "enterprise-access.view",
-    "en": "EnterpriseAccess",
-    "ar": "EnterpriseAccess",
+    "en": "Project access",
+    "ar": "صلاحيات المشاريع",
     "icon": "work",
     "group": "administration",
     "nav": true
@@ -513,8 +513,8 @@ export const modules = [
     "path": "/technician-execution",
     "page": "TechnicianExecution",
     "permission": "maintenance.execute",
-    "en": "TechnicianExecution",
-    "ar": "TechnicianExecution",
+    "en": "Technician execution",
+    "ar": "تنفيذ الفني",
     "icon": "work",
     "group": "operations",
     "nav": true
