@@ -1,169 +1,40 @@
-import {useEffect,useMemo,useState} from 'react'
+import {useEffect,useState} from 'react'
 import {Link} from 'react-router-dom'
-import {supabase} from '../lib/supabaseClient'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
-import DashboardIdentity from '../components/DashboardIdentity'
-
-const closed=['closed','cancelled']
-const complete=['completed','approved','closed']
-
+import {loadWorkspaceDashboard} from '../lib/workspaceDashboard'
+const labels={
+ en:{kicker:'OPERATIONS OVERVIEW',title:'Every facility. One clear workflow.',intro:'Follow maintenance from asset registration to execution, review and closeout.',refresh:'Refresh',loading:'Loading live records…',error:'Some records could not be loaded. Retry to refresh the affected sections.',active:'Active work orders',assets:'Active assets',review:'Awaiting review',overdue:'SLA breached',workflow:'Maintenance workflow',workflowNote:'Corrective work orders grouped by their recorded status.',assignment:'Assignment',execution:'Execution',closeout:'Closeout',closed:'Closed',recent:'Recent work orders',all:'Open maintenance center',number:'Work order',asset:'Asset',priority:'Priority',status:'Status',due:'Due date',empty:'No work orders in your authorized scope.',ppm:'Preventive maintenance',month:'Current month',done:'Executed',scheduled:'Scheduled',ppmNote:'Executed includes completed, approved and closed jobs.',quick:'Start your next action',setup:'Set up a project',register:'Register an asset',library:'Open asset & PPM library',work:'Manage maintenance',approve:'Review approvals',reports:'Open reports',noAccess:'Your account has no operational modules assigned. Contact your access administrator.',unavailable:'Unavailable',scope:'Counts follow the records available to your account.'},
+ ar:{kicker:'نظرة على التشغيل',title:'كل مرفق، ودورة عمل واضحة.',intro:'تابع الصيانة من تسجيل الأصل إلى التنفيذ والمراجعة والإغلاق.',refresh:'تحديث',loading:'جارٍ تحميل البيانات…',error:'تعذر تحميل بعض البيانات. أعد المحاولة لتحديث الأقسام المتأثرة.',active:'أوامر العمل النشطة',assets:'الأصول النشطة',review:'بانتظار المراجعة',overdue:'تجاوز مستوى الخدمة',workflow:'دورة الصيانة',workflowNote:'أوامر العمل التصحيحية حسب الحالة المسجلة.',assignment:'الإسناد',execution:'التنفيذ',closeout:'استكمال الإغلاق',closed:'مغلق',recent:'أحدث أوامر العمل',all:'فتح مركز الصيانة',number:'أمر العمل',asset:'الأصل',priority:'الأولوية',status:'الحالة',due:'تاريخ الاستحقاق',empty:'لا توجد أوامر عمل ضمن نطاق صلاحياتك.',ppm:'الصيانة الوقائية',month:'الشهر الحالي',done:'تم التنفيذ',scheduled:'مجدول',ppmNote:'يشمل المنفذ الحالات المكتملة والمعتمدة والمغلقة.',quick:'ابدأ الإجراء التالي',setup:'إعداد مشروع',register:'تسجيل أصل',library:'مكتبة الأصول والصيانة',work:'إدارة الصيانة',approve:'مراجعة الاعتمادات',reports:'فتح التقارير',noAccess:'لا توجد وحدات تشغيلية مسندة لحسابك. تواصل مع مسؤول الصلاحيات.',unavailable:'غير متاح',scope:'الأعداد حسب السجلات المتاحة لحسابك.'}
+}
 export default function Dashboard(){
- const {profile,can}=useAuth(),{lang}=useLanguage()
- const [data,setData]=useState({total:0,completed:0,progress:0,overdue:0,open:0,critical:0,assets:0,ppmTotal:0,ppmCompleted:0,ppmOverdue:0,ppmPending:0,rows:[],assetsById:{}})
- const [error,setError]=useState('')
- const [woTab,setWoTab]=useState('all')
-
+ const {can,profile}=useAuth(),{lang,t}=useLanguage(),ar=lang==='ar',s=labels[lang]||labels.en
+ const [data,setData]=useState(null),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0)
  useEffect(()=>{
-  let alive=true
-  async function rows(table,columns='*',build){
-   const all=[]
-   for(let start=0;start<100000;start+=500){
-    let q=supabase.from(table).select(columns).range(start,start+499)
-    q=build?build(q):q
-    const {data,error}=await q
-    if(error)throw error
-    all.push(...(data||[]))
-    if((data||[]).length<500)return all
-   }
-   throw Error('Dataset limit reached. Apply a narrower filter.')
-  }
-
-  async function load(){
-   setError('')
-   try{
-    const [workOrders,assetsRows,ppmJobs]=await Promise.all([
-     rows('bf_work_orders','id,work_order_number,title,priority,status,sla_status,asset_id,completion_due_at,created_at',q=>q.order('created_at',{ascending:false})),
-     rows('bf_assets','id,asset_tag,name_ar,name_en,status',q=>q.eq('status','active')),
-     rows('bf_ppm_jobs','id,job_number,status,due_date,created_at',q=>q.neq('status','cancelled'))
-    ])
-    const now=new Date()
-    const today=now.toISOString().slice(0,10)
-    const monthPrefix=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
-    const ppmMonth=ppmJobs.filter(x=>x.due_date?.startsWith(monthPrefix))
-    const total=workOrders.length
-    const completed=workOrders.filter(x=>complete.includes(x.status)).length
-    const progress=workOrders.filter(x=>x.status==='in_progress').length
-    const overdue=workOrders.filter(x=>x.sla_status==='breached').length
-    const open=workOrders.filter(x=>!closed.includes(x.status)).length
-    const critical=workOrders.filter(x=>x.priority==='P1'&&!closed.includes(x.status)).length
-    const ppmTotal=ppmMonth.length
-    const ppmCompleted=ppmMonth.filter(x=>complete.includes(x.status)).length
-    const ppmOverdue=ppmMonth.filter(x=>!complete.includes(x.status)&&x.due_date&&x.due_date<today).length
-    const ppmPending=ppmMonth.filter(x=>!complete.includes(x.status)).length
-    const assetsById=Object.fromEntries(assetsRows.map(x=>[x.id,x]))
-    if(alive)setData({total,completed,progress,overdue,open,critical,assets:assetsRows.length,ppmTotal,ppmCompleted,ppmOverdue,ppmPending,rows:workOrders,assetsById})
-   }catch(e){if(alive)setError(e.message)}
-  }
-
-  const refresh=()=>load()
-  load()
-  window.addEventListener('focus',refresh)
-  const timer=window.setInterval(refresh,15000)
-  return()=>{alive=false;window.removeEventListener('focus',refresh);window.clearInterval(timer)}
- },[])
-
- const ppmCompliance=data.ppmTotal?Math.round(data.ppmCompleted/data.ppmTotal*100):0
- const greeting=profile?.full_name||'BAFM User'
- const displayRows=useMemo(()=>{
-  const f=data.rows.filter(x=>{
-   if(woTab==='open')return !closed.includes(x.status)
-   if(woTab==='in_progress')return x.status==='in_progress'
-   if(woTab==='overdue')return x.sla_status==='breached'
-   if(woTab==='completed')return complete.includes(x.status)
-   return true
-  })
-  return f.slice(0,7)
- },[data.rows,woTab])
-
- const counts={
-  all:data.total,
-  open:data.open,
-  in_progress:data.progress,
-  overdue:data.overdue,
-  completed:data.completed
- }
-
- const alerts=[
-  [data.overdue,'work orders overdue','أوامر عمل متأخرة','critical'],
-  [data.critical,'critical work orders','أوامر عمل حرجة','warning'],
-  [data.ppmOverdue,'preventive jobs overdue','صيانة وقائية متأخرة','warning'],
- ]
- const quick=[
-  ['/corrective','＋','Create Work Order','إنشاء أمر عمل','corrective.manage'],
-  ['/ppm','◫','Run / Schedule PPM','تنفيذ / جدولة PPM','ppm.manage'],
-  ['/asset-library','▦','Asset & PPM Library','مكتبة الأصول والصيانة','assets.view'],
-  ['/procurement','□','Request Material','طلب مادة','procurement.view'],
-  ['/corrective','◎','New Service Request','طلب خدمة جديد','corrective.request'],
-  ['/reports','▥','Open Reports','فتح التقارير','reports.view'],
- ].filter(x=>can(x[4]))
-
- return <section className="bafm-dashboard">
-   <DashboardIdentity/>
-  <div className="bafm-hero">
-   <div className="bafm-hero-copy">
-    <span>WELCOME BACK</span>
-    <h1>{greeting} <small>مرحباً بك مجدداً</small></h1><i/>
-    <p>Together for a safer, smarter and more sustainable tomorrow</p>
-    <p className="ar">معاً نحو مرافق أكثر أماناً وذكاءً واستدامة</p>
-   </div>
-   <div className="bafm-hero-tag"><strong>مرافق اليوم<br/>لمستقبل أفضل غداً</strong><span>Today's Facilities<br/>for a Better Tomorrow</span><i/></div>
+  let alive=true;setLoading(true)
+  loadWorkspaceDashboard(can,localStorage.getItem('basmat.active.organization')||null).then(result=>{if(alive)setData(result)}).catch(()=>{if(alive)setData({counts:{},errors:['load'],rows:[],assets:{}})}).finally(()=>{if(alive)setLoading(false)})
+  return()=>{alive=false}
+ },[can,revision])
+ const c=data?.counts||{}
+ const value=key=>loading?'…':c[key]===null||c[key]===undefined?'—':new Intl.NumberFormat(lang).format(c[key])
+ const cards=[['active','corrective.view','orange'],['assets','assets.view','green'],['review','corrective.view','blue'],['overdue','corrective.view','red']].filter(([,p])=>can(p))
+ const quick=[['/project-setup','setup','organizations.view'],['/assets','register','assets.view'],['/asset-library','library','assets.view'],['/work-orders','work',['corrective.view','ppm.view']],['/approvals','approve','approvals.view'],['/reports','reports','reports.view']].filter(([, ,p])=>Array.isArray(p)?p.some(x=>can(x)):can(p))
+ const ratio=c.ppmTotal>0&&c.ppmDone!=null?Math.round(c.ppmDone/c.ppmTotal*100):null
+ return <section className="workspace-dashboard">
+  <div className="workspace-hero"><div><span className="workspace-eyebrow">{s.kicker}</span><h1>{s.title}</h1><p>{s.intro}</p><small>{profile?.full_name}</small></div><div className="workspace-hero-symbol" aria-hidden="true"><span/><span/><span/></div></div>
+  <div className="workspace-section-head"><p>{s.scope}</p><button className="btn secondary" onClick={()=>setRevision(x=>x+1)} disabled={loading}>{s.refresh}</button></div>
+  {!!data?.errors.length&&<div className="alert error" role="alert">{s.error}</div>}
+  {loading&&<p className="workspace-sr" role="status">{s.loading}</p>}
+  <div className="workspace-metrics">{cards.map(([key,,tone])=><article key={key} className={'workspace-metric '+tone}><span>{s[key]}</span><strong>{value(key)}</strong>{!loading&&c[key]===null&&<small>{s.unavailable}</small>}</article>)}</div>
+  <div className="workspace-dashboard-grid">
+   {can('corrective.view')&&<article className="workspace-panel"><div className="workspace-section-head"><h2>{s.workflow}</h2><Link to="/work-orders">{s.all} ↗</Link></div><p className="workspace-muted">{s.workflowNote}</p><div className="workspace-pipeline">{['assignment','execution','review','closeout','closed'].map((key,i)=><div key={key}><span className="workspace-step-number">{i+1}</span><strong>{value(key)}</strong><span>{s[key]}</span></div>)}</div></article>}
+   {can('ppm.view')&&<article className="workspace-panel"><div className="workspace-section-head"><h2>{s.ppm}</h2><span className="workspace-pill">{s.month}</span></div><div className="workspace-ppm-score"><strong>{loading?'…':ratio===null?'—':ratio+'%'}</strong><span>{s.done}</span></div><div className="workspace-meter"><i style={{width:(ratio||0)+'%'}}/></div><div className="workspace-section-head"><span>{s.done}: {value('ppmDone')}</span><span>{s.scheduled}: {value('ppmTotal')}</span></div><small className="workspace-muted">{s.ppmNote}</small></article>}
   </div>
-
-  {error&&<div className="bafm-error">{error}</div>}
-
-  <div className="bafm-kpi-grid">
-   {[
-    ['doc','Total Work Orders','إجمالي أوامر العمل',data.total,'blue'],
-    ['check','Completed','تم الإغلاق',data.completed,'green'],
-    ['clock','In Progress','قيد التنفيذ',data.progress,'orange'],
-    ['alert','Overdue','متأخر',data.overdue,'red'],
-    ['tools','PM Compliance','الالتزام بالصيانة الوقائية',ppmCompliance+'%','light'],
-    ['building','Total Assets','إجمالي الأصول',data.assets,'soft'],
-   ].map(([icon,en,ar,val,tone])=><div className="bafm-kpi" key={en}>
-    <div className={'bafm-kpi-icon '+tone}>{icon==='check'?'✓':icon==='clock'?'◷':icon==='alert'?'!':icon==='tools'?'⚙':icon==='building'?'▥':'▤'}</div>
-    <div><span>{en}<small>{ar}</small></span><strong>{val}</strong><em>{val===0?'—':'Live'} <small>بيانات حية</small></em></div>
-   </div>)}
-  </div>
-
-  <div className="bafm-dashboard-grid">
-   <div className="bafm-panel bafm-work-panel">
-    <div className="bafm-panel-head"><h2>Work Order Control Center <span>| مركز أوامر العمل</span></h2><Link to="/corrective">View All | عرض الكل</Link></div>
-    <div className="bafm-tabs">
-     {[['all','All'],['open','Open'],['in_progress','In Progress'],['overdue','Overdue'],['completed','Completed']].map(([key,label])=>
-      <button type="button" key={key} className={woTab===key?'active':''} onClick={()=>setWoTab(key)}>{label} ({counts[key]})</button>)}
-    </div>
-    <div className="bafm-table-wrap"><table className="bafm-table">
-     <thead><tr><th>#</th><th>Title | العنوان</th><th>Priority | الأولوية</th><th>Status | الحالة</th><th>Asset | الأصل</th><th>Due Date | الاستحقاق</th></tr></thead>
-     <tbody>{displayRows.length?displayRows.map(x=>{
-      const a=data.assetsById[x.asset_id]
-      return <tr key={x.id}><td><Link to={'/corrective/work_order/'+x.id}>{x.work_order_number}</Link></td><td>{x.title}</td>
-       <td><span className={'bafm-chip p-'+(x.priority||'P4').toLowerCase()}>{x.priority==='P1'?'High | عالية':x.priority==='P2'?'High | عالية':x.priority==='P3'?'Medium | متوسطة':'Low | منخفضة'}</span></td>
-       <td><span className={'bafm-chip s-'+x.status}>{(x.status||'').replaceAll('_',' ')}</span></td>
-       <td>{a?.asset_tag||'—'}<small>{a?.name_en||a?.name_ar||''}</small></td>
-       <td>{x.completion_due_at?new Date(x.completion_due_at).toLocaleDateString(lang):'—'}</td></tr>
-     }):<tr><td colSpan="6" className="bafm-empty">No work orders in this view | لا توجد أوامر عمل في هذا العرض</td></tr>}</tbody>
-    </table></div>
-   </div>
-
-   <div className="bafm-right-stack">
-    <div className="bafm-panel">
-     <div className="bafm-panel-head"><h2>Preventive Maintenance <span>| الصيانة الوقائية</span></h2><Link to="/ppm">This Month | هذا الشهر</Link></div>
-     <div className="bafm-pm">
-      <div className="bafm-donut" style={{'--pct':ppmCompliance}}><div><strong>{ppmCompliance}%</strong><span>Compliance<br/>الالتزام</span></div></div>
-      <ul><li><i className="navy"/>Scheduled <span>مجدولة</span><b>{data.ppmPending}</b></li><li><i className="green"/>Completed <span>مكتملة</span><b>{data.ppmCompleted}</b></li><li><i className="red"/>Overdue <span>متأخرة</span><b>{data.ppmOverdue}</b></li></ul>
-     </div>
-    </div>
-    <div className="bafm-panel">
-     <div className="bafm-panel-head"><h2>SLA & Alerts <span>| تنبيهات مستوى الخدمة</span></h2></div>
-     <div className="bafm-alerts">{alerts.map(([n,en,ar,tone])=><div key={en} className="bafm-alert-row"><i className={tone}>{tone==='critical'?'!':'△'}</i><div><strong>{n} {en}</strong><span>{n} {ar}</span></div><em className={tone}>{tone==='critical'?'Critical | حرجة':'Warning | تحذير'}</em><b>›</b></div>)}</div>
-    </div>
-   </div>
-  </div>
-
-  {!!quick.length&&<div className="bafm-panel bafm-quick-panel"><div className="bafm-panel-head"><h2>Quick Actions <span>| إجراءات سريعة</span></h2></div><div className="bafm-quick-grid">
-   {quick.map(([to,icon,en,ar])=><Link to={to} key={en} className="bafm-quick"><b>{icon}</b><strong>{en}</strong><span>{ar}</span></Link>)}
-  </div></div>}
-  <div className="bafm-dashboard-footer"><span>BAFM | Basmat Facilities CMMS</span><span>People | Assets | Safety | Sustainability · الناس | الأصول | السلامة | الاستدامة</span></div>
+  {can('corrective.view')&&<article className="workspace-panel"><div className="workspace-section-head"><h2>{s.recent}</h2><Link to="/work-orders">{s.all} ↗</Link></div><div className="workspace-table"><table><thead><tr>{['number','asset','priority','status','due'].map(k=><th key={k}>{s[k]}</th>)}</tr></thead><tbody>{!loading&&data?.rows.map(row=>{
+   const a=data.assets[row.asset_id]
+   return <tr key={row.id}><td><Link to={'/corrective/work_order/'+row.id}><strong>{row.work_order_number}</strong></Link><small>{row.title}</small></td><td>{a?(ar?a.name_ar||a.name_en:a.name_en||a.name_ar)||a.asset_tag:'—'}<small>{a?.serial_number||a?.asset_tag}</small></td><td><span className={'workspace-priority '+(row.priority==='P1'?'urgent':'')}>{t(row.priority)}</span></td><td>{t(row.status)}</td><td>{row.completion_due_at?new Date(row.completion_due_at).toLocaleDateString(lang,{timeZone:'Asia/Riyadh'}):'—'}</td></tr>
+  })}{!loading&&!data?.rows.length&&<tr><td colSpan={5} className="empty">{data?.errors.includes('recent')?s.unavailable:s.empty}</td></tr>}{loading&&<tr><td colSpan={5} className="empty">{s.loading}</td></tr>}</tbody></table></div></article>}
+  {!!quick.length&&<article className="workspace-panel"><h2>{s.quick}</h2><div className="workspace-quick-grid">{quick.map(([to,key])=><Link key={key} to={to}><span>{s[key]}</span><b aria-hidden="true">↗</b></Link>)}</div></article>}
+  {!cards.length&&!quick.length&&!can('ppm.view')&&<div className="facility-panel">{s.noAccess}</div>}
  </section>
 }

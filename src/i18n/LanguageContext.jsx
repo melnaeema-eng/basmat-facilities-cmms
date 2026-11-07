@@ -1,3 +1,4 @@
+import {workspaceLabels} from './workspaceLabels'
 import {productExperienceDict} from '../lib/productExperienceLanguage'
 import {accessReviewDict} from '../lib/accessReviewLanguage'
 import {governanceDict} from '../lib/governanceLanguage'
@@ -201,7 +202,7 @@ const dictionary = {
 }
 
 export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState(() => localStorage.getItem('bf_lang') || 'en')
+  const [lang, setLang] = useState(() => localStorage.getItem('bf_lang') === 'ar' ? 'ar' : 'en')
   useEffect(() => {
     localStorage.setItem('bf_lang', lang)
     document.documentElement.lang = lang
@@ -211,7 +212,7 @@ export function LanguageProvider({ children }) {
   const value = useMemo(() => ({
     lang,
     setLang,
-    t: (key) => productExperienceDict[lang]?.[key] ?? accessReviewDict[lang]?.[key] ?? governanceDict[lang]?.[key] ?? softFmDict[lang]?.[key] ?? organizationOnboardingDict[lang]?.[key] ?? enterpriseStructureDict[lang]?.[key] ?? enterpriseAccessDict[lang]?.[key] ?? releaseReadinessDict[lang]?.[key] ?? securityReadinessDict[lang]?.[key] ?? mobileFieldDict[lang]?.[key] ?? documentControlDict[lang]?.[key] ?? ownerPortalDict[lang]?.[key] ?? executiveDict[lang]?.[key] ?? contractRenewalDict[lang]?.[key] ?? hseDict[lang]?.[key] ?? utilitiesDict[lang]?.[key] ?? permitDict[lang]?.[key] ?? complianceDict[lang]?.[key] ?? reliabilityDict[lang]?.[key] ?? backlogDict[lang]?.[key] ?? workforceDict[lang]?.[key] ?? supplierPerformanceDict[lang]?.[key] ?? planningDict[lang]?.[key] ?? auditDict[lang]?.[key] ?? kpiDict[lang]?.[key] ?? costingDict[lang]?.[key] ?? lifecycleDict[lang]?.[key] ?? documentDict[lang]?.[key] ?? notificationDict[lang]?.[key] ?? approvalDict[lang]?.[key] ?? reportFixDict[lang]?.[key] ?? reportDict[lang]?.[key] ?? fieldDict[lang]?.[key] ?? advancedStockDict[lang]?.[key] ?? procurementDict[lang]?.[key] ?? inventoryDict[lang]?.[key] ?? ppmDict[lang]?.[key] ?? correctiveDict[lang]?.[key] ?? facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
+    t: (key) => workspaceLabels[lang]?.[key] ?? productExperienceDict[lang]?.[key] ?? accessReviewDict[lang]?.[key] ?? governanceDict[lang]?.[key] ?? softFmDict[lang]?.[key] ?? organizationOnboardingDict[lang]?.[key] ?? enterpriseStructureDict[lang]?.[key] ?? enterpriseAccessDict[lang]?.[key] ?? releaseReadinessDict[lang]?.[key] ?? securityReadinessDict[lang]?.[key] ?? mobileFieldDict[lang]?.[key] ?? documentControlDict[lang]?.[key] ?? ownerPortalDict[lang]?.[key] ?? executiveDict[lang]?.[key] ?? contractRenewalDict[lang]?.[key] ?? hseDict[lang]?.[key] ?? utilitiesDict[lang]?.[key] ?? permitDict[lang]?.[key] ?? complianceDict[lang]?.[key] ?? reliabilityDict[lang]?.[key] ?? backlogDict[lang]?.[key] ?? workforceDict[lang]?.[key] ?? supplierPerformanceDict[lang]?.[key] ?? planningDict[lang]?.[key] ?? auditDict[lang]?.[key] ?? kpiDict[lang]?.[key] ?? costingDict[lang]?.[key] ?? lifecycleDict[lang]?.[key] ?? documentDict[lang]?.[key] ?? notificationDict[lang]?.[key] ?? approvalDict[lang]?.[key] ?? reportFixDict[lang]?.[key] ?? reportDict[lang]?.[key] ?? fieldDict[lang]?.[key] ?? advancedStockDict[lang]?.[key] ?? procurementDict[lang]?.[key] ?? inventoryDict[lang]?.[key] ?? ppmDict[lang]?.[key] ?? correctiveDict[lang]?.[key] ?? facilityDict[lang]?.[key] ?? dictionary[lang]?.[key] ?? key,
     dir: lang === 'ar' ? 'rtl' : 'ltr'
   }), [lang])
 
