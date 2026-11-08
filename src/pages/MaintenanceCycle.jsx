@@ -4,6 +4,7 @@ import {useLanguage} from '../i18n/LanguageContext'
 import {readCycle,cycleRpc,migrationMissing} from '../lib/maintenanceCycle'
 import {CycleField,CycleError,CycleSetupNotice,CycleStatus,useCycleLanguage} from '../components/CycleFields'
 import '../cycle.css'
+import CycleAccessReadiness from '../components/CycleAccessReadiness'
 export default function MaintenanceCycle(){
  const {lang}=useLanguage(),L=useCycleLanguage(),navigate=useNavigate()
  const [data,setData]=useState(null),[error,setError]=useState(null),[missing,setMissing]=useState(false),[busy,setBusy]=useState(false),[tab,setTab]=useState('orders'),[project,setProject]=useState(''),[query,setQuery]=useState('')
@@ -22,6 +23,7 @@ export default function MaintenanceCycle(){
  if(missing)return <CycleSetupNotice/>
  return <section className="facility-module"><div className="workspace-page-heading"><span className="workspace-eyebrow">{L('من البلاغ إلى المستخلص','FROM REQUEST TO CERTIFIED STATEMENT')}</span><h1>{L('دورة الصيانة المتكاملة','Integrated maintenance cycle')}</h1><p>{L('أصل واحد · تصحيحية أو وقائية · أمر عمل واحد · قطع غيار · تقرير · اعتماد · شهادة إنجاز · مستخلص · إغلاق.','One asset · corrective or preventive · one work order · materials · report · acceptance · completion certificate · statement · closure.')}</p></div>
   <CycleError error={error}/>{notice&&<div className="alert success" role="status">{notice}</div>}
+  <CycleAccessReadiness/>
   <div className="facility-panel filter-grid"><CycleField label={L('المشروع','Project')}><select value={project} onChange={e=>{setProject(e.target.value);setFault(f=>({...f,asset_id:''}))}}><option value="">{L('كل المشاريع المتاحة','All authorized projects')}</option>{data?.projects.map(p=><option key={p.id} value={p.id}>{p.name} · {p.owner} · {p.provider}</option>)}</select></CycleField><CycleField label={L('بحث في أوامر العمل','Find a work order')}><input value={query} onChange={e=>setQuery(e.target.value)}/></CycleField><button className="btn secondary" onClick={load} disabled={busy}>{L('تحديث','Refresh')}</button></div>
   {selected&&<div className="cycle-chain">{[selected.owner,selected.provider,selected.contract,selected.name].map((x,i)=><span key={i}>{x||'—'}</span>)}<CycleStatus value={selected.policy?.status||'draft'}/></div>}
   <div className="workspace-tab-list" role="tablist">{[['orders','أوامر العمل','Work orders'],['requests','البلاغات','Requests'],['report','تبليغ عن عطل','Report a fault'],['setup','سلسلة الاعتماد','Approval chain']].map(([id,ar,en])=><button key={id} role="tab" aria-selected={tab===id} onClick={()=>setTab(id)}>{L(ar,en)}</button>)}</div>
