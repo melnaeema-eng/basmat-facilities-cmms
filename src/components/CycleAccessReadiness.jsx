@@ -40,7 +40,8 @@ export default function CycleAccessReadiness(){
     if(r.error)throw new Error(name+': '+r.error.message)
     return [name,r.data||[]]
    }))
-   setResult(Object.fromEntries(rows))
+   const grant=await supabase.from('bf44_project_grants').select('valid_until,is_active').eq('project_id',p.id).eq('organization_id',p.organization_id)
+   setResult({...Object.fromEntries(rows),projectGrant:grant.error?null:(grant.data||[])})
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
  const activeNow=row=>row.is_active!==false&&(!row.valid_from||row.valid_from<=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Riyadh'}))&&(!row.valid_until||row.valid_until>=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Riyadh'}))
@@ -60,7 +61,8 @@ export default function CycleAccessReadiness(){
   <button className="btn secondary" disabled={!project||busy} onClick={inspect}>{L('فحص دون تغيير البيانات','Inspect without changing data')}</button>
   {error&&<p role="alert">{error}</p>}
   {result&&<><table><thead><tr><th>{L('المتطلب','Requirement')}</th><th>{L('النتيجة المرئية','Visible result')}</th></tr></thead><tbody>{checks.map(([name,ok])=><tr key={name}><td>{name}</td><td>{ok?L('موجود','Present'):L('غير ظاهر / يحتاج تحقق','Not visible / verify')}</td></tr>)}</tbody></table>
-   <p>{L('الوحدات المرئية','Visible modules')}: {result.modules.map(x=>`${x.module_code}: ${x.is_enabled?'enabled':'disabled'}`).join(', ')||'—'}</p>
+   <p>{L('إذن المشروع المحدود','Scoped project entitlement')}: {result.projectGrant===null?L('غير متاح للفحص','Not available for inspection'):result.projectGrant.map(x=>`${x.is_active?L('نشط حتى','Active until'):L('معطل','Disabled')} ${x.valid_until}`).join(', ')||'—'}</p>
+   <p>{L('الوحدات المرئية لدى الجهة','Visible organization modules')}: {result.modules.map(x=>`${x.module_code}: ${x.is_enabled?'enabled':'disabled'}`).join(', ')||'—'}</p>
    <p>{L('صلاحيات الجهة المسموحة المرئية','Visible allowed organization permissions')}: {result.permissions.filter(x=>x.is_allowed).map(x=>x.permission_key).join(', ')||'—'}</p>
   </>}
  </details>

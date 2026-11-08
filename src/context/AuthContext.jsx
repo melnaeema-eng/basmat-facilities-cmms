@@ -1,9 +1,10 @@
 import {hasFacilitiesPermission} from '../lib/facilitiesPermissions'
+import {hasScopedCyclePermission} from '../lib/scopedCyclePermissions'
 import {createContext,useContext,useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 
 const Context=createContext(null)
-const empty={super_admin:false,organizations:[],roles:[],role_assignments:[],projects:[],permissions:[]}
+const empty={super_admin:false,organizations:[],roles:[],role_assignments:[],projects:[],permissions:[],project_permissions:[]}
 
 export function AuthProvider({children}){
  const [session,setSession]=useState(null)
@@ -12,9 +13,10 @@ export function AuthProvider({children}){
  const [loading,setLoading]=useState(true)
 
  async function readAccess(userId){
-  const [p,a]=await Promise.all([
+  const [p,a,scoped]=await Promise.all([
    supabase.from('bf_profiles').select('id,full_name,email,status,is_super_admin').eq('id',userId).maybeSingle(),
-   supabase.rpc('bf_acl_my_context')
+   supabase.rpc('bf_acl_my_context'),
+   supabase.rpc('bf44_my_project_access')
   ])
   if(p.error)throw p.error
   if(a.error)throw a.error
@@ -30,7 +32,8 @@ export function AuthProvider({children}){
     })),
     organizations:payload.organizations||[],
     projects:payload.projects||[],
-    permissions:payload.permissions||[]
+    permissions:payload.permissions||[],
+    project_permissions:scoped.error||!Array.isArray(scoped.data)?[]:scoped.data
    }
   }
  }
@@ -68,12 +71,16 @@ export function AuthProvider({children}){
  const can=(permission,org=null)=>{
   if(profile?.status!=='active')return false
   if(access?.super_admin)return true
-  return hasFacilitiesPermission(access?.permissions,permission,org)
+  return hasFacilitiesPermission(access?.permissions,permission,org)||
+   hasFacilitiesPermission(access?.project_permissions,permission,org)
  }
 
  const canScoped=(permission,scope={})=>{
   if(!can(permission,scope.organization_id||null))return false
   if(access?.super_admin)return true
+  if(!hasFacilitiesPermission(access?.permissions,permission,scope.organization_id||null)){
+   return hasScopedCyclePermission(access?.project_permissions,permission,scope)
+  }
   if(!scope.project_id&&!scope.site_id&&!scope.discipline_code)return true
 
   return (access?.projects||[]).some(p=>

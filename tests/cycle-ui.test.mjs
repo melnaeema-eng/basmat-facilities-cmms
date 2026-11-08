@@ -21,10 +21,16 @@ test('Financial statement formatting preserves decimal strings and large values 
 })
 
 test('Modern Facilities roles can open the existing operational pages',()=>{
- const permissions=[{organization_id:'provider',permission_key:'facilities.work_orders.view'},{organization_id:'provider',permission_key:'facilities.ppm.manage'}]
+ const permissions=[{organization_id:'provider',permission_key:'facilities.work_orders.view'},{organization_id:'provider',permission_key:'facilities.ppm.execute'}]
  assert.equal(hasFacilitiesPermission(permissions,'corrective.view','provider'),true)
  assert.equal(hasFacilitiesPermission(permissions,'ppm.execute','provider'),true)
  assert.equal(hasFacilitiesPermission(permissions,'corrective.approve','provider'),false)
+})
+test('Management does not silently confer technician execution or independent review',()=>{
+ const permissions=[{organization_id:'provider',permission_key:'facilities.ppm.manage'},{organization_id:'provider',permission_key:'facilities.work_orders.manage'}]
+ for(const key of ['ppm.execute','ppm.approve','corrective.execute','corrective.approve'])assert.equal(hasFacilitiesPermission(permissions,key,'provider'),false)
+ assert.equal(hasFacilitiesPermission([{permission_key:'facilities.work_orders.review'}],'corrective.approve'),true)
+ assert.equal(hasFacilitiesPermission([{permission_key:'finance.manage'}],'costing.manage'),true)
 })
 test('Medical grants do not become Facilities permissions and organization scope remains exact',()=>{
  assert.equal(hasFacilitiesPermission([{organization_id:'medical',permission_key:'medical.work_orders.view'}],'corrective.view'),false)

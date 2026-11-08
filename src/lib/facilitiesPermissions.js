@@ -3,12 +3,12 @@ const aliases={
  'corrective.view':['facilities.work_orders.view'],
  'corrective.request':['facilities.work_orders.manage'],
  'corrective.manage':['facilities.work_orders.manage'],
- 'corrective.execute':['facilities.work_orders.manage'],
- 'corrective.approve':['facilities.work_orders.approve'],
+ 'corrective.execute':['facilities.work_orders.execute'],
+ 'corrective.approve':['facilities.work_orders.review'],
  'ppm.view':['facilities.ppm.view'],
  'ppm.manage':['facilities.ppm.manage'],
- 'ppm.execute':['facilities.ppm.manage'],
- 'ppm.approve':['facilities.ppm.manage'],
+ 'ppm.execute':['facilities.ppm.execute'],
+ 'ppm.approve':['facilities.ppm.review'],
  'assets.view':['facilities.assets.view'],
  'assets.manage':['facilities.assets.manage'],
  'clients.view':['projects.view'],
@@ -22,8 +22,8 @@ const aliases={
  'inventory.manage':['facilities.inventory.manage'],
  'inventory.approve':['facilities.inventory.approve'],
  'documents.generate':['reports.export'],
- 'costing.view':['costing.manage','facilities.statements.view','facilities.statements.manage'],
- 'costing.manage':['facilities.statements.manage'],
+ 'costing.view':['costing.manage','finance.view','finance.manage','facilities.statements.view','facilities.statements.manage'],
+ 'costing.manage':['finance.manage','facilities.statements.manage'],
  'approvals.request':['facilities.work_orders.manage']
 }
 export function hasFacilitiesPermission(permissions,key,organizationId=null){

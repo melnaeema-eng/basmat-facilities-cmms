@@ -115,6 +115,32 @@ and line snapshots are immutable after approval.
 
 ## Security and verification
 
+### Explicit test-project access (046)
+
+Live setup created test project PRJ-000021, its own TEST ONLY owner, zero-value
+contract, simulated site and asset AST-000020 (serial TEST-FM-AC-20261108-001).
+Native role and project assignments were saved, but the organization module,
+permission and project-company binding prerequisites were not visible, leaving
+the integrated center empty. The read-only administrative readiness panel
+exposes this without granting authority or treating RLS-hidden rows as proof
+of absence.
+
+Run 046 manually after deploying this revision. It provisions only the exact
+test project after verifying its name, owner, zero-value contract, test assets
+and already-assigned active administrator. It creates a seven-day project
+entitlement and never creates organization-wide module or permission grants,
+changes user assignments, extends an existing grant or reactivates a revoked
+grant. Organization permission denies, disabled/expired modules and revoked
+project bindings take precedence. Membership, assigned role permissions,
+project/site scope, expiry, independent QA and selected owner acceptance remain
+mandatory. Changing project parties invalidates the entitlement.
+
+The UI discovers only the current caller's server-derived project permissions;
+these do not become permissions on another project or site. The deployed
+execute/review/finance permission keys are mapped separately. Medical grants
+never confer Facilities authority. Live maintenance acceptance and the complete
+training video remain pending until the two actual cycles are closed.
+
 New mutations use checked security-definer RPCs with empty search_path, exact
 project/owner/contract/site validation, explicit assigned permissions, active ACL project
 assignments and appointed reviewer identities. New tables are read-only via
