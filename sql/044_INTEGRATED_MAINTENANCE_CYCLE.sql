@@ -1,7 +1,7 @@
 -- MANUAL INSTALL ONLY. Additive, transactional, rerunnable. Never auto-run by the app.
 -- One asset / one work order / approved report / completion certificate / payment statement.
 begin;
--- Compatibility revision 044.2: deployed bf_acl_* permissions, no legacy consultant table.
+-- Compatibility revision 044.3: unique center RPC; deployed bf_acl_* permissions, no legacy consultant table.
 do $$ declare missing text[];missing_functions text[];
 begin
  select array_agg(name order by name) into missing from unnest(array['bf35_projects','bf35_project_sites','bf_work_orders','bf_service_requests','bf_ppm_jobs','bf_ppm_plans','bf_ppm_results','bf11_approvals','bf11_events','bf13_documents','bf13_document_seq','bf8_material_requests','bf8_material_lines','bf9_evidence','bf9_visits','bf9_labor','bf_inv_requests','bf_profiles','bf_ppm_events','bf_ppm_procedures','bf_assets','bf_inv_parts','bf_corrective_events','bf_work_order_assignments','bf_buildings','bf_floors','bf_zones','bf_rooms','bf_acl_user_organizations','bf_acl_user_projects','bf_acl_project_organizations','bf_acl_user_roles','bf_acl_roles','bf_acl_role_permissions','bf_acl_permissions','bf_acl_organization_permissions','bf_acl_organization_modules']) name
@@ -662,7 +662,7 @@ begin
  'eligible',coalesce((select jsonb_agg(jsonb_build_object('id',c.id,'number',c.certificate_number,'work_order_number',w.work_order_number)) from public.bf44_certificates c join public.bf44_workflows f on f.work_order_id=c.work_order_id join public.bf_work_orders w on w.id=c.work_order_id where f.project_id=st.project_id and not exists(select 1 from public.bf44_statement_lines l where l.certificate_id=c.id) and (c.issued_at at time zone 'Asia/Riyadh')::date between st.period_start and st.period_end),'[]'::jsonb),
  'can_edit',public.bf44_staff(st.project_id,'costing.manage'),'can_review',public.bf44_reviewer(st.project_id,case when st.status='consultant_review' then 'consultant' else 'owner' end));
 end $$;
-create or replace function public.bf44_center(p_org uuid default null)
+create or replace function public.bf44_cycle_center(p_org uuid default null)
 returns jsonb language plpgsql stable security definer set search_path='' as $$
 begin
  if auth.uid() is null then raise exception 'Authentication required' using errcode='42501';end if;
@@ -772,6 +772,6 @@ begin
 end $$;
 grant execute on function public.bf44_staff(uuid,text,uuid),public.bf44_reviewer(uuid,text),public.bf44_view(uuid,uuid) to authenticated;
 grant execute on function public.bf44_approval_action(text,uuid,jsonb) to authenticated;
-grant execute on function public.bf44_policy_save(uuid,uuid,uuid,text),public.bf44_policy_activate(uuid),public.bf44_enroll(uuid,uuid),public.bf44_report_fault(uuid,uuid,text,text,text),public.bf44_convert_request(uuid),public.bf44_assign_ppm(uuid,uuid,uuid),public.bf44_closeout_action(uuid,text),public.bf44_statement_action(text,uuid,jsonb),public.bf44_dossier(uuid),public.bf44_lookup_reviewer(uuid,text,text),public.bf44_statement_read(uuid),public.bf44_center(uuid) to authenticated;
+grant execute on function public.bf44_policy_save(uuid,uuid,uuid,text),public.bf44_policy_activate(uuid),public.bf44_enroll(uuid,uuid),public.bf44_report_fault(uuid,uuid,text,text,text),public.bf44_convert_request(uuid),public.bf44_assign_ppm(uuid,uuid,uuid),public.bf44_closeout_action(uuid,text),public.bf44_statement_action(text,uuid,jsonb),public.bf44_dossier(uuid),public.bf44_lookup_reviewer(uuid,text,text),public.bf44_statement_read(uuid),public.bf44_cycle_center(uuid) to authenticated;
 revoke all on sequence public.bf44_certificate_seq,public.bf44_statement_seq from public,anon,authenticated;
 commit;

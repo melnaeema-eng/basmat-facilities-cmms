@@ -135,3 +135,27 @@ consultant, technician, supervisor and finance accounts. The existing active
 approval chain is frozen; changing appointments after activation needs a future
 controlled contract-amendment workflow. Existing provider-scoped owner/asset
 identities are retained; no cross-company asset transfer migration is included.
+
+## Live compatibility repair 045
+
+The live center returned PostgREST PGRST203 because both
+`bf44_center(p_org uuid)` and the older defaulted four-argument
+`bf44_center(p_org uuid, p_client uuid, p_contract uuid, p_limit integer)` exist.
+Even a typed PostgreSQL call with just one argument is ambiguous in this case.
+
+The current frontend uses the unique `bf44_cycle_center(p_org uuid)` RPC.
+Existing installations of 044 should run only
+`sql/045_MAINTENANCE_CENTER_RPC_COMPATIBILITY.sql` manually in the Facilities
+Supabase project. This transaction renames the exact single-argument function
+without changing its body, owner, security settings or dependent objects. The
+four-argument function, its permissions and all operational rows are untouched.
+The repair is rerunnable and refreshes the PostgREST schema cache. New installs
+of the complete 044 script create the unique endpoint directly.
+
+The client falls back to the old name only when the unique endpoint is missing
+(PGRST202), so an existing non-conflicting 044 installation still works before
+the small repair is applied. Permission failures do not trigger fallback. A
+conflicting legacy endpoint displays the exact manual repair link.
+
+Live preventive/corrective acceptance is still pending; a passing build or
+isolated database test is not a successful maintenance cycle on the website.

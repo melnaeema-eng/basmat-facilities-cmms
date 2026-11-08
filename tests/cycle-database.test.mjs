@@ -47,6 +47,16 @@ test('Integrated database cycle enforces the complete chain in PostgreSQL',async
    assert.equal(await scalar("select bf44_reviewer($1,'consultant')",[project]),true)
    await actor(manager)
   })
+  await t.test('Unique center RPC keeps project ACL checks with a legacy overload installed',async()=>{
+   await db.exec(`create function public.bf44_center(p_org uuid default null,p_client uuid default null,p_contract uuid default null,p_limit integer default 200) returns jsonb language sql as $$select '{"legacy":true}'::jsonb$$`)
+   const center=await scalar('select bf44_cycle_center($1)',[org])
+   assert.equal(center.version,44)
+   assert.equal(center.projects[0].id,project)
+   assert.deepEqual((await scalar('select bf44_cycle_center($1)',[id(999)])).projects,[])
+   await actor(superAdmin)
+   assert.deepEqual((await scalar('select bf44_cycle_center($1)',[org])).projects,[])
+   await actor(manager)
+  })
   await t.test('Modern membership, module and permission revocation take effect immediately',async()=>{
    await q('update bf_acl_user_organizations set is_active=false where user_id=$1',[manager])
    assert.equal(await scalar("select bf44_staff($1,'contracts.manage')",[project]),false)
