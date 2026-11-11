@@ -158,7 +158,20 @@ test('Integrated database cycle enforces the complete chain in PostgreSQL',async
    const ppmWO=id(50),job=id(51),plan=id(52),procedure=id(53),step=id(54)
    await q("insert into bf_work_orders(id,organization_id,client_id,contract_id,site_id,asset_id,work_order_number,title,status) values($1,$2,$3,$4,$5,$6,'WO-PPM','Periodic service','assigned')",[ppmWO,org,client,contract,site,asset]);await q('insert into bf_ppm_plans(id,contract_id) values($1,$2)',[plan,contract]);await q("insert into bf_ppm_procedures values($1,1,'approved')",[procedure]);await q("insert into bf_ppm_jobs(id,plan_id,organization_id,client_id,site_id,asset_id,work_order_id,job_number,status,procedure_snapshot) values($1,$2,$3,$4,$5,$6,$7,'PPM-1','assigned','{\"steps\":[]}')",[job,plan,org,client,site,asset,ppmWO])
    await reject("update bf_work_orders set status='in_progress' where id=$1",[ppmWO],/linked approved PPM checklist/)
-   await q("update bf_ppm_jobs set status='in_progress',started_at=now() where id=$1",[job]);assert.equal(await scalar('select status from bf_work_orders where id=$1',[ppmWO]),'in_progress')
+   // Include the deployed corrective write guard: the old fixture omitted it.
+   const guard=sql('../sql/005_CORRECTIVE_CORE.sql').match(/create or replace function public\.bf4_write_guard\(\)[\s\S]*?end \$\$;/i)[0]
+   await db.exec(guard)
+   await db.exec('create trigger bf4_write_guard before update on bf_work_orders for each row execute function bf4_write_guard()')
+   await reject("update bf_ppm_jobs set status='in_progress',started_at=now() where id=$1",[job],/Use the corrective workflow API/)
+   await db.exec(sql('../sql/050_PPM_MIRROR_AUTHORIZED_WRITE_CONTEXT.sql'))
+   await reject("update bf_work_orders set title='unaudited' where id=$1",[ppmWO],/Use the corrective workflow API/)
+   await actor(superAdmin)
+   await reject("update bf_ppm_jobs set status='in_progress',started_at=now() where id=$1",[job],/PPM project execution permission required/)
+   await actor(manager)
+   await q("update bf_ppm_jobs set status='in_progress',started_at=now() where id=$1",[job]);
+   assert.notEqual(await scalar("select current_setting('bf4.authorized_write',true)"),'yes','Nested authorization must not leak to the caller')
+   await reject("update bf_work_orders set title='still unaudited' where id=$1",[ppmWO],/Use the corrective workflow API/)
+   assert.equal(await scalar('select status from bf_work_orders where id=$1',[ppmWO]),'in_progress')
    await q("update bf_ppm_jobs set status='completed',completed_at=now() where id=$1",[job]);assert.equal(await scalar('select status from bf_work_orders where id=$1',[ppmWO]),'completed')
    await q("update bf_ppm_jobs set status='approved',procedure_id=$2,procedure_snapshot=$3 where id=$1",[job,procedure,{procedure_id:procedure,version:1,name_en:'Pump procedure',steps:[{id:step,seq:1,title_en:'Inspect seals'}]}])
    await reject("select bf44_closeout_action($1,'generate_report')",[ppmWO],/complete PPM results/)
