@@ -11,10 +11,10 @@ const textFields=['serial_number','manufacturer','model','capacity','unit','warr
 const dates=['installation_date','commissioning_date','purchase_date','warranty_start','warranty_end']
 const numbers=['purchase_cost','replacement_cost','expected_life_years']
 const optional=['building_id','floor_id','zone_id','room_id','parent_asset_id',...textFields,...dates,...numbers,'description','notes']
-export default function AssetEditor({record,data,initial={},onSaved,onCancel}){
+export default function AssetEditor({record,data,initial={},librarySelection=null,onSaved,onCancel}){
  const {can}=useAuth(),{t,lang}=useLanguage()
  const [form,setForm]=useState({...blank,...initial,...record,asset_tag:record?.asset_tag||''}),[busy,setBusy]=useState(false),[costReady,setCostReady]=useState(!record),[error,setError]=useState('')
- const [library,setLibrary]=useState(null),[masterTypeId,setMasterTypeId]=useState(''),[manufacturerId,setManufacturerId]=useState(''),[modelFamily,setModelFamily]=useState('')
+ const [library,setLibrary]=useState(null),[masterTypeId,setMasterTypeId]=useState(librarySelection?.type?.id||''),[manufacturerId,setManufacturerId]=useState(librarySelection?.manufacturer?.id||''),[modelFamily,setModelFamily]=useState(librarySelection?.option?.model_family||'')
  useEffect(()=>{
   let activeRequest=true
   setForm({...blank,...initial,...record,asset_tag:record?.asset_tag||''})

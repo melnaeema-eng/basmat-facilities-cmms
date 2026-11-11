@@ -10,8 +10,8 @@ export const modules = [
     "path": "/",
     "page": "Dashboard",
     "permission": null,
-    "en": "Overview",
-    "ar": "نظرة عامة",
+    "en": "Dashboard",
+    "ar": "الرئيسية",
     "icon": "home",
     "group": "overview",
     "nav": true
@@ -124,10 +124,10 @@ export const modules = [
   },
   {
     "path": "/asset-library",
-    "page": "MasterAssetLibrary",
+    "page": "FacilitiesLibrary",
     "permission": "assets.view",
     "en": "Asset Library",
-    "ar": "مكتبة الأصول والصيانة",
+    "ar": "مكتبة الأصول",
     "icon": "grid",
     "group": "assets",
     "nav": true
@@ -196,8 +196,8 @@ export const modules = [
     "path": "/ppm",
     "page": "PPM",
     "permission": "ppm.view",
-    "en": "Preventive Maintenance",
-    "ar": "الصيانة الوقائية",
+    "en": "Preventive Schedule",
+    "ar": "جدول الصيانة الوقائية",
     "icon": "calendar",
     "group": "operations",
     "nav": false
@@ -276,8 +276,8 @@ export const modules = [
     "path": "/reports",
     "page": "ReportsHub",
     "permission": "reports.view",
-    "en": "Reports",
-    "ar": "التقارير",
+    "en": "Management Reports",
+    "ar": "تقارير الإدارة",
     "icon": "report",
     "group": "insights",
     "nav": true
@@ -546,9 +546,9 @@ export const modules = [
     "path": "/documents",
     "page": "Documents",
     "permission": "documents.view",
-    "en": "Documents",
-    "ar": "المستندات",
-    "icon": "work",
+    "en": "Reports & Certificates",
+    "ar": "التقارير والشهادات",
+    "icon": "doc",
     "group": "assurance",
     "nav": true
   },
@@ -596,7 +596,7 @@ export const modules = [
     "path": "/users",
     "page": "UsersRoles",
     "permission": "users.view",
-    "en": "Users & access",
+    "en": "Users & Access",
     "ar": "المستخدمون والصلاحيات",
     "icon": "users",
     "group": "administration",
@@ -641,6 +641,26 @@ export const modules = [
     "en": "Maintenance statement",
     "ar": "مستخلص الصيانة",
     "group": "supply",
+    "nav": false
+  },
+  {
+    "path": "/facility-asset-cockpit",
+    "page": "FacilitiesAssetCockpit",
+    "permission": "assets.view",
+    "en": "Assets & Maintenance",
+    "ar": "الأصول والصيانة",
+    "icon": "asset",
+    "group": "operations",
+    "nav": true
+  },
+  {
+    "path": "/library-admin",
+    "page": "MasterAssetLibrary",
+    "permission": "assets.view",
+    "en": "Library administration",
+    "ar": "إدارة المكتبة",
+    "icon": "grid",
+    "group": "assets",
     "nav": false
   }
 ]

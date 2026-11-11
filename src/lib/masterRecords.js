@@ -1,3 +1,4 @@
+import {ownerLogoSource} from './ownerLogo'
 import {supabase} from './supabaseClient'
 
 export const MASTER_TABLES={
@@ -24,7 +25,7 @@ export async function readMasterBundle(){
 export function normalizeMaster(key,form){
  const fields={
   organizations:['name','code','status'],
-  clients:['organization_id','name','code','email','phone','status'],
+  clients:['organization_id','name','code','email','phone','status','logo_url'],
   contracts:['organization_id','client_id','contract_number','contract_type','start_date','end_date','contract_value','status'],
   sites:['organization_id','client_id','contract_id','name','code','city','address','latitude','longitude','location_source','status']
  }
@@ -33,6 +34,7 @@ export function normalizeMaster(key,form){
  for(const k of Object.keys(p))if(p[k]==='')p[k]=null
  if(key==='organizations')p.name=String(form.name||'').trim()
  if(key==='clients'||key==='sites')p.name=String(form.name||'').trim()
+ if(key==='clients'){p.tenant_id=form.organization_id;p.logo_url=ownerLogoSource(form.logo_url)||null;if(form.logo_url&&!p.logo_url)throw Error('Invalid owner logo / شعار المالك غير صالح')}
  if(key==='sites'){
   if(p.latitude!==null)p.latitude=Number(p.latitude)
   if(p.longitude!==null)p.longitude=Number(p.longitude)
@@ -49,7 +51,7 @@ export function normalizeMaster(key,form){
   if(!p.organization_id)throw Error('Organization is required')
  }
  if(key==='contracts'||key==='sites'){
-  if(!p.client_id)throw Error('Client is required')
+  if(!p.client_id)throw Error('Owner is required')
  }
  return p
 }
@@ -57,6 +59,12 @@ export async function writeMaster(key,form,id){
  const table=MASTER_TABLES[key]
  if(!table)throw Error('Unknown master table')
  const payload=normalizeMaster(key,form)
+ if(key==='clients'){
+  // Shared organization-tenant bootstrap; its legacy API name is retained.
+  // The server validates the current account before preparing this company.
+  const {error}=await supabase.rpc('bf_med_ensure_org_tenant',{p_org:payload.organization_id})
+  if(error)throw error
+ }
  const q=id?supabase.from(table).update(payload).eq('id',id):supabase.from(table).insert(payload)
  const {data,error}=await q.select('*').single()
  if(error)throw error

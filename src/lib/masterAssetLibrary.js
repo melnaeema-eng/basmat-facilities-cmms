@@ -1,6 +1,6 @@
 import {supabase} from './supabaseClient'
 
-const PAGE_SIZE=1000
+const PAGE_SIZE=500
 
 async function fetchAll(table,{orderBy=null}={}){
  const rows=[]
@@ -8,6 +8,7 @@ async function fetchAll(table,{orderBy=null}={}){
  while(true){
   let q=supabase.from(table).select('*').range(from,from+PAGE_SIZE-1)
   if(orderBy)q=q.order(orderBy,{ascending:true})
+  q=q.order('id',{ascending:true})
   const {data,error}=await q
   if(error)throw error
   const batch=data||[]

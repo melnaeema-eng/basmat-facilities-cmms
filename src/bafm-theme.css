@@ -56,20 +56,62 @@ body{background:var(--bafm-bg)}
 .org-context-select{max-width:230px;min-width:150px}
 @media(max-width:800px){.guided-workflow-bar{grid-template-columns:1fr auto}.guided-workflow-progress{grid-column:1/-1}.org-context-select{max-width:140px}}
 
-
 /* BASMAT DUAL BRANDING V1 */
-.bafm-logo-block.dual-branding{padding-block:16px}
-.dual-brand-row{display:flex;align-items:center;justify-content:center;gap:10px;min-height:72px}
-.dual-brand-primary,.dual-brand-org{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:72px}
-.dual-brand-primary img{max-width:76px;max-height:54px;object-fit:contain}
-.dual-brand-primary span,.dual-brand-org small{font-size:9px;line-height:1.2;text-align:center;max-width:110px}
-.dual-brand-org img{max-width:90px;max-height:54px;object-fit:contain}
-.dual-brand-divider{font-weight:700;opacity:.5}
-.org-logo-fallback{width:48px;height:48px;border-radius:12px;place-items:center;font-weight:800;border:1px solid currentColor;opacity:.8}
-@media(max-width:900px){
- .dual-brand-primary span,.dual-brand-org small{display:none}
- .dual-brand-primary img{max-width:52px}
- .dual-brand-org img{max-width:58px}
+.bafm-logo-block.dual-branding{
+ padding-block:16px;
+}
+
+.dual-brand-row{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ min-height:72px;
+}
+
+.dual-brand-primary,
+.dual-brand-org{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:4px;
+ min-width:72px;
+}
+
+.dual-brand-primary img{
+ max-width:76px;
+ max-height:54px;
+ object-fit:contain;
+}
+
+.dual-brand-org img{
+ max-width:90px;
+ max-height:54px;
+ object-fit:contain;
+}
+
+.dual-brand-primary span,
+.dual-brand-org small{
+ font-size:9px;
+ line-height:1.2;
+ text-align:center;
+ max-width:110px;
+}
+
+.dual-brand-divider{
+ font-weight:700;
+ opacity:.5;
+}
+
+.org-logo-fallback{
+ width:48px;
+ height:48px;
+ border-radius:12px;
+ place-items:center;
+ font-weight:800;
+ border:1px solid currentColor;
+ opacity:.8;
 }
 
 

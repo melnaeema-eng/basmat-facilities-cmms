@@ -1,10 +1,11 @@
-import {useMemo,useState} from 'react'
+﻿import {useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import {useMasterRecords} from '../lib/useMasterRecords'
-import {isActive,labelFor} from '../lib/masterRecords'
+import {isActive,labelFor,writeMaster} from '../lib/masterRecords'
+import {ownerLogoSource,readOwnerLogo} from '../lib/ownerLogo'
 import SiteGeoFields from '../components/SiteGeoFields'
 
 const configs={
@@ -13,7 +14,7 @@ const configs={
   fields:[['name','text',true],['code','reference'],['status','status']]
  },
  clients:{
-  permission:'clients',empty:{organization_id:'',name:'',code:'',email:'',phone:'',status:'active'},
+  permission:'clients',empty:{organization_id:'',name:'',code:'',email:'',phone:'',logo_url:'',status:'active'},
   fields:[['organization_id','organization',true],['name','text',true],['code','reference'],['email','email'],['phone','tel'],['status','status']]
  },
  contracts:{
@@ -21,7 +22,7 @@ const configs={
   fields:[['organization_id','organization',true],['client_id','client',true],['contract_number','text',true],['contract_type','contractType'],['start_date','date'],['end_date','date'],['contract_value','number'],['status','status']]
  },
  sites:{
-  permission:'sites',empty:{organization_id:'',client_id:'',contract_id:'',name:'',code:'',city:'',address:'',latitude:'',longitude:'',location_source:'',status:'active'},
+  permission:'sites',empty:{organization_id:'',client_id:'',contract_id:'',name:'',code:'',city:'',address:'',status:'active'},
   fields:[['organization_id','organization',true],['client_id','client',true],['contract_id','contract'],['name','text',true],['code','reference'],['city','text'],['address','text'],['status','status']]
  }
 }
@@ -35,9 +36,11 @@ export default function MasterManagement({kind}){
  const state=useMasterRecords(kind)
  const {rows,bundle,loading,busy,error,success,setError,setSuccess,refresh,persist}=state
  const [form,setForm]=useState(cfg.empty),[editing,setEditing]=useState(null),[open,setOpen]=useState(false)
+ const [ownerOpen,setOwnerOpen]=useState(false),[ownerBusy,setOwnerBusy]=useState(false),[ownerError,setOwnerError]=useState(''),[addedOwners,setAddedOwners]=useState([])
+ const [ownerForm,setOwnerForm]=useState({name:'',email:'',phone:'',logo_url:''})
  const [search,setSearch]=useState(''),[filterOrg,setFilterOrg]=useState(''),[filterClient,setFilterClient]=useState(''),[filterStatus,setFilterStatus]=useState('')
- const name=(key)=>t(fieldNames[key]||key)
- const orgs=bundle.organizations||[],clients=bundle.clients||[],contracts=bundle.contracts||[]
+ const name=(key)=>key==='client_id'&&kind==='contracts'?(lang==='ar'?'المالك':'Owner'):key==='logo_url'?(lang==='ar'?'شعار المالك':'Owner logo'):t(fieldNames[key]||key)
+ const orgs=bundle.organizations||[],clients=[...(bundle.clients||[]),...addedOwners.filter(o=>!(bundle.clients||[]).some(c=>c.id===o.id))],contracts=bundle.contracts||[]
  const allowedOrg=o=>can(cfg.permission+'.view',o.id)||can(cfg.permission+'.manage',o.id)
  const canManage=r=>can(cfg.permission+'.manage',kind==='organizations'?r.id:r.organization_id)
  const visible=useMemo(()=>rows.filter(r=>{
@@ -47,16 +50,38 @@ export default function MasterManagement({kind}){
   return !search||Object.values(r).some(v=>typeof v==='string'&&v.toLowerCase().includes(search.toLowerCase()))
  }),[rows,search,filterOrg,filterClient,filterStatus,kind])
  const start=(row=null)=>{
+  setOwnerOpen(false);setOwnerError('')
   setEditing(row?.id||null)
   const initial={...cfg.empty,...(row||{})}
   for(const k of Object.keys(cfg.empty))if(initial[k]===null||initial[k]===undefined)initial[k]=''
   if(!row&&kind!=='organizations')initial.organization_id=filterOrg||orgs.filter(isActive).find(o=>can(cfg.permission+'.manage',o.id))?.id||''
   if(!row&&kind==='sites')initial.client_id=filterClient||''
-  if(!row)initial.code=''
+  if(!row)initial.code='';
   setForm(initial);setOpen(true);setError('');setSuccess('')
  }
  const set=(key,value)=>{
   setForm(f=>({...f,[key]:value,...(key==='organization_id'?{client_id:'',contract_id:''}:key==='client_id'?{contract_id:''}:{})}))
+ }
+ const startOwner=()=>{
+  setOwnerForm({name:'',email:'',phone:'',logo_url:''});setOwnerError('');setOwnerOpen(true)
+ }
+ const saveOwner=async e=>{
+  e.preventDefault()
+  if(ownerBusy)return
+  setOwnerError('')
+  const ownerName=ownerForm.name.trim()
+  if(!ownerName){setOwnerError(lang==='ar'?'أدخل اسم المالك':'Enter the owner name');return}
+  if(!form.organization_id||!can('clients.manage',form.organization_id)){setOwnerError(t('noPermission'));return}
+  setOwnerBusy(true)
+  try{
+   const saved=await writeMaster('clients',{...ownerForm,name:ownerName,organization_id:form.organization_id,status:'active'})
+   setAddedOwners(old=>[saved,...old.filter(o=>o.id!==saved.id)])
+   setForm(f=>({...f,client_id:saved.id,contract_id:''}))
+   setOwnerOpen(false)
+   setSuccess(lang==='ar'?'تمت إضافة المالك واختياره للعقد':'Owner added and selected for the contract')
+   await refresh({silent:true})
+  }catch(e){setOwnerError(e.message||String(e))}
+  finally{setOwnerBusy(false)}
  }
  const submit=async e=>{
   e.preventDefault()
@@ -66,6 +91,7 @@ export default function MasterManagement({kind}){
    const saved=await persist(form,editing)
    setOpen(false);setEditing(null);setForm(cfg.empty)
    setSuccess(t('saved'))
+   // A new record is never hidden by an old organization/client/status filter.
    if(kind==='organizations')setFilterOrg('')
    else setFilterOrg(saved.organization_id||'')
    if(kind==='clients')setFilterClient('')
@@ -89,15 +115,16 @@ export default function MasterManagement({kind}){
  const renderField=([key,type,required])=>{
   const value=form[key]??''
   return <label key={key} className={key==='address'?'span-2':''}>{name(key)}
-   {type==='reference'?<input value={value||'Auto-generated on save / يُنشأ عند الحفظ'} readOnly aria-label={name(key)} />:
+   {type==='reference'?<input value={value||'Auto-generated on save / ظٹظڈظ†ط´ط£ ط¹ظ†ط¯ ط§ظ„ط­ظپط¸'} readOnly aria-label={name(key)} />:
    ['organization','client','contract','status','contractType'].includes(type)?
     <select required={!!required} value={value} disabled={busy||(editing&&key==='organization_id')||(editing&&key==='client_id'&&['contracts','sites'].includes(kind))} onChange={e=>set(key,e.target.value)}>
      <option value="">{t('select')}</option>{options(key).map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
     </select>:
     <input type={type} required={!!required} min={type==='number'?'0':undefined} step={type==='number'?'0.01':undefined} value={value} disabled={busy} onChange={e=>set(key,e.target.value)}/>}
+   {kind==='contracts'&&key==='client_id'&&!editing&&<span style={{display:'block',marginTop:8}}>{can('clients.manage',form.organization_id)&&form.organization_id?<button type="button" className="btn secondary" disabled={busy} onClick={startOwner}>{lang==='ar'?'+ إضافة مالك جديد':'+ Add new owner'}</button>:<small>{lang==='ar'?'إضافة مالك جديد تتطلب صلاحية إدارة المالكين في الشركة المحددة':'Adding an owner requires owner management permission in the selected organization'}</small>}</span>}
   </label>
  }
- const col=(key,label,render)=>({key,label:t(label),render})
+ const col=(key,label,render)=>({key,label:label==='client'&&kind==='contracts'?name('client_id'):t(label),render})
  const columns=kind==='organizations'?[col('name','name'),col('code','code')]:
  kind==='clients'?[col('name','name'),col('organization','organization',r=>labelFor(orgs,r.organization_id)),col('email','email'),col('phone','phone')]:
  kind==='contracts'?[col('contract_number','contractNumber'),col('client','client',r=>labelFor(clients,r.client_id)),col('contract_type','contractType',r=>t(r.contract_type)),col('start_date','startDate'),col('end_date','endDate')]:
@@ -112,18 +139,28 @@ export default function MasterManagement({kind}){
   <div className="facility-panel filter-grid">
    <label>{t('search')}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t('search')}/></label>
    <label>{t('organization')}<select value={filterOrg} onChange={e=>{setFilterOrg(e.target.value);setFilterClient('')}}><option value="">{t('all')}</option>{orgs.filter(allowedOrg).map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
-   {kind!=='organizations'&&<label>{t('client')}<select value={filterClient} onChange={e=>setFilterClient(e.target.value)}><option value="">{t('all')}</option>{clients.filter(c=>!filterOrg||c.organization_id===filterOrg).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
+   {kind!=='organizations'&&<label>{kind==='contracts'?name('client_id'):t('client')}<select value={filterClient} onChange={e=>setFilterClient(e.target.value)}><option value="">{t('all')}</option>{clients.filter(c=>!filterOrg||c.organization_id===filterOrg).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
    <label>{t('status')}<select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">{t('all')}</option>{statuses[kind].map(v=><option key={v} value={v}>{t(v)}</option>)}</select></label>
   </div>
   <div className="facility-toolbar"><span>{visible.length} / {rows.length}</span>{loading&&<span>{t('loading')}</span>}</div>
   <DataTable columns={columns} rows={visible} emptyText={loading?t('loading'):t('noData')}/>
-  <Modal open={open} title={editing?t('edit'):t('add')} onClose={()=>!busy&&setOpen(false)}>
-   <form onSubmit={submit} className="form-grid">
+  <Modal open={open} title={ownerOpen?(lang==='ar'?'إضافة مالك جديد':'Add new owner'):editing?t('edit'):t('add')} onClose={()=>{if(!busy&&!ownerBusy){if(ownerOpen)setOwnerOpen(false);else setOpen(false)}}}>
+   {ownerOpen?<form onSubmit={saveOwner} className="form-grid">
+    <p className="span-2">{lang==='ar'?'سيُحفظ المالك ويُختار تلقائيًا في العقد. الشركة: ':'The owner will be saved and selected for this contract. Organization: '}{labelFor(orgs,form.organization_id)}</p>
+    {ownerError&&<div className="alert error span-2" role="alert">{ownerError}</div>}
+    <label className="span-2">{lang==='ar'?'اسم المالك':'Owner name'}<input autoFocus required value={ownerForm.name} disabled={ownerBusy} onChange={e=>setOwnerForm(f=>({...f,name:e.target.value}))}/></label>
+    <label>{lang==='ar'?'البريد الإلكتروني — اختياري':'Email — optional'}<input type="email" value={ownerForm.email} disabled={ownerBusy} onChange={e=>setOwnerForm(f=>({...f,email:e.target.value}))}/></label>
+    <label>{lang==='ar'?'الهاتف — اختياري':'Phone — optional'}<input type="tel" value={ownerForm.phone} disabled={ownerBusy} onChange={e=>setOwnerForm(f=>({...f,phone:e.target.value}))}/></label>
+    <label className="span-2">{lang==='ar'?'شعار المالك — اختياري':'Owner logo — optional'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={ownerBusy} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;setOwnerBusy(true);setOwnerError('');try{const logo=await readOwnerLogo(file);setOwnerForm(f=>({...f,logo_url:logo}))}catch(e){setOwnerError(e.message)}finally{setOwnerBusy(false)}}}/></label>
+    {ownerLogoSource(ownerForm.logo_url)&&<div className="span-2"><img src={ownerLogoSource(ownerForm.logo_url)} alt={lang==='ar'?'شعار المالك':'Owner logo'} style={{width:90,height:65,objectFit:'contain'}}/><button type="button" className="btn secondary" disabled={ownerBusy} onClick={()=>setOwnerForm(f=>({...f,logo_url:''}))}>{lang==='ar'?'إزالة الشعار':'Remove logo'}</button></div>}
+    <div className="form-actions"><button type="button" className="btn secondary" disabled={ownerBusy} onClick={()=>setOwnerOpen(false)}>{lang==='ar'?'العودة للعقد':'Back to contract'}</button><button className="btn primary" disabled={ownerBusy}>{ownerBusy?t('loading'):(lang==='ar'?'حفظ المالك والمتابعة':'Save owner and continue')}</button></div>
+   </form>:<form onSubmit={submit} className="form-grid">
+   <SiteGeoFields kind={kind} form={form} set={set} lang={lang}/>
     {error&&<div className="alert error span-2" role="alert">{error}</div>}
     {cfg.fields.map(renderField)}
-    <SiteGeoFields kind={kind} form={form} set={set} lang={lang}/>
+    {kind==='clients'&&<div className="span-2"><label>{lang==='ar'?'شعار المالك — يظهَر في التقارير والجواز والتاق والمستندات':'Owner logo — shared by reports, passports, tags and documents'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={async e=>{try{const file=e.target.files?.[0];if(file)set('logo_url',await readOwnerLogo(file))}catch(e){setError(e.message)}}}/></label><label>{lang==='ar'?'أو رابط HTTPS للشعار':'Or logo HTTPS URL'}<input type="url" value={String(form.logo_url||'').startsWith('data:')?'':form.logo_url||''} disabled={busy} onChange={e=>set('logo_url',e.target.value)} placeholder="https://…"/></label>{ownerLogoSource(form.logo_url)&&<div style={{display:'flex',alignItems:'center',gap:12,marginTop:10}}><img src={ownerLogoSource(form.logo_url)} alt={lang==='ar'?'معاينة شعار المالك':'Owner logo preview'} style={{width:90,height:65,objectFit:'contain'}}/><button type="button" className="btn" onClick={()=>set('logo_url','')}>{lang==='ar'?'إزالة الشعار':'Remove logo'}</button></div>}</div>}
     <div className="form-actions"><button type="button" className="btn secondary" disabled={busy} onClick={()=>setOpen(false)}>{t('cancel')}</button><button className="btn primary" disabled={busy}>{busy?t('loading'):t('save')}</button></div>
-   </form>
+   </form>}
   </Modal>
  </section>
 }

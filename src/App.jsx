@@ -10,6 +10,8 @@ import Login from './pages/Login'
 import {modules} from './config/modules'
 import './basmat-print-signature.css'
 const pages = {
+ FacilitiesAssetCockpit:lazy(()=>import('./pages/FacilitiesAssetCockpit.jsx')),
+ FacilitiesLibrary:lazy(()=>import('./pages/FacilitiesLibrary.jsx')),
  MaintenanceDossier:lazy(()=>import('./pages/MaintenanceDossier.jsx')),
  MaintenanceStatements:lazy(()=>import('./pages/MaintenanceStatements.jsx')),
  MaintenanceStatementDetails:lazy(()=>import('./pages/MaintenanceStatementDetails.jsx')),

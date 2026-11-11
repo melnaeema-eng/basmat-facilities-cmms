@@ -29,7 +29,7 @@ export default function Login() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-head">
-          <div className="brand-mark large">BF</div>
+          <img src="/bafm-logo.png" alt="Basmat Alnawabigh" style={{width:80,height:80,objectFit:"contain",borderRadius:16}}/>
           <h1>{t('appName')}</h1>
           <p>{lang==='ar'?'إدارة الأصول والصيانة والتشغيل':'Assets, maintenance and operations'}</p>
         </div>

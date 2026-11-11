@@ -1,7 +1,14 @@
 import {useEffect,useMemo,useState} from 'react'
-import {Link,useParams} from 'react-router-dom'
+import {Link,useParams,useSearchParams} from 'react-router-dom'
+import OwnerBrand from '../components/OwnerBrand'
+import {ownerLogoSource} from '../lib/ownerLogo'
+import {loadOwnerIdentity} from '../lib/ownerIdentity'
+import QRCode from 'qrcode'
 import {supabase} from '../lib/supabaseClient'
+import {PUBLIC_ASSET_COLUMNS} from '../lib/facility'
+import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
+import {loadPassportLocation,passportLocationFields} from '../lib/passportLocation'
 
 const fmt=v=>v?new Date(v).toLocaleDateString(): '—'
 const money=v=>v==null?'—':Number(v).toLocaleString(undefined,{maximumFractionDigits:2})
@@ -26,19 +33,35 @@ async function safeMany(table,assetId,orderCol='created_at'){
 
 export default function AssetPassport(){
  const {id}=useParams()
+ const [ownerIdentity,setOwnerIdentity]=useState(null)
+ const [params]=useSearchParams()
+ const tagView=params.get('view')==='tag'
  const {lang}=useLanguage()
+ const {can}=useAuth()
  const ar=lang==='ar'
  const [asset,setAsset]=useState(null)
  const [related,setRelated]=useState({})
  const [assets,setAssets]=useState([])
  const [loading,setLoading]=useState(true)
  const [error,setError]=useState('')
+ const [qr,setQr]=useState('')
+ const [qrError,setQrError]=useState(false)
+ const [cost,setCost]=useState(null)
+
+ useEffect(()=>{
+  let alive=true
+  setQr('');setQrError(false)
+  if(id)QRCode.toDataURL(`${window.location.origin}/asset-passport/${id}`,{width:600,margin:4,errorCorrectionLevel:'M'})
+   .then(value=>{if(alive)setQr(value)})
+   .catch(()=>{if(alive)setQrError(true)})
+  return()=>{alive=false}
+ },[id])
 
  useEffect(()=>{
   let alive=true
   ;(async()=>{
    try{
-    setLoading(true);setError('')
+    setLoading(true);setError('');setCost(null)
     if(!id){
      const {data,error}=await supabase.from('bf_assets')
       .select('id,asset_tag,name_ar,name_en,manufacturer,model,status,operational_status,criticality')
@@ -47,23 +70,24 @@ export default function AssetPassport(){
      if(alive)setAssets(data||[])
      return
     }
-    const {data:a,error:e}=await supabase.from('bf_assets').select('*').eq('id',id).single()
+    const {data:a,error:e}=await supabase.from('bf_assets').select(PUBLIC_ASSET_COLUMNS).eq('id',id).single()
     if(e)throw e
-    const [org,client,site,category,building,floor,zone,room,wo,ppm,inspections,warranty]=await Promise.all([
+    if(can('assets.manage',a.organization_id)){
+     const c=await supabase.rpc('bf3_asset_cost',{p_id:id})
+     if(alive&&!c.error)setCost(c.data)
+    }
+    const [org,client,locationRecords,category,wo,ppm,inspections,warranty,ownerBrand]=await Promise.all([
      safeOne('bf_organizations',a.organization_id),
      safeOne('bf_clients',a.client_id),
-     safeOne('bf_sites',a.site_id),
+     loadPassportLocation(a,safeOne),
      safeOne('bf_asset_categories',a.category_id),
-     safeOne('bf_buildings',a.building_id),
-     safeOne('bf_floors',a.floor_id),
-     safeOne('bf_zones',a.zone_id),
-     safeOne('bf_rooms',a.room_id),
      safeMany('bf_work_orders',a.id),
      safeMany('bf_ppm_jobs',a.id,'due_date'),
      safeMany('bf14_asset_inspections',a.id,'inspected_at'),
-     safeMany('bf14_warranty_claims',a.id,'created_at')
+     safeMany('bf14_warranty_claims',a.id,'created_at'),
+     loadOwnerIdentity({organizationId:a.organization_id,clientId:a.client_id,siteId:a.site_id}).catch(()=>null)
     ])
-    if(alive){setAsset(a);setRelated({org,client,site,category,building,floor,zone,room,wo,ppm,inspections,warranty})}
+    if(alive){setOwnerIdentity(ownerBrand);setAsset(a);setRelated({org,client,...locationRecords,category,wo,ppm,inspections,warranty})}
    }catch(ex){if(alive)setError(ex.message||String(ex))}
    finally{if(alive)setLoading(false)}
   })()
@@ -72,34 +96,56 @@ export default function AssetPassport(){
 
  const location=useMemo(()=>{
   if(!asset)return '—'
-  const vals=[
-   related.site?.name||related.site?.name_en||related.site?.name_ar,
-   related.building?.name||related.building?.name_en||related.building?.name_ar,
-   related.floor?.name||related.floor?.name_en||related.floor?.name_ar,
-   related.zone?.name||related.zone?.name_en||related.zone?.name_ar,
-   related.room?.name||related.room?.name_en||related.room?.name_ar
-  ].filter(Boolean)
-  return vals.length?vals.join(' / '):(asset.location_node_id||'—')
- },[asset,related])
+  const vals=passportLocationFields(related,lang).map(field=>field.value).filter(Boolean)
+  return vals.length?vals.join(' / '):'—'
+ },[asset,related,lang])
 
  if(loading)return <section className="facility-module"><div className="facility-panel">{ar?'جاري التحميل...':'Loading...'}</div></section>
  if(error)return <section className="facility-module"><div className="facility-panel" style={{color:'#b42318'}}>{error}</div></section>
 
  if(!id)return <section className="facility-module">
-  <div className="page-head"><div><h1>{ar?'جوازات الأصول':'Asset Passports'}</h1><p>{ar?'اختر أصلاً لفتح جوازه التشغيلي الكامل.':'Select an asset to open its operational passport.'}</p></div></div>
+  <div className="page-head"><div><h1>{ar?'جوازات أصول المرافق':'Facility Asset Passports'}</h1><p>{ar?'اختر أصلاً لفتح جوازه التشغيلي والصياني الكامل.':'Select a facility asset to open its operational and maintenance passport.'}</p></div></div>
   <div className="facility-panel" style={{overflowX:'auto'}}>
    <table style={{width:'100%',borderCollapse:'collapse'}}>
     <thead><tr><th>{ar?'رقم الأصل':'Asset tag'}</th><th>{ar?'الاسم':'Name'}</th><th>{ar?'الشركة':'Manufacturer'}</th><th>{ar?'الموديل':'Model'}</th><th>{ar?'الحالة':'Status'}</th><th/></tr></thead>
     <tbody>{assets.map(x=><tr key={x.id} style={{borderTop:'1px solid #e7edf3'}}>
      <td>{x.asset_tag}</td><td>{ar?x.name_ar:x.name_en}</td><td>{x.manufacturer||'—'}</td><td>{x.model||'—'}</td><td>{x.operational_status||x.status}</td>
-     <td><Link className="btn primary" to={`/asset-passport/${x.id}`}>{ar?'فتح الجواز':'Open passport'}</Link></td>
+     <td><Link className="btn primary" to={`/asset-passport/${x.id}`}>{ar?'فتح جواز الأصل':'Open asset passport'}</Link></td>
     </tr>)}</tbody>
    </table>
   </div>
  </section>
 
  const wo=related.wo||[], ppm=related.ppm||[], inspections=related.inspections||[], warranty=related.warranty||[]
- const qrData=encodeURIComponent(`${window.location.origin}/asset-passport/${asset.id}`)
+ const deviceName=(ar?asset.name_ar:asset.name_en)||asset.name_en||asset.name_ar||asset.asset_tag
+ const qrImage=qr?<img alt={ar?'رمز QR لجواز الأصل':'Asset passport QR code'} width="150" height="150" src={qr}/>:<p role="status">{qrError?(ar?'تعذر إنشاء QR؛ أعد تحميل الصفحة.':'Could not generate QR. Reload the page.'):(ar?'جارٍ تجهيز QR…':'Preparing QR…')}</p>
+ if(tagView)return <section className="facility-module">
+  <style>{`
+   .device-tag{box-sizing:border-box;width:90mm;min-height:60mm;padding:4mm;border:1px solid #17324d;border-radius:3mm;background:#fff;color:#10273f;display:grid;grid-template-columns:minmax(0,1fr) 29mm;gap:3mm;align-items:center;font-family:Arial,sans-serif}
+   .device-tag .device-tag-brand{display:flex;align-items:center;justify-content:space-between;gap:2mm}.device-tag .device-tag-brand>span{font-size:8px;max-width:35mm}
+   .device-tag h2{font-size:20px;margin:4px 0}.device-tag p{margin:4px 0;font-size:11px;overflow-wrap:anywhere}.device-tag img{display:block;width:29mm;height:29mm}.device-tag .device-tag-brand{grid-column:1/-1;font-size:11px;font-weight:700;border-bottom:2px solid #f28c28;padding-bottom:2mm}
+   @media screen and (max-width:450px){.device-tag{width:100%;grid-template-columns:minmax(0,1fr) 29mm}}
+   @media print{
+    @page{size:90mm 60mm;margin:0}
+    html:has(.device-tag),body:has(.device-tag){width:90mm!important;height:60mm!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;background:#fff!important}
+    body:has(.device-tag) *{visibility:visible!important}
+    body:has(.device-tag) *:not(:has(.device-tag)):not(.device-tag):not(.device-tag *){display:none!important}
+    body:has(.device-tag) *:has(.device-tag){display:block!important;position:static!important;width:90mm!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;transform:none!important;box-shadow:none!important;border:0!important}
+    body:has(.device-tag)::before,body:has(.device-tag)::after,body:has(.device-tag) *:has(.device-tag)::before,body:has(.device-tag) *:has(.device-tag)::after{display:none!important;content:none!important}
+    .device-tag{position:static!important;inset:auto!important;display:grid!important;width:90mm!important;height:60mm!important;min-height:0!important;margin:0!important;box-shadow:none!important;border:0!important;border-radius:0!important;break-inside:avoid;page-break-inside:avoid;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+   }
+  `}</style>
+  <div className="page-head no-print"><div><h1>{ar?'تاق الأصل':'Asset tag'} — {asset.asset_tag}</h1><p>{ar?'ملصق 90 × 60 مم. رمز QR يفتح جواز الأصل بعد تسجيل الدخول.':'90 × 60 mm label. Scan QR to open the asset passport after signing in.'}</p></div><div className="row-actions">
+   <Link className="btn" to="/facility-asset-cockpit">{ar?'الأصول والصيانة':'Assets and maintenance'}</Link>
+   <Link className="btn" to={`/asset-passport/${asset.id}`}>{ar?'جواز الأصل':'Asset passport'}</Link>
+   <button className="btn primary" disabled={!qr} onClick={()=>window.print()}>{ar?'طباعة التاق / PDF':'Print tag / PDF'}</button>
+  </div></div>
+  <div className="device-tag" dir={ar?'rtl':'ltr'}>
+   <div className="device-tag-brand"><OwnerBrand identity={ownerIdentity} lang={lang} compact/><span style={{display:'flex',alignItems:'center',gap:4}}>{ownerLogoSource(related.org?.logo_url)&&<img src={ownerLogoSource(related.org.logo_url)} alt={ar?'شعار شركة الصيانة':'Maintenance company logo'} style={{width:'10mm',height:'8mm',objectFit:'contain'}}/>}{(ar?related.org?.name_ar:related.org?.name_en)||related.org?.name||'Basmat Alnawabigh'}</span></div>
+   <div><h2 dir="ltr">{asset.asset_tag}</h2><p><strong>{deviceName}</strong></p><p>{asset.manufacturer} {asset.exact_model||asset.model}</p><p>{ar?'السيريال':'Serial'}: <b dir="ltr">{asset.serial_number||'—'}</b></p><p>{(ar?related.site?.name_ar:related.site?.name_en)||related.site?.name||''}</p></div>
+   <div>{qrImage}<p style={{textAlign:'center',fontSize:10}}>{ar?'امسح لفتح الجواز':'Scan for passport'}</p></div>
+  </div>
+ </section>
  return <section className="facility-module asset-passport">
   <style>{`
    .passport-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
@@ -113,16 +159,18 @@ export default function AssetPassport(){
 
   <div className="page-head">
    <div>
-    <h1>{ar?'جواز الأصل':'Asset Passport'} — {asset.asset_tag}</h1>
+    <h1>{ar?'جواز الأصل':'Facility Asset Passport'} — {asset.asset_tag}</h1>
     <p>{ar?asset.name_ar:asset.name_en}</p>
    </div>
    <div className="no-print" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
     <Link className="btn" to="/asset-passport">{ar?'كل الجوازات':'All passports'}</Link>
     <Link className="btn" to={`/assets/${asset.id}`}>{ar?'سجل الأصل':'Asset record'}</Link>
+    <Link className="btn primary" to={`/asset-passport/${asset.id}?view=tag`}>{ar?'طباعة التاق وQR':'Print asset tag and QR'}</Link>
     <button className="btn" onClick={()=>window.print()}>{ar?'طباعة / PDF':'Print / PDF'}</button>
    </div>
   </div>
 
+  <div style={{marginBottom:14,display:'flex',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><OwnerBrand identity={ownerIdentity} lang={lang}/><OwnerBrand identity={related.org?{name:(ar?related.org.name_ar:related.org.name_en)||related.org.name,logo_url:related.org.logo_url}:null} lang={lang} label={ar?'شركة الصيانة':'Maintenance company'}/></div>
   <div className="facility-panel" style={{display:'grid',gridTemplateColumns:'1fr auto',gap:18,alignItems:'start'}}>
    <div>
     <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>
@@ -131,21 +179,30 @@ export default function AssetPassport(){
      <span className={'passport-status '+statusClass(asset.criticality)}>{asset.criticality}</span>
     </div>
     <div className="passport-grid">
+     <Info l={ar?'شركة الصيانة':'Service provider'} v={(ar?related.org?.name_ar:related.org?.name_en)||related.org?.name}/>
+     <Info l={ar?'المالك':'Owner'} v={(ar?related.client?.name_ar:related.client?.name_en)||related.client?.name}/>
      <Info l={ar?'الشركة المصنعة':'Manufacturer'} v={asset.manufacturer}/>
      <Info l={ar?'الموديل':'Model'} v={asset.model}/>
      <Info l={ar?'الرقم التسلسلي':'Serial number'} v={asset.serial_number}/>
      <Info l={ar?'السعة':'Capacity'} v={[asset.capacity,asset.unit].filter(Boolean).join(' ')}/>
      <Info l={ar?'التصنيف':'Category'} v={related.category?.name_ar||related.category?.name_en||related.category?.code}/>
-     <Info l={ar?'الموقع':'Location'} v={location}/>
     </div>
    </div>
    <div style={{textAlign:'center'}}>
-    <img alt="Asset QR" width="150" height="150" src={`https://quickchart.io/qr?size=150&text=${qrData}`}/>
+    {qrImage}
     <div style={{fontSize:10,marginTop:4}}>{asset.asset_tag}</div>
    </div>
   </div>
 
-  <h2>{ar?'التركيب والضمان':'Installation & Warranty'}</h2>
+  <div className="facility-panel" style={{marginTop:16,borderInlineStart:'4px solid #96c975'}}>
+   <h2 style={{marginTop:0}}>{ar?'موقع الأصل بالتفصيل':'Asset location'}</h2>
+   <p style={{color:'#52677b'}}>{location}</p>
+   <div className="passport-grid">{passportLocationFields(related,lang).map(field=><Info key={field.key} l={field.label} v={field.value||(ar?'غير محدد':'Not specified')}/>)}</div>
+   {passportLocationFields(related,lang).some(field=>field.missing)&&<p role="status">{ar?'بعض تفاصيل الموقع غير مسجلة أو غير متاحة للعرض.':'Some location details are not recorded or are unavailable.'}</p>}
+   {can('assets.manage',asset.organization_id)&&<Link className="btn no-print" style={{marginTop:12}} to={`/assets/${asset.id}`}>{ar?'استكمال / تعديل موقع الأصل':'Complete / edit device location'}</Link>}
+  </div>
+
+  <h2>{ar?'التركيب والتشغيل والضمان':'Installation, Commissioning & Warranty'}</h2>
   <div className="passport-grid">
    <Info l={ar?'تاريخ التركيب':'Installation'} v={fmt(asset.installation_date)}/>
    <Info l={ar?'التشغيل':'Commissioning'} v={fmt(asset.commissioning_date)}/>
@@ -153,12 +210,12 @@ export default function AssetPassport(){
    <Info l={ar?'بداية الضمان':'Warranty start'} v={fmt(asset.warranty_start)}/>
    <Info l={ar?'نهاية الضمان':'Warranty end'} v={fmt(asset.warranty_end)}/>
    <Info l={ar?'مزود الضمان':'Warranty provider'} v={asset.warranty_provider}/>
-   <Info l={ar?'تكلفة الشراء':'Purchase cost'} v={money(asset.purchase_cost)}/>
-   <Info l={ar?'تكلفة الاستبدال':'Replacement cost'} v={money(asset.replacement_cost)}/>
+   {can('assets.manage',asset.organization_id)&&<Info l={ar?'تكلفة الشراء':'Purchase cost'} v={money(cost?.purchase_cost)}/>}
+   {can('assets.manage',asset.organization_id)&&<Info l={ar?'تكلفة الاستبدال':'Replacement cost'} v={money(cost?.replacement_cost)}/>}
    <Info l={ar?'العمر المتوقع':'Expected life'} v={asset.expected_life_years?`${asset.expected_life_years} ${ar?'سنة':'years'}`:'—'}/>
   </div>
 
-  <h2>{ar?'الصيانة الوقائية PPM':'Preventive Maintenance / PPM'}</h2>
+  <h2>{ar?'الصيانة الوقائية لأصول المرافق / PPM':'Facility Preventive Maintenance / PPM'}</h2>
   <Table rows={ppm} columns={[
    ['job_number',ar?'رقم المهمة':'Job'],['due_date',ar?'الاستحقاق':'Due'],['status',ar?'الحالة':'Status']
   ]} link={r=>r.id?`/ppm/job/${r.id}`:null}/>
@@ -168,7 +225,7 @@ export default function AssetPassport(){
    ['work_order_number',ar?'رقم الأمر':'WO'],['title',ar?'العنوان':'Title'],['priority',ar?'الأولوية':'Priority'],['status',ar?'الحالة':'Status']
   ]}/>
 
-  <h2>{ar?'الفحوصات ودورة الحياة':'Inspections & Lifecycle'}</h2>
+  <h2>{ar?'الفحوصات والحالة ودورة الحياة':'Inspections, Condition & Lifecycle'}</h2>
   <Table rows={inspections} columns={[
    ['inspected_at',ar?'تاريخ الفحص':'Inspection'],['condition',ar?'الحالة':'Condition'],['operational_status',ar?'التشغيل':'Operational'],['score',ar?'النتيجة':'Score'],['notes',ar?'ملاحظات':'Notes']
   ]}/>
@@ -178,7 +235,7 @@ export default function AssetPassport(){
    ['claim_number',ar?'رقم المطالبة':'Claim'],['provider',ar?'المزود':'Provider'],['status',ar?'الحالة':'Status'],['issue',ar?'المشكلة':'Issue']
   ]}/>
 
-  <h2>{ar?'الصور والمستندات':'Photos & Documents'}</h2>
+  <h2>{ar?'الصور والمستندات الفنية':'Technical Photos & Documents'}</h2>
   <div className="facility-panel">
    <p style={{marginTop:0}}>{ar?'استخدم مركز المستندات لرفع وربط الصور والملفات الخاصة بالأصل.':'Use Document Control to upload and manage asset photos and documents.'}</p>
    <div className="no-print" style={{display:'flex',gap:8,flexWrap:'wrap'}}>
