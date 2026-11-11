@@ -13,7 +13,7 @@ const ROUTES={
   titleAr:'البلاغ / الصيانة التصحيحية',
   steps:[
    step('organization',['organization_id','organization'],/organization|المنظمة|الجهة/i,'/organizations'),
-   step('client',['client_id','client','customer'],/client|customer|العميل/i,'/clients'),
+   step('client',['client_id','client','customer'],/client|customer|owner|المالك/i,'/owners'),
    step('site',['site_id','site','facility'],/site|facility|الموقع|المرفق/i,'/sites'),
    step('asset',['asset_id','asset','equipment','device'],/asset|equipment|device|الأصل|الجهاز/i,'/assets',false),
    step('title',['title','subject'],/title|subject|العنوان|الموضوع/i,null),
@@ -40,7 +40,7 @@ const ROUTES={
   titleAr:'إعداد المشروع',
   steps:[
    step('organization',['organization_id','organization'],/organization|المنظمة/i,'/organizations'),
-   step('client',['client_id','client'],/client|العميل/i,'/clients'),
+   step('client',['client_id','client'],/client|owner|المالك/i,'/owners'),
    step('contract',['contract_id','contract'],/contract|العقد/i,'/contracts',false),
    step('project_name',['name','project_name'],/project name|اسم المشروع|الاسم/i,null),
    step('project',['project_id','project'],/project|المشروع/i,null),
@@ -54,7 +54,7 @@ const ROUTES={
   titleAr:'تسجيل الأصل',
   steps:[
    step('organization',['organization_id','organization'],/organization|المنظمة/i,'/organizations'),
-   step('client',['client_id','client'],/client|العميل/i,'/clients'),
+   step('client',['client_id','client'],/client|owner|المالك/i,'/owners'),
    step('site',['site_id','site'],/site|الموقع/i,'/sites'),
    step('category',['category_id','category'],/category|التصنيف/i,'/asset-categories'),
    step('name_ar',['name_ar'],/الاسم بالعربية/i,null,false),

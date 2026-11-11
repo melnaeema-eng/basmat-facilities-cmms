@@ -10,6 +10,7 @@ export default function FacilitiesLibrary(){
  const [data,setData]=useState(null),[error,setError]=useState(''),[query,setQuery]=useState(''),[system,setSystem]=useState(''),[selection,setSelection]=useState(null),[limit,setLimit]=useState(36)
  async function load(){try{setError('');setData(await loadMasterAssetLibrary())}catch(e){setError(e.message)}}
  useEffect(()=>{load()},[])
+ useEffect(()=>{if(!selection)return;const close=e=>{if(e.key==='Escape')setSelection(null)};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[selection])
  const types=useMemo(()=>catalogTypes(data,query,system),[data,query,system])
  const systems=[...new Set((data?.types||[]).filter(activeCatalog).map(t=>t.system_code))].sort()
  const templates=selection?templatesForSelection(data,selection):[]

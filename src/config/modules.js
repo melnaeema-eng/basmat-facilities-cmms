@@ -26,11 +26,11 @@ export const modules = [
       "contracts.view",
       "costing.view"
     ],
-    "en": "Maintenance cycle",
-    "ar": "دورة الصيانة",
+    "en": "Closeout, certificates & statements",
+    "ar": "الإغلاق والشهادات والمستخلصات",
     "icon": "work",
     "group": "operations",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/organizations",
@@ -40,7 +40,7 @@ export const modules = [
     "ar": "المنظمات",
     "icon": "org",
     "group": "setup",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/soft-fm",
@@ -60,7 +60,7 @@ export const modules = [
     "ar": "مصفوفة الحوكمة",
     "icon": "work",
     "group": "administration",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/access-review",
@@ -70,7 +70,7 @@ export const modules = [
     "ar": "مراجعة الوصول",
     "icon": "work",
     "group": "administration",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/owners",
@@ -80,7 +80,7 @@ export const modules = [
     "ar": "الملاك",
     "icon": "client",
     "group": "setup",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/contracts",
@@ -96,31 +96,31 @@ export const modules = [
     "path": "/sites",
     "page": "Sites",
     "permission": "sites.view",
-    "en": "Facilities / Sites",
-    "ar": "المرافق والمواقع",
+    "en": "Facilities / sites",
+    "ar": "المنشآت والمواقع",
     "icon": "building",
     "group": "setup",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/locations",
     "page": "LocationManagement",
     "permission": "locations.view",
-    "en": "Locations",
-    "ar": "المواقع",
+    "en": "Buildings, floors & rooms",
+    "ar": "المباني والطوابق والغرف",
     "icon": "pin",
     "group": "setup",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/asset-categories",
     "page": "AssetCategories",
     "permission": "assets.view",
-    "en": "Asset Categories",
-    "ar": "تصنيفات الأصول",
+    "en": "Company asset categories",
+    "ar": "تصنيفات أصول الشركة",
     "icon": "grid",
     "group": "assets",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/asset-library",
@@ -136,11 +136,11 @@ export const modules = [
     "path": "/assets",
     "page": "AssetRegister",
     "permission": "assets.view",
-    "en": "Assets",
-    "ar": "الأصول",
+    "en": "Detailed asset register",
+    "ar": "سجل الأصول التفصيلي",
     "icon": "asset",
     "group": "assets",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/assets/:id",
@@ -156,8 +156,8 @@ export const modules = [
     "path": "/asset-passport",
     "page": "AssetPassport",
     "permission": "assets.view",
-    "en": "AssetPassport",
-    "ar": "AssetPassport",
+    "en": "Asset passports & QR tags",
+    "ar": "جوازات الأصول وتاق QR",
     "icon": "work",
     "group": "assets",
     "nav": false
@@ -180,7 +180,7 @@ export const modules = [
     "ar": "أوامر العمل",
     "icon": "work",
     "group": "operations",
-    "nav": false
+    "nav": true
   },
   {
     "path": "/corrective/:kind/:id",
@@ -200,7 +200,7 @@ export const modules = [
     "ar": "جدول الصيانة الوقائية",
     "icon": "calendar",
     "group": "operations",
-    "nav": false
+    "nav": true
   },
   {
     "path": "/ppm/:kind/:id",
@@ -256,11 +256,11 @@ export const modules = [
     "path": "/advanced-stock",
     "page": "AdvancedStock",
     "permission": "inventory.view",
-    "en": "Advanced Stock",
-    "ar": "المخزون المتقدم",
+    "en": "Spare-parts requests & reservations",
+    "ar": "طلبات قطع الغيار والحجز",
     "icon": "stack",
     "group": "supply",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/advanced-stock/:id",
@@ -290,7 +290,7 @@ export const modules = [
     "ar": "مؤشرات الأداء",
     "icon": "chart",
     "group": "insights",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/audit",
@@ -300,7 +300,7 @@ export const modules = [
     "ar": "سجل التدقيق",
     "icon": "audit",
     "group": "administration",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/planning",
@@ -310,7 +310,7 @@ export const modules = [
     "ar": "التقويم التشغيلي",
     "icon": "calendar",
     "group": "operations",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/supplier-performance",
@@ -320,7 +320,7 @@ export const modules = [
     "ar": "الموردون",
     "icon": "truck",
     "group": "supply",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/workforce",
@@ -330,7 +330,7 @@ export const modules = [
     "ar": "القوى العاملة",
     "icon": "users",
     "group": "operations",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/backlog",
@@ -340,7 +340,7 @@ export const modules = [
     "ar": "الأعمال المتراكمة",
     "icon": "list",
     "group": "insights",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/reliability",
@@ -350,7 +350,7 @@ export const modules = [
     "ar": "الاعتمادية",
     "icon": "pulse",
     "group": "insights",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/compliance",
@@ -360,7 +360,7 @@ export const modules = [
     "ar": "الامتثال",
     "icon": "check",
     "group": "assurance",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/permits",
@@ -370,7 +370,7 @@ export const modules = [
     "ar": "التصاريح",
     "icon": "permit",
     "group": "assurance",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/utilities",
@@ -380,7 +380,7 @@ export const modules = [
     "ar": "المرافق الخدمية",
     "icon": "bolt",
     "group": "operations",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/hse",
@@ -390,7 +390,7 @@ export const modules = [
     "ar": "السلامة والصحة المهنية",
     "icon": "shield",
     "group": "assurance",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/contract-renewal",
@@ -400,7 +400,7 @@ export const modules = [
     "ar": "تجديد العقود",
     "icon": "renew",
     "group": "supply",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/executive",
@@ -410,7 +410,7 @@ export const modules = [
     "ar": "اللوحة التنفيذية",
     "icon": "dashboard",
     "group": "insights",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/document-control",
@@ -420,7 +420,7 @@ export const modules = [
     "ar": "ضبط المستندات",
     "icon": "folder",
     "group": "assurance",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/field-mobile",
@@ -430,7 +430,7 @@ export const modules = [
     "ar": "العمل الميداني",
     "icon": "mobile",
     "group": "operations",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/qr-scan",
@@ -440,7 +440,7 @@ export const modules = [
     "ar": "مسح QR للأصل",
     "icon": "mobile",
     "group": "operations",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/security-readiness",
@@ -450,7 +450,7 @@ export const modules = [
     "ar": "الأمن",
     "icon": "lock",
     "group": "administration",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/release-readiness",
@@ -460,37 +460,37 @@ export const modules = [
     "ar": "جاهزية النظام",
     "icon": "check",
     "group": "administration",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/enterprise-access",
     "page": "EnterpriseAccess",
     "permission": "enterprise-access.view",
-    "en": "Project access",
-    "ar": "صلاحيات المشاريع",
+    "en": "Project & site access scope",
+    "ar": "نطاق الوصول للمشروع والموقع",
     "icon": "work",
     "group": "administration",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/enterprise-structure",
     "page": "EnterpriseStructure",
     "permission": "enterprise-structure.view",
-    "en": "Structure",
-    "ar": "الهيكل التشغيلي",
+    "en": "Project links & operating teams",
+    "ar": "ربط المشاريع وفرق التشغيل",
     "icon": "tree",
     "group": "setup",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/facility-reference-library",
     "page": "FacilitiesReferenceLibrary",
     "permission": "enterprise-structure.view",
-    "en": "Facilities reference library",
-    "ar": "المكتبة المرجعية للمرافق",
+    "en": "Owner & service-company directory",
+    "ar": "دليل الملاك وشركات الصيانة",
     "icon": "building",
     "group": "assets",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/roles-permissions",
@@ -506,11 +506,11 @@ export const modules = [
     "path": "/library-deployment",
     "page": "LibraryDeployment",
     "permission": "assets.view",
-    "en": "Library → Project → PPM",
-    "ar": "المكتبة → المشروع → PPM",
+    "en": "Adopt library procedures & schedule PPM",
+    "ar": "اعتماد إجراءات المكتبة وجدولة الوقائية",
     "icon": "calendar",
     "group": "assets",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/technician-execution",
@@ -520,7 +520,7 @@ export const modules = [
     "ar": "تنفيذ الفني",
     "icon": "work",
     "group": "operations",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/approvals",
@@ -540,7 +540,7 @@ export const modules = [
     "ar": "الإشعارات",
     "icon": "work",
     "group": "administration",
-    "nav": false
+    "nav": true
   },
   {
     "path": "/documents",
@@ -560,7 +560,7 @@ export const modules = [
     "ar": "دورة حياة الأصل",
     "icon": "work",
     "group": "assets",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/maintenance-costing",
@@ -570,7 +570,7 @@ export const modules = [
     "ar": "تكاليف الصيانة",
     "icon": "work",
     "group": "supply",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/owner-portal",
@@ -628,7 +628,7 @@ export const modules = [
     "en": "Maintenance statements",
     "ar": "مستخلصات الصيانة",
     "group": "supply",
-    "nav": true
+    "nav": false
   },
   {
     "path": "/statements/:id",
@@ -657,8 +657,8 @@ export const modules = [
     "path": "/library-admin",
     "page": "MasterAssetLibrary",
     "permission": "assets.view",
-    "en": "Library administration",
-    "ar": "إدارة المكتبة",
+    "en": "Manage catalog types & templates",
+    "ar": "إدارة أنواع وقوالب المكتبة",
     "icon": "grid",
     "group": "assets",
     "nav": false

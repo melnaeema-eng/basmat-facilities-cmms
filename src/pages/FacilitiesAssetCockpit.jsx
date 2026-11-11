@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react'
+import {useEffect,useMemo,useRef,useState} from 'react'
 import {Link,useLocation,useNavigate} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
 import {useAuth} from '../context/AuthContext'
@@ -12,17 +12,31 @@ export default function FacilitiesAssetCockpit(){
  const pick=location.state?.registration||null
  const [data,setData]=useState(null),[projects,setProjects]=useState([]),[links,setLinks]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[loading,setLoading]=useState(false)
  const [org,setOrg]=useState(()=>localStorage.getItem('basmat.active.organization')||access?.home_organization_id||''),[project,setProject]=useState(''),[site,setSite]=useState(''),[query,setQuery]=useState(location.state?.query||''),[registration,setRegistration]=useState(!!pick),[editing,setEditing]=useState(null),[limit,setLimit]=useState(40)
+ const request=useRef(0)
  async function load(){
+  const ticket=++request.current
   setLoading(true);setError('')
   try{
-   const d=await loadAll();setData(d)
-   const {data:map,error:mapError}=await supabase.from('bf35_project_sites').select('project_id,organization_id,site_id,client_id').eq('organization_id',org||'00000000-0000-0000-0000-000000000000')
-   if(mapError)throw mapError
-   setLinks(map||[])
-   if(org){const {data:s,error}=await supabase.rpc('bf35_structure',{p_org:org});if(error)throw error;setProjects((s?.projects||[]).map(p=>({...p,organization_id:org})).filter(p=>p.status!=='closed'))}else setProjects([])
-  }catch(e){setError(e.message)}finally{setLoading(false)}
+   const d=await loadAll()
+   if(ticket!==request.current)return
+   setData(d)
+   if(!org)return
+   const [map,structure]=await Promise.all([
+    supabase.from('bf35_project_sites').select('project_id,organization_id,site_id,client_id').eq('organization_id',org),
+    supabase.rpc('bf35_structure',{p_org:org})
+   ])
+   if(ticket!==request.current)return
+   if(map.error)throw map.error
+   if(structure.error)throw structure.error
+   setLinks(map.data||[])
+   setProjects((structure.data?.projects||[]).map(p=>({...p,organization_id:org})).filter(p=>p.status!=='closed'))
+  }catch(e){if(ticket===request.current){setError(e.message);setProjects([]);setLinks([])}}finally{if(ticket===request.current)setLoading(false)}
  }
- useEffect(()=>{load()},[org])
+ useEffect(()=>{setProjects([]);setLinks([]);load();return()=>{++request.current}},[org])
+ useEffect(()=>{
+  if(typeof location.state?.query==='string'){setQuery(location.state.query);setLimit(40)}
+  if(location.state?.registration)setRegistration(true)
+ },[location.key])
  const selected=projects.find(p=>p.id===project)
  const sites=new Set(links.filter(l=>l.project_id===project).map(l=>l.site_id))
  const siteRows=(data?.sites||[]).filter(s=>s.organization_id===org&&s.status==='active'&&sites.has(s.id))

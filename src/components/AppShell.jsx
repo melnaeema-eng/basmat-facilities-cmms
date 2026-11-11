@@ -2,18 +2,14 @@ import {NavLink,Outlet,useLocation,useNavigate,Link} from 'react-router-dom'
 import {useEffect,useMemo,useRef,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
-import {modules,moduleGroups,moduleLabel,permitted} from '../config/modules'
+import {modules,moduleLabel,permitted} from '../config/modules'
 import {supabase} from '../lib/supabaseClient'
 import GuidedWorkflowBar from './GuidedWorkflowBar'
+import RelatedTools from './RelatedTools'
+import {navigationGroups as groups,isNavigableModule,secondaryNavigation,familyForPath} from '../config/navigation'
 import '../bafm-theme.css'
 import '../workspace.css'
 import '../facilities-product.css'
-const groups=[
- {en:'Work',ar:'التشغيل',paths:['/','/facility-asset-cockpit','/corrective','/ppm','/approvals','/documents','/notifications']},
- {en:'Setup',ar:'الإعداد',paths:['/project-setup','/asset-library','/contracts','/users','/roles-permissions']},
- {en:'Support',ar:'المساندة',paths:['/inventory','/procurement','/reports']}
-]
-const primaryPaths=new Set(groups.flatMap(g=>g.paths))
 function NavIcon({type}){
  const common={width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.9,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true}
  const paths={
@@ -51,7 +47,7 @@ export default function AppShell(){
  const [logoutError,setLogoutError]=useState(false),[orgError,setOrgError]=useState(false)
  const content=useRef(null),toggle=useRef(null),platformAdmin=!!access?.super_admin,homeId=access?.home_organization_id||null
  const available=useMemo(()=>modules.filter(m=>permitted(m,can)),[can])
- const extra=available.filter(m=>m.nav&&!primaryPaths.has(m.path)&&!['/assets','/work-orders'].includes(m.path))
+ const extra=secondaryNavigation(can)
  const name=profile?.full_name||user?.email||(ar?'المستخدم':'User')
  useEffect(()=>{let alive=true;async function load(){if(!platformAdmin&&!homeId)return;let q=supabase.from('bf_organizations').select('id,name,name_ar,name_en,code,status,logo_url').neq('status','archived').order('name');if(!platformAdmin)q=q.eq('id',homeId);const {data,error}=await q;if(alive){setOrganizations(data||[]);setOrgError(!!error)}}load();return()=>{alive=false}},[platformAdmin,homeId])
  useEffect(()=>{if(!platformAdmin){setActiveOrgId(homeId||'');if(homeId)localStorage.setItem('basmat.active.organization',homeId);else localStorage.removeItem('basmat.active.organization')}},[platformAdmin,homeId])
@@ -62,20 +58,20 @@ export default function AppShell(){
  const orgName=org?(ar?org.name_ar||org.name||org.name_en:org.name_en||org.name||org.name_ar):(ar?'نطاق الصلاحيات المسندة':'Assigned access scope')
  function chooseOrganization(id){setActiveOrgId(id);if(id)localStorage.setItem('basmat.active.organization',id);else localStorage.removeItem('basmat.active.organization');window.dispatchEvent(new CustomEvent('basmat-organization-changed',{detail:{organization_id:id||null}}))}
  async function logout(){setLogoutError(false);try{const result=await signOut();if(result?.error)throw result.error}catch{setLogoutError(true)}}
- function search(e){e.preventDefault();const term=query.trim().toLowerCase();if(!term)return;const hit=available.filter(m=>m.nav||primaryPaths.has(m.path)).find(m=>[m.ar,m.en].join(' ').toLowerCase().includes(term));if(hit)navigate(hit.path);else navigate('/facility-asset-cockpit',{state:{query}})}
- const item=(m)=><NavLink key={m.path} to={m.path} end={m.path==='/'} className={({isActive})=>'bafm-nav-item '+(isActive?'active':'')}><span className="bafm-nav-icon"><NavIcon type={m.icon}/></span><span>{moduleLabel(m,lang)}</span></NavLink>
+ function search(e){e.preventDefault();const term=query.trim().toLowerCase();if(!term)return;const hit=available.filter(isNavigableModule).find(m=>[m.ar,m.en].join(' ').toLowerCase().includes(term));if(hit)navigate(hit.path);else navigate('/facility-asset-cockpit',{state:{query}})}
+ const item=(m)=><NavLink key={m.path} to={m.path} end={m.path==='/'} className={({isActive})=>'bafm-nav-item '+(isActive||familyForPath(location.pathname)?.root===m.path?'active':'')}><span className="bafm-nav-icon"><NavIcon type={m.icon}/></span><span>{moduleLabel(m,lang)}</span></NavLink>
  return <div className="bafm-shell" dir={ar?'rtl':'ltr'}>
   <a className="bafm-skip" href="#workspace-content">{ar?'انتقل إلى المحتوى':'Skip to content'}</a>
   {mobileOpen&&<button className="bafm-mobile-scrim" onClick={()=>setMobileOpen(false)} aria-label={ar?'إغلاق القائمة':'Close navigation'}/>}
   <aside id="workspace-navigation" className={'bafm-sidebar '+(mobileOpen?'is-open':'')} aria-label={ar?'القائمة الرئيسية':'Main navigation'}>
    <div className="bafm-logo-block"><div className="dual-brand-row"><Link to="/"><img src="/bafm-logo.png" alt="Basmat Alnawabigh"/></Link>{org?.logo_url&&<div><img src={org.logo_url} alt={orgName} onError={e=>{e.currentTarget.hidden=true}}/><small>{orgName}</small></div>}</div><div className="bafm-logo-word">BAFM</div><div className="bafm-logo-sub">{ar?'بصمة النوابغ · إدارة المرافق':'Basmat Alnawabigh · Facilities'}</div><div className="bafm-logo-tiny">{ar?'نظام إدارة صيانة المرافق والأصول':'FACILITIES & ASSET MAINTENANCE MANAGEMENT SYSTEM'}</div></div>
    <nav className="bafm-nav">{groups.map(g=>{const items=g.paths.map(p=>available.find(m=>m.path===p)).filter(Boolean);return !!items.length&&<section className="bafm-nav-section" key={g.en}><h2 className="bafm-nav-title">{ar?g.ar:g.en}</h2>{items.map(item)}</section>})}
-    {!!extra.length&&<details className="bafm-more"><summary>{ar?'المزيد من وظائف المرافق':'More facilities tools'}</summary>{moduleGroups.map(([id,en,arabic])=>{const items=extra.filter(m=>m.group===id);return !!items.length&&<section className="bafm-nav-section bafm-extra-nav" key={id}><h2 className="bafm-nav-title">{ar?arabic:en}</h2>{items.map(item)}</section>})}</details>}
+    {!!extra.length&&<section className="bafm-nav-section"><h2 className="bafm-nav-title">{ar?'خدمات إضافية':'Additional services'}</h2>{extra.map(item)}</section>}
    </nav><div className="bafm-sidebar-footer">BAFM · Facilities</div>
   </aside>
   <div className="bafm-main"><header className="bafm-topbar"><button type="button" ref={toggle} className="btn bafm-mobile-toggle" aria-expanded={mobileOpen} aria-controls="workspace-navigation" onClick={()=>setMobileOpen(v=>!v)} aria-label={ar?'فتح القائمة':'Open navigation'}>☰</button><div className="bafm-top-title"><strong>{ar?'بصمة النوابغ لإدارة صيانة المرافق':'Basmat Facilities CMMS'}</strong></div><form className="bafm-search" onSubmit={search}><NavIcon type="report"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={ar?'ابحث في الوحدات والأصول…':'Search modules and assets…'} aria-label={ar?'بحث':'Search'}/></form><div className="bafm-top-actions">{platformAdmin&&organizations.length>0&&<select value={activeOrgId} onChange={e=>chooseOrganization(e.target.value)} aria-label={ar?'شركة الصيانة':'Maintenance company'}><option value="">{ar?'نطاق الصلاحيات المسندة':'Assigned access scope'}</option>{organizations.map(o=><option key={o.id} value={o.id}>{ar?o.name_ar||o.name||o.name_en:o.name_en||o.name||o.name_ar}</option>)}</select>}<button className="bafm-top-btn" onClick={()=>setLang(ar?'en':'ar')}>{ar?'EN':'عربي'}</button>{can('notifications.view')&&<button className="bafm-bell" onClick={()=>navigate('/notifications')} aria-label={ar?'الإشعارات':'Notifications'}><NavIcon type="bell"/></button>}<div className="bafm-user"><span className="bafm-avatar">{name.slice(0,1)}</span><strong>{name}</strong></div><button className="bafm-signout" onClick={logout} aria-label={ar?'خروج':'Sign out'}>↪</button></div></header>
    <div className="bafm-welcome">{ar?'مرحبًا ':'Welcome '}{name} — {orgName}</div>{(logoutError||orgError)&&<div className="alert error" role="alert">{logoutError?(ar?'تعذر تسجيل الخروج.':'Sign out failed.'):(ar?'تعذر تحميل الشركات.':'Could not load companies.')}</div>}
-   <main id="workspace-content" ref={content} tabIndex={-1} className="workspace-content" key={activeOrgId}>{new URLSearchParams(location.search).get('setup')==='1'&&<Link className="workspace-return" to="/project-setup">{ar?'العودة إلى إعداد المشروع':'Back to project setup'}</Link>}<GuidedWorkflowBar/><Outlet/></main>
+   <main id="workspace-content" ref={content} tabIndex={-1} className="workspace-content" key={activeOrgId}>{new URLSearchParams(location.search).get('setup')==='1'&&<Link className="workspace-return" to="/project-setup">{ar?'العودة إلى إعداد المشروع':'Back to project setup'}</Link>}<RelatedTools/><GuidedWorkflowBar/><Outlet/></main>
   </div>
  </div>
 }
