@@ -1,0 +1,34 @@
+.workspace-dashboard .workspace-metric{--metric-color:#376ce7;--metric-soft:#e8efff;display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#fff 50%,var(--metric-soft));border:1px solid #dce4ef;box-shadow:0 3px 12px #18365706;min-height:126px}
+.workspace-dashboard .workspace-metric.green{--metric-color:#249d59;--metric-soft:#e8f6ee}
+.workspace-dashboard .workspace-metric.orange{--metric-color:#e97824;--metric-soft:#fff0e4}
+.workspace-dashboard .workspace-metric.red{--metric-color:#de3547;--metric-soft:#ffecef}
+.workspace-dashboard .workspace-metric.teal{--metric-color:#168797;--metric-soft:#e4f5f7}
+.workspace-dashboard .workspace-metric.purple{--metric-color:#8157c6;--metric-soft:#f1ebfb}
+.workspace-dashboard .workspace-metric:before{background:var(--metric-color);width:4px}
+.workspace-metric-icon{display:grid;place-items:center;flex:0 0 45px;width:45px;height:45px;border-radius:13px;background:var(--metric-color);color:#fff;box-shadow:0 4px 10px color-mix(in srgb,var(--metric-color) 18%,transparent)}
+.workspace-metric-icon svg{width:25px;height:25px}
+.workspace-metric-copy{min-width:0}
+.workspace-metric-copy>span{display:block;color:#52647c;font-size:12px;line-height:1.5}
+.workspace-metric-copy>strong{display:block;font-size:30px;line-height:1.25;margin-top:6px;color:#112e50;font-variant-numeric:tabular-nums}
+.workspace-dashboard .workspace-pipeline>div{--stage-color:#376ce7;--stage-soft:#edf2ff;border:1px solid var(--stage-soft);border-radius:10px;padding:12px;background:var(--stage-soft)}
+.workspace-dashboard .workspace-pipeline>div:nth-child(2){--stage-color:#c76114;--stage-soft:#fff2e7}
+.workspace-dashboard .workspace-pipeline>div:nth-child(3){--stage-color:#8157c6;--stage-soft:#f4effb}
+.workspace-dashboard .workspace-pipeline>div:nth-child(4){--stage-color:#168797;--stage-soft:#eaf6f7}
+.workspace-dashboard .workspace-pipeline>div:nth-child(5){--stage-color:#218647;--stage-soft:#eaf6ee}
+.workspace-dashboard .workspace-step-number{color:var(--stage-color);background:#fff;border:0}
+.workspace-dashboard .workspace-pipeline strong{color:var(--stage-color)}
+.workspace-ppm-summary{display:flex;align-items:center;justify-content:space-around;gap:24px;padding-block:24px}
+.workspace-ppm-ring{width:158px;height:158px;flex:0 0 158px;padding:14px;border-radius:50%;background:conic-gradient(#2da15d calc(var(--ppm-ratio)*1%),#e1e8f2 0);direction:ltr}
+.workspace-ppm-ring>div{background:#fff;border-radius:50%;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;padding:8px;box-sizing:border-box}
+.workspace-ppm-ring strong{font-size:32px;line-height:1.25;color:#112e50;font-variant-numeric:tabular-nums}
+.workspace-ppm-ring span{font-size:11px;color:#61738a}
+.workspace-ppm-legend{display:grid;gap:17px;list-style:none;margin:0;padding:0;min-width:125px;flex:1;max-width:220px}
+.workspace-ppm-legend li{display:flex;align-items:center;gap:8px;font-size:12px;color:#53647c}
+.workspace-ppm-legend li:before{content:'';width:9px;height:9px;flex:0 0 9px;border-radius:3px;background:#294b78}
+.workspace-ppm-legend .done:before{background:#2da15d}
+.workspace-ppm-legend .remaining:before{background:#ed8a33}
+.workspace-ppm-legend strong{margin-inline-start:auto;color:#112e50;font-size:17px;font-variant-numeric:tabular-nums}
+@media(min-width:1200px) and (max-width:1550px){.bafm-shell .workspace-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:520px){.workspace-dashboard .workspace-metric{gap:10px;padding:16px 12px;min-height:112px}.workspace-metric-icon{width:36px;height:36px;flex-basis:36px;border-radius:10px}.workspace-metric-icon svg{width:21px;height:21px}.workspace-metric-copy>span{font-size:11px}.workspace-metric-copy>strong{font-size:27px}.workspace-ppm-summary{gap:16px}.workspace-ppm-ring{width:136px;height:136px;flex-basis:136px;padding:12px}.workspace-ppm-legend{min-width:100px}}
+@media(max-width:350px){.workspace-ppm-summary{flex-wrap:wrap}.workspace-ppm-legend{width:100%;flex-basis:100%;max-width:none}}
+@media print{.workspace-dashboard .workspace-metric,.workspace-pipeline>div,.workspace-ppm-ring{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
