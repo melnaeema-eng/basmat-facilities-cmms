@@ -5,7 +5,7 @@ import {useLanguage} from '../i18n/LanguageContext'
 import {Field,Select,Notice} from '../components/FacilityFields'
 import {reportScopes,reportQuery,reportExport,reportSections,reportColumns,reportDefinitions,percentage,formatValue} from '../lib/reporting'
 import {displayReportValue,prepareReportDisplay} from '../lib/reportDisplay'
-import {exportXlsx,printReport,printCurrentReport} from '../lib/reportExport'
+import {exportXlsx,openPrintWindow,printReport,printCurrentReport} from '../lib/reportExport'
 
 const labels={overview:'reportOverview',work_orders:'reportWorkOrders',ppm:'reportPPM',technicians:'reportTechnicians',materials:'reportMaterials',monthly:'reportMonthly',quality:'reportQuality'}
 const today=()=>new Date().toISOString().slice(0,10)
@@ -67,6 +67,8 @@ export default function ManagementReports({capabilities}){
  }
  const exportData=async(kind)=>{
   if(!applied||!capabilities?.organizations?.some(o=>o.id===applied.organization_id&&o.can_export))return
+  const printWindow=kind==='pdf'?openPrintWindow(lang):null
+  if(kind==='pdf'&&!printWindow){setError(lang==='ar'?'اسمح بالنوافذ المنبثقة لهذا الموقع، ثم حاول الطباعة مرة أخرى.':'Allow pop-ups for this site, then try printing again.');return}
   setExporting(true);setProgress(0);setError('')
   try{
    const data=await reportExport(applied,section,setProgress)
@@ -80,8 +82,8 @@ export default function ManagementReports({capabilities}){
    const names=Object.fromEntries(exportedCols.map(c=>[c,label(c)]))
    const filename='Basmat-'+section+'-'+applied.start_date+'-'+applied.end_date
    if(kind==='xlsx')exportXlsx(prepareReportDisplay(report,exportedCols,lang),exportedCols,names,filename)
-   else printReport(prepareReportDisplay(report,exportedCols,lang),exportedCols,names,title,lang)
-  }catch(e){setError(e.message)}finally{setExporting(false)}
+   else printReport(prepareReportDisplay(report,exportedCols,lang),exportedCols,names,title,lang,printWindow)
+  }catch(e){if(printWindow&&!printWindow.closed)printWindow.close();setError(e.message)}finally{setExporting(false)}
  }
  const totals=result?.totals||{}
  const cards=section==='overview'?[

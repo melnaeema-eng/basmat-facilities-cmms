@@ -87,6 +87,16 @@ export function exportXlsx(report,columns,labels,title){
 
 const reportLogo=()=>new URL('/bafm-logo.png',window.location.origin).href
 
+export function openPrintWindow(lang='en'){
+ const win=window.open('','_blank')
+ if(!win)return null
+ const message=lang==='ar'?'جارٍ تجهيز التقرير للطباعة…':'Preparing the printable report…'
+ win.document.open()
+ win.document.write(`<!doctype html><html lang="${lang}" dir="${lang==='ar'?'rtl':'ltr'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${message}</title><style>body{font-family:Arial,sans-serif;display:grid;place-items:center;min-height:80vh;margin:0;color:#173766;background:#f6f8fb}p{padding:24px;text-align:center}</style></head><body><p>${message}</p></body></html>`)
+ win.document.close()
+ return win
+}
+
 function human(v){
  if(v===null||v===undefined||v==='') return '—'
  if(typeof v==='object') return JSON.stringify(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -95,11 +105,11 @@ function human(v){
 
 export function printReport(report,columns,labels,title,lang='en',targetWindow=null){
  const win=targetWindow||window.open('','_blank')
- if(!win)throw Error('Allow pop-ups to print the report')
+ if(!win)throw Error(lang==='ar'?'اسمح بالنوافذ المنبثقة لهذا الموقع لتتمكن من الطباعة.':'Allow pop-ups for this site to print the report.')
  const doc=win.document
  const dir=lang==='ar'?'rtl':'ltr'
  doc.open()
- doc.write(`<!DOCTYPE html><html lang="${lang}" dir="${dir}"><head><link rel="stylesheet" href="${window.location.origin}/cairo.css"><meta charset="utf-8"/><title>BAFM - ${title}</title><style>
+ doc.write(`<!DOCTYPE html><html lang="${lang}" dir="${dir}"><head><link rel="stylesheet" href="${window.location.origin}/cairo.css"><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>BAFM - ${title}</title><style>
   body{font-family:Arial,sans-serif;margin:0;background:#f6f8fb;color:#172033}
   .page{padding:22px 24px 34px}
   .toolbar{display:flex;justify-content:$space-between;align-items:center;gap:12px;margin-bottom:14px}
@@ -126,6 +136,7 @@ export function printReport(report,columns,labels,title,lang='en',targetWindow=n
   thead th{background:#173766;color:#fff;font-weight:700}
   tbody tr:nth-child(even){background:#fafbfd}
   .footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center;color:#6b7280;font-size:11px}
+  @media screen and (max-width:700px){.page{padding:10px}.sheet{padding:14px;border-radius:10px}.brand{align-items:flex-start;flex-wrap:wrap}.brand-left{min-width:0}.brand-title strong{font-size:18px}.brand-title span{font-size:9px;overflow-wrap:anywhere}.report-title{text-align:start!important;width:100%}.report-title h1{font-size:22px}.meta{grid-template-columns:1fr 1fr}.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.toolbar{position:sticky;top:0;background:#f6f8fb;padding:8px 0;z-index:5}.print-btn{width:100%;min-height:46px}}
   @media print{body{background:#fff} .page{padding:0} .toolbar{display:none} .sheet{box-shadow:none;border:0;border-radius:0;padding:0} @page{size:A4 landscape;margin:10mm}}
  /* BASMAT ALNAWABIGH PRINT SIGNATURE */
 body::before{content:"BASMAT ALNAWABIGH";position:fixed;inset:42% 0 auto 0;text-align:center;font-size:52pt;font-weight:800;letter-spacing:4px;color:rgba(11,43,75,.055);transform:rotate(-28deg);z-index:0;pointer-events:none;white-space:nowrap}

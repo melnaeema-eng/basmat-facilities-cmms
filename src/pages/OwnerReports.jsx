@@ -44,7 +44,7 @@ function printSamePage(node){
  node.classList.add('owner-report-print-target')
  body.classList.add('owner-report-print-mode')
  window.addEventListener('afterprint',cleanup,{once:true})
- window.setTimeout(()=>window.print(),60)
+ window.print()
 }
 
 

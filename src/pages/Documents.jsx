@@ -37,7 +37,7 @@ export default function Documents(){
  const voidIt=async d=>{const reason=prompt(t('documentVoidReason'));if(!reason)return;setBusy(true);setError('');try{await voidDocument(d.id,reason);setMsg(t('documentVoided'));await load()}catch(e){setError(e.message)}finally{setBusy(false)}}
 
  const printDoc=async d=>{
-  const w=window.open('','_blank');if(!w)return
+  const w=window.open('','_blank');if(!w){setError(lang==='ar'?'اسمح بالنوافذ المنبثقة لهذا الموقع، ثم حاول الطباعة مرة أخرى.':'Allow pop-ups for this site, then try printing again.');return}
   const reportLang=d.document_type==='technical_report'?'en':lang
   const direction=reportLang==='ar'?'rtl':'ltr'
   const snap=d.snapshot||{}
