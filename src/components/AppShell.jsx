@@ -58,6 +58,7 @@ export default function AppShell(){
  useEffect(()=>{setMobileOpen(false);setQuery('');content.current?.focus()},[location.pathname])
  useEffect(()=>{if(platformAdmin&&!orgError&&organizations.length&&activeOrgId&&!organizations.some(o=>o.id===activeOrgId)){setActiveOrgId('');localStorage.removeItem('basmat.active.organization')}},[platformAdmin,orgError,organizations,activeOrgId])
  useEffect(()=>{if(!mobileOpen)return;const close=e=>{if(e.key==='Escape'){setMobileOpen(false);toggle.current?.focus()}};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[mobileOpen])
+ useEffect(()=>{if(!mobileOpen)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[mobileOpen])
  const org=organizations.find(o=>o.id===activeOrgId)
  const orgName=org?(ar?org.name_ar||org.name||org.name_en:org.name_en||org.name||org.name_ar):(ar?'نطاق الصلاحيات المسندة':'Assigned access scope')
  function chooseOrganization(id){setActiveOrgId(id);if(id)localStorage.setItem('basmat.active.organization',id);else localStorage.removeItem('basmat.active.organization');window.dispatchEvent(new CustomEvent('basmat-organization-changed',{detail:{organization_id:id||null}}))}
@@ -68,6 +69,7 @@ export default function AppShell(){
   <a className="bafm-skip" href="#workspace-content">{ar?'انتقل إلى المحتوى':'Skip to content'}</a>
   {mobileOpen&&<button className="bafm-mobile-scrim" onClick={()=>setMobileOpen(false)} aria-label={ar?'إغلاق القائمة':'Close navigation'}/>}
   <aside id="workspace-navigation" className={'bafm-sidebar '+(mobileOpen?'is-open':'')} aria-label={ar?'القائمة الرئيسية':'Main navigation'}>
+   <button type="button" className="bafm-drawer-close" onClick={()=>{setMobileOpen(false);toggle.current?.focus()}} aria-label={ar?'إغلاق القائمة':'Close navigation'}>×</button>
    <div className="bafm-logo-block"><div className="dual-brand-row"><Link to="/"><img src="/bafm-logo.png" alt="Basmat Alnawabigh"/></Link>{org?.logo_url&&<div><img src={org.logo_url} alt={orgName} onError={e=>{e.currentTarget.hidden=true}}/><small>{orgName}</small></div>}</div><div className="bafm-logo-word">BAFM</div><div className="bafm-logo-sub">{ar?'بصمة النوابغ · إدارة المرافق':'Basmat Alnawabigh · Facilities'}</div><div className="bafm-logo-tiny">{ar?'نظام إدارة صيانة المرافق والأصول':'FACILITIES & ASSET MAINTENANCE MANAGEMENT SYSTEM'}</div></div>
    <nav className="bafm-nav">{groups.map(g=>{const items=g.paths.map(p=>available.find(m=>m.path===p)).filter(Boolean);return !!items.length&&<section className="bafm-nav-section" key={g.en}><h2 className="bafm-nav-title">{ar?g.ar:g.en}</h2>{items.map(item)}</section>})}
     {!!extra.length&&<section className="bafm-nav-section"><h2 className="bafm-nav-title">{ar?'خدمات إضافية':'Additional services'}</h2>{extra.map(item)}</section>}

@@ -1,1 +1,33 @@
 .bafm-shell .bafm-topbar{display:flex;flex-wrap:wrap;height:auto;min-height:62px;gap:10px;padding:10px 16px}.bafm-shell .bafm-top-title{flex:1 1 180px;min-width:0;max-width:350px}.bafm-shell .bafm-search{flex:1 1 210px;min-width:120px;max-width:440px}.bafm-shell .bafm-top-actions{display:flex;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end;gap:9px;min-width:0;max-width:100%}.bafm-shell .bafm-top-actions select{min-width:0;width:clamp(130px,18vw,240px);max-width:min(240px,65vw)}.bafm-shell .bafm-top-actions .bafm-user{min-width:0}.bafm-shell .bafm-signout{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;flex-shrink:0;min-height:36px;padding:7px 11px;border:1px solid #ffffff55;border-radius:8px;color:#fff;background:#ffffff0c;white-space:nowrap;font-size:12px}.bafm-signout svg{width:18px;height:18px;flex-shrink:0}.bafm-shell .bafm-signout:hover{background:#ffffff20}.bafm-shell .bafm-signout:focus-visible{outline:3px solid #f1c644;outline-offset:2px}.bafm-sidebar-footer .bafm-signout{width:100%;margin-bottom:7px}.bafm-sidebar-footer{z-index:2;flex-shrink:0}.bafm-sidebar.is-open{display:flex!important;flex-direction:column;overflow:hidden!important}.bafm-sidebar.is-open .bafm-nav{flex:1;min-height:0;overflow-y:auto}.bafm-sidebar.is-open .bafm-logo-block{flex-shrink:0}@media(min-width:901px){.bafm-shell .bafm-sidebar{display:flex;flex-direction:column;height:100dvh;overflow:hidden}.bafm-sidebar .bafm-logo-block{flex-shrink:0}.bafm-sidebar .bafm-nav{flex:1;min-height:0;overflow-y:auto}.bafm-sidebar .bafm-sidebar-footer{position:relative;bottom:auto}}@media(max-width:900px){.bafm-shell .bafm-top-title{flex-basis:150px}.bafm-shell .bafm-search{order:3;flex-basis:100%;max-width:none}.bafm-shell .bafm-top-actions{flex:1 1 250px;justify-content:flex-start}.bafm-shell .bafm-top-actions .bafm-user{display:none}.bafm-shell .bafm-signout{min-height:38px}}
+
+/* Phone layout: keep the drawer contained and the dashboard readable. */
+@media(max-width:900px){
+ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
+ .bafm-shell{width:100%;max-width:100%;overflow-x:clip}
+ .bafm-shell .bafm-sidebar{display:none;position:fixed;inset-block:0;inset-inline-start:0;inset-inline-end:auto;width:min(86vw,320px);max-width:calc(100vw - 44px);height:100dvh;min-height:0;transform:none!important;z-index:1200;box-shadow:0 0 30px #03142666}
+ .bafm-shell[dir=rtl] .bafm-sidebar{inset-inline-start:auto;inset-inline-end:0}
+ .bafm-shell .bafm-sidebar.is-open{display:flex!important}
+ .bafm-mobile-scrim{display:block;position:fixed;inset:0;width:100%;height:100%;background:#071c3599;border:0;padding:0;z-index:1100}
+ .bafm-drawer-close{display:grid;place-items:center;position:absolute;inset-block-start:10px;inset-inline-end:10px;width:38px;height:38px;border:1px solid #ffffff55;border-radius:10px;background:#0c3155;color:#fff;font-size:25px;line-height:1;z-index:3}
+ .bafm-main,.bafm-content,.workspace-content{width:100%;max-width:100%;min-width:0}
+ .bafm-shell .bafm-topbar{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px;padding:9px 10px}
+ .bafm-shell .bafm-mobile-toggle{display:block;margin:0}
+ .bafm-shell .bafm-top-title{min-width:0;max-width:none;overflow:hidden}
+ .bafm-shell .bafm-top-title strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .bafm-shell .bafm-top-actions{grid-column:1/-1;width:100%;justify-content:flex-start;flex-basis:auto}
+ .bafm-shell .bafm-top-actions select{flex:1 1 160px;width:auto;max-width:100%}
+ .bafm-shell .bafm-top-actions>.bafm-signout{display:none!important}
+ .bafm-shell .bafm-search{grid-column:1/-1;order:initial;width:100%;max-width:none}
+ .bafm-welcome{margin:8px 8px 0;overflow-wrap:anywhere}
+ .bafm-shell .workspace-content{padding:8px}
+ .bafm-shell .workspace-hero{min-height:165px;padding:18px;overflow:hidden}
+ .bafm-shell .workspace-hero h1{font-size:clamp(21px,7vw,29px);line-height:1.35;overflow-wrap:anywhere}
+ .bafm-shell .workspace-hero p{font-size:13px;line-height:1.7;overflow-wrap:anywhere}
+ .workspace-dashboard-grid,.workspace-metrics,.workspace-quick-grid{grid-template-columns:1fr}
+ .workspace-panel{padding:15px}
+ .workspace-pipeline{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .workspace-ppm-summary{flex-wrap:wrap}
+ .workspace-ppm-legend{width:100%;max-width:none}
+ .page-head{min-width:0;overflow-wrap:anywhere}
+}
+@media(min-width:901px){.bafm-drawer-close{display:none}}
