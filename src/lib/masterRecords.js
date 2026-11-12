@@ -68,6 +68,8 @@ export async function writeMaster(key,form,id){
  const q=id?supabase.from(table).update(payload).eq('id',id):supabase.from(table).insert(payload)
  const {data,error}=await q.select('*').single()
  if(error)throw error
+ window.dispatchEvent(new CustomEvent('basmat-master-records-changed',{detail:{kind:key,id:data.id}}))
+ if(key==='organizations')window.dispatchEvent(new Event('basmat-organizations-changed'))
  return data
 }
 export function applyMasterRow(rows,row){

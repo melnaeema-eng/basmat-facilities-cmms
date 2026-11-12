@@ -1,3 +1,4 @@
+import {adoptReferenceCompany} from '../lib/adoptReferenceCompany'
 import {useEffect,useMemo,useState} from 'react'
 import {useNavigate} from 'react-router-dom'
 import {supabase} from '../lib/supabaseClient'
@@ -39,7 +40,7 @@ export default function FacilitiesReferenceLibrary(){
     supabase.from('bf_ref_facility_owners').select('*').order('name_ar'),
     supabase.from('bf_ref_maintenance_companies').select('*').order('name_ar'),
     supabase.from('bf_ref_facility_types').select('*').order('name_ar'),
-    supabase.from('bf_organizations').select('id,name,code,status').order('name'),
+    supabase.from('bf_organizations').select('id,name,name_ar,name_en,code,status,organization_type').order('name'),
     supabase.from('bf_clients').select('id,organization_id,name,code,status').order('name')
    ])
    for(const r of [a,b,c,o,cl])if(r.error)throw r.error
@@ -141,6 +142,20 @@ export default function FacilitiesReferenceLibrary(){
    setSuccess(ar?'تم اعتماد الجهة كمنظمة تشغيلية.':'Owner adopted as an operational organization.')
    setTimeout(()=>navigate('/organizations'),450)
   }catch(e){setError(e.message)}finally{setBusy(false)}
+ }
+
+ const useCompany=async company=>{
+  if(busy)return
+  try{
+   setBusy(true);setError('');setSuccess('')
+   const result=await adoptReferenceCompany(supabase,company)
+   window.dispatchEvent(new Event('basmat-organizations-changed'))
+   await load()
+   setSuccess(result.existing?(ar?'شركة الصيانة موجودة بالفعل في قائمة الجهات.':'This maintenance company is already in the organization list.'):(ar?'تمت إضافة شركة الصيانة إلى الجهات وقائمة اختيار الشركة.':'Maintenance company added to organizations and the company selector.'))
+  }catch(e){
+   const messages={OWNER_PROVIDER_CONFLICT:ar?'هذه الجهة مسجلة كمالك ولا يمكن اعتمادها كشركة صيانة.':'This entity is registered as an owner and cannot be used as a maintenance company.',REFERENCE_ORGANIZATION_INACTIVE:ar?'سجل الشركة موجود لكنه غير نشط؛ راجعه من إدارة الجهات.':'The company record exists but is inactive. Review it in organization management.',REFERENCE_COMPANY_AMBIGUOUS:ar?'توجد سجلات متشابهة؛ راجع إدارة الجهات قبل الإضافة.':'Multiple matching records exist. Review organization management before adding.'}
+   setError(messages[e.message]||e.message)
+  }finally{setBusy(false)}
  }
 
  const linkCompany=async x=>{
@@ -287,6 +302,7 @@ export default function FacilitiesReferenceLibrary(){
     <button className="btn primary" disabled={busy} onClick={()=>adoptOwner(selected)}>{ar?'اعتماد كمنظمة تشغيلية':'Use as Organization'}</button>
    </div>}
 
+   {tab==='companies'&&selected.status!=='archived'&&canEdit&&<div className="ref-actions"><button className="btn primary" disabled={busy} onClick={()=>useCompany(selected)}>{ar?'إضافة إلى شركات النظام':'Add to system companies'}</button><small>{ar?'تظهر في إدارة الجهات وقائمة الشركة؛ ربطها بمشروع خطوة مستقلة.':'Appears in organizations and the company selector; project linking is a separate step.'}</small></div>}
    {tab==='companies'&&selected.status!=='archived'&&<div className="ref-detail-grid">
     <label>{ar?'المشروع':'Project'}
      <select value={projectId} onChange={e=>setProjectId(e.target.value)}>

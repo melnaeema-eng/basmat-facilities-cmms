@@ -3,17 +3,18 @@ import {modules,permitted} from './modules.js'
 // One primary entry per task. Specialized pages remain reachable in their context.
 export const navigationGroups=[
  {en:'Work',ar:'التشغيل',paths:['/','/facility-asset-cockpit','/corrective','/ppm','/approvals','/documents','/notifications']},
- {en:'Setup',ar:'الإعداد',paths:['/project-setup','/asset-library','/contracts','/users','/roles-permissions']},
+ {en:'Setup',ar:'الإعداد',paths:['/maintenance-companies','/owners','/project-setup','/asset-library','/contracts','/users','/roles-permissions']},
  {en:'Support',ar:'المساندة',paths:['/inventory','/procurement','/reports']}
 ]
 export const toolFamilies=[
+ {root:'/maintenance-companies',tools:['/organizations','/facility-reference-library'],ar:'إضافة شركات الصيانة وتعديلها وأرشفتها واختيارها من المكتبة.',en:'Add, edit, archive or adopt maintenance companies from the library.'},
  {root:'/facility-asset-cockpit',tools:['/assets','/asset-passport','/asset-lifecycle','/asset-categories','/qr-scan'],ar:'تسجيل الأصل وموقعه وجوازه وسجل حياته.',en:'Asset registration, location, passport and lifecycle.'},
  {root:'/asset-library',tools:['/library-admin','/library-deployment'],ar:'المكتبة مرجع الأنواع والموديلات والإجراءات؛ الأصول المسجلة تُدار في الأصول والصيانة.',en:'The catalog contains types, models and procedure references. Registered assets are managed in Assets & Maintenance.'},
  {root:'/corrective',tools:['/work-orders','/technician-execution','/field-mobile','/workforce'],ar:'البلاغات والإسناد والتنفيذ، ثم الإغلاق والشهادة من الملف المتكامل.',en:'Requests, assignment and execution, then certification and closeout in the integrated dossier.'},
  {root:'/ppm',tools:['/planning'],ar:'إجراءات الوقائية والخطط والزيارات المجدولة.',en:'Preventive procedures, plans and scheduled visits.'},
  {root:'/approvals',tools:['/compliance','/permits','/hse'],ar:'القرارات المعلقة وأدوات الامتثال والتصاريح والسلامة.',en:'Pending decisions, compliance, permits and safety.'},
  {root:'/documents',tools:['/document-control'],ar:'التقارير والشهادات الصادرة؛ ضبط المستندات للمرفقات والمراسلات وإصداراتها.',en:'Issued reports and certificates; Document Control manages attachments, correspondence and revisions.'},
- {root:'/project-setup',tools:['/organizations','/owners','/sites','/locations','/enterprise-structure','/facility-reference-library'],ar:'إعداد الجهات والعقد والمشروع، ثم المنشآت والمباني والطوابق والغرف والفريق.',en:'Set up parties, contract and project, followed by sites, buildings, floors, rooms and team.'},
+ {root:'/project-setup',tools:['/sites','/locations','/enterprise-structure'],ar:'إعداد الجهات والعقد والمشروع، ثم المنشآت والمباني والطوابق والغرف والفريق.',en:'Set up parties, contract and project, followed by sites, buildings, floors, rooms and team.'},
  {root:'/contracts',tools:['/contract-renewal','/statements','/maintenance-costing'],ar:'بيانات العقد وتجديده والمستخلصات والتكاليف.',en:'Contract records, renewals, statements and costs.'},
  {root:'/users',tools:['/enterprise-access','/access-review'],ar:'المستخدمون وأدوارهم؛ نطاق المشروع والموقع يحدد أين تُستخدم الصلاحية.',en:'Users and their roles; project and site scope determines where permission applies.'},
  {root:'/roles-permissions',tools:['/governance','/audit','/security-readiness','/release-readiness'],ar:'تعريف الأدوار والصلاحيات والحوكمة وسجل التدقيق.',en:'Role definitions, permissions, governance and audit history.'},

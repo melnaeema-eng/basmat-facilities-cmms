@@ -50,6 +50,7 @@ const pages = {
  MasterAssetLibrary:lazy(()=>import('./pages/MasterAssetLibrary.jsx')),
  MobileField:lazy(()=>import('./pages/MobileField.jsx')),
  Notifications:lazy(()=>import('./pages/Notifications.jsx')),
+ MaintenanceCompanies:lazy(()=>import('./pages/MaintenanceCompanies.jsx')),
  OrganizationOnboarding:lazy(()=>import('./pages/OrganizationOnboarding.jsx')),
  OwnerPortal:lazy(()=>import('./pages/OwnerPortal.jsx')),
  PPM:lazy(()=>import('./pages/PPM.jsx')),

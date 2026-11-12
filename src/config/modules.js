@@ -32,6 +32,7 @@ export const modules = [
     "group": "operations",
     "nav": false
   },
+  {"path":"/maintenance-companies","page":"MaintenanceCompanies","permission":"organizations.view","en":"Maintenance companies","ar":"شركات الصيانة","icon":"org","group":"setup","nav":true},
   {
     "path": "/organizations",
     "page": "OrganizationOnboarding",
@@ -80,7 +81,7 @@ export const modules = [
     "ar": "الملاك",
     "icon": "client",
     "group": "setup",
-    "nav": false
+    "nav": true
   },
   {
     "path": "/contracts",
