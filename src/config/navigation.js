@@ -4,7 +4,7 @@ import {modules,permitted} from './modules.js'
 export const navigationGroups=[
  {en:'Work',ar:'التشغيل',paths:['/','/facility-asset-cockpit','/corrective','/ppm','/approvals','/documents','/notifications']},
  {en:'Setup',ar:'الإعداد',paths:['/maintenance-companies','/owners','/project-setup','/asset-library','/contracts','/users','/roles-permissions']},
- {en:'Support',ar:'المساندة',paths:['/inventory','/procurement','/reports']}
+ {en:'Support',ar:'المساندة',paths:['/inventory','/suppliers','/procurement','/reports']}
 ]
 export const toolFamilies=[
  {root:'/maintenance-companies',tools:['/organizations','/facility-reference-library'],ar:'إضافة شركات الصيانة وتعديلها وأرشفتها واختيارها من المكتبة.',en:'Add, edit, archive or adopt maintenance companies from the library.'},
@@ -19,7 +19,8 @@ export const toolFamilies=[
  {root:'/users',tools:['/enterprise-access','/access-review'],ar:'المستخدمون وأدوارهم؛ نطاق المشروع والموقع يحدد أين تُستخدم الصلاحية.',en:'Users and their roles; project and site scope determines where permission applies.'},
  {root:'/roles-permissions',tools:['/governance','/audit','/security-readiness','/release-readiness'],ar:'تعريف الأدوار والصلاحيات والحوكمة وسجل التدقيق.',en:'Role definitions, permissions, governance and audit history.'},
  {root:'/inventory',tools:['/advanced-stock'],ar:'الأصناف والمخازن والأرصدة والحركات؛ طلبات القطع والحجز والصرف والمرتجع في أدوات قطع الغيار.',en:'Items, stores, balances and movements; spare-parts tools handle requests, reservations, issues and returns.'},
- {root:'/procurement',tools:['/supplier-performance'],ar:'طلبات وأوامر الشراء والاستلام وتقييم الموردين.',en:'Requisitions, purchase orders, receipt and supplier evaluation.'},
+ {root:'/procurement',tools:[],ar:'طلبات وأوامر الشراء والاستلام.',en:'Purchase requests, orders and receipts.'},
+ {root:'/suppliers',tools:['/supplier-performance'],ar:'إضافة الموردين وتقييم أدائهم.',en:'Supplier records and performance evaluation.'},
  {root:'/reports',tools:['/kpi','/executive','/backlog','/reliability','/utilities'],ar:'تقارير المالك والتشغيل، مع تحليلات الأداء والاعتمادية والاستهلاك.',en:'Owner and operational reporting, with performance, reliability and consumption analysis.'}
 ]
 export const standaloneTools=['/soft-fm','/owner-portal']

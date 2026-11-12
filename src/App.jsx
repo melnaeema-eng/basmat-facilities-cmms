@@ -68,6 +68,7 @@ const pages = {
  SecurityReadiness:lazy(()=>import('./pages/SecurityReadiness.jsx')),
  Sites:lazy(()=>import('./pages/Sites.jsx')),
  SoftFmOperations:lazy(()=>import('./pages/SoftFmOperations.jsx')),
+ Suppliers:lazy(()=>import('./pages/Suppliers.jsx')),
  SupplierPerformance:lazy(()=>import('./pages/SupplierPerformance.jsx')),
  TechnicianExecution:lazy(()=>import('./pages/TechnicianExecution.jsx')),
  UsersRoles:lazy(()=>import('./pages/UsersRoles.jsx')),

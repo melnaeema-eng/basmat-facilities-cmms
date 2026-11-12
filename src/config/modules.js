@@ -313,12 +313,13 @@ export const modules = [
     "group": "operations",
     "nav": false
   },
+  {"path":"/suppliers","page":"Suppliers","permission":"procurement.view","en":"Suppliers","ar":"الموردون","icon":"truck","group":"supply","nav":true},
   {
     "path": "/supplier-performance",
     "page": "SupplierPerformance",
     "permission": "supplier-performance.view",
-    "en": "Vendors",
-    "ar": "الموردون",
+    "en": "Supplier performance",
+    "ar": "تقييم الموردين",
     "icon": "truck",
     "group": "supply",
     "nav": false
