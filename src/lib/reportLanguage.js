@@ -1,5 +1,6 @@
 export const reportDict={
 en:{
+ owner_name:"Owner",site_name:"Site / facility",asset_name:"Facility asset",visit_number:"Visit number",assigned_technician_name:"Assigned technician",stock_owner_name:"Stock owner",
  reportDefOverview:"Work orders are counted by creation date, PPM by due date, and labor by interval start. Statuses are current, not historical.",
  reportDefWorkOrders:"Work orders created in the selected period. Current statuses and recorded response/completion durations are shown; SLA compliance is not inferred.",
  reportDefPPM:"Generated, non-cancelled PPM jobs due in the period. Closed / due is not a full contractual compliance measure because missing schedules are not inferred.",
@@ -91,6 +92,7 @@ en:{
  reportUnknown:'Unknown',reportOpenDetails:'Open work order'
 },
 ar:{
+ owner_name:"الجهة المالكة",site_name:"الموقع / المرفق",asset_name:"أصل المرافق",visit_number:"رقم الزيارة",assigned_technician_name:"الفني المسند",stock_owner_name:"مالك المخزون",
  reportDefOverview:"تُحسب أوامر العمل حسب تاريخ الإنشاء، والصيانة الوقائية حسب الاستحقاق، وساعات العمل حسب بداية الفترة. الحالات حالية وليست تاريخية.",
  reportDefWorkOrders:"أوامر العمل المنشأة خلال الفترة. تظهر الحالات الحالية وأزمنة الاستجابة والإكمال المسجلة، دون افتراض الالتزام باتفاقيات SLA.",
  reportDefPPM:"مهام الصيانة الوقائية المجدولة وغير الملغاة والمستحقة خلال الفترة. نسبة المغلقة إلى المستحقة ليست مؤشر التزام تعاقدي كاملًا لعدم احتساب الجداول غير المنشأة.",
