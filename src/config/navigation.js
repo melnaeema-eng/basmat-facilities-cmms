@@ -3,7 +3,7 @@ import {modules,permitted} from './modules.js'
 // One entrance per user goal. Detailed modules remain inside their centre.
 export const navigationGroups=[
  {en:'Daily work',ar:'العمل اليومي',paths:['/','/corrective','/facility-asset-cockpit','/inventory','/reports']},
- {en:'Company administration',ar:'إدارة الشركة',paths:['/project-setup','/users','/roles-permissions','/maintenance-companies']}
+ {en:'Company administration',ar:'إدارة الشركة',paths:['/project-setup','/users','/maintenance-companies']}
 ]
 export const toolFamilies=[
  {root:'/corrective',tools:['/ppm','/planning','/technician-execution','/field-mobile','/workforce','/approvals','/work-orders','/documents','/document-control','/notifications','/compliance','/permits','/hse'],ar:'دورة الصيانة الكاملة: البلاغات والوقائية والتنفيذ والاعتماد والشهادة والمستخلص.',en:'The complete maintenance cycle: requests, PPM, execution, approvals, certificates and statements.'},
@@ -11,8 +11,7 @@ export const toolFamilies=[
  {root:'/inventory',tools:['/advanced-stock','/procurement','/suppliers','/supplier-performance'],ar:'المخزون وطلبات قطع الغيار والمشتريات والموردون.',en:'Stock, spare-parts requests, procurement and suppliers.'},
  {root:'/reports',tools:['/kpi','/executive','/backlog','/reliability','/utilities','/contracts','/contract-renewal','/statements','/maintenance-costing'],ar:'التقارير التشغيلية وتقارير المالك والعقود والمستخلصات.',en:'Operational and owner reports, contracts and statements.'},
  {root:'/project-setup',tools:['/owners','/enterprise-structure'],ar:'إعداد الملاك والمشاريع والعقود والمواقع والهيكل المكاني.',en:'Set up owners, projects, contracts, sites and location hierarchy.'},
- {root:'/users',tools:['/enterprise-access','/access-review'],ar:'المستخدمون وأدوارهم ونطاق وصولهم للمشاريع والمواقع.',en:'Users, roles and their project and site access.'},
- {root:'/roles-permissions',tools:['/governance','/audit','/security-readiness','/release-readiness'],ar:'الصلاحيات والحوكمة وسجل التدقيق والإعدادات المتقدمة.',en:'Permissions, governance, audit and advanced readiness.'},
+ {root:'/users',tools:['/roles-permissions','/enterprise-access','/access-review','/governance','/audit','/security-readiness','/release-readiness'],ar:'المستخدمون وأدوارهم وصلاحياتهم ونطاق وصولهم للمشاريع والمواقع.',en:'Users, roles, permissions and their project and site access.'},
  {root:'/maintenance-companies',tools:['/organizations','/facility-reference-library'],ar:'إنشاء مساحة شركة مستقلة أو فتحها وتعديل هويتها.',en:'Create, open or update an isolated company workspace.'}
 ]
 export const standaloneTools=['/owner-portal','/soft-fm']
