@@ -1,36 +1,28 @@
 import {modules,permitted} from './modules.js'
 
-// One primary entry per task. Specialized pages remain reachable in their context.
+// One entrance per user goal. Detailed modules remain inside their centre.
 export const navigationGroups=[
- {en:'Work',ar:'التشغيل',paths:['/','/facility-asset-cockpit','/corrective','/ppm','/approvals','/documents','/notifications']},
- {en:'Setup',ar:'الإعداد',paths:['/maintenance-companies','/owners','/project-setup','/asset-library','/contracts','/users','/roles-permissions']},
- {en:'Support',ar:'المساندة',paths:['/inventory','/suppliers','/procurement','/reports']}
+ {en:'Daily work',ar:'العمل اليومي',paths:['/','/corrective','/facility-asset-cockpit','/inventory','/reports']},
+ {en:'Company administration',ar:'إدارة الشركة',paths:['/project-setup','/users','/roles-permissions','/maintenance-companies']}
 ]
 export const toolFamilies=[
- {root:'/maintenance-companies',tools:['/organizations','/facility-reference-library'],ar:'إضافة شركات الصيانة وتعديلها وأرشفتها واختيارها من المكتبة.',en:'Add, edit, archive or adopt maintenance companies from the library.'},
- {root:'/facility-asset-cockpit',tools:['/assets','/asset-passport','/asset-lifecycle','/asset-categories','/qr-scan'],ar:'تسجيل الأصل وموقعه وجوازه وسجل حياته.',en:'Asset registration, location, passport and lifecycle.'},
- {root:'/asset-library',tools:['/library-admin','/library-deployment'],ar:'المكتبة مرجع الأنواع والموديلات والإجراءات؛ الأصول المسجلة تُدار في الأصول والصيانة.',en:'The catalog contains types, models and procedure references. Registered assets are managed in Assets & Maintenance.'},
- {root:'/corrective',tools:['/work-orders','/technician-execution','/field-mobile','/workforce'],ar:'البلاغات والإسناد والتنفيذ، ثم الإغلاق والشهادة من الملف المتكامل.',en:'Requests, assignment and execution, then certification and closeout in the integrated dossier.'},
- {root:'/ppm',tools:['/planning'],ar:'إجراءات الوقائية والخطط والزيارات المجدولة.',en:'Preventive procedures, plans and scheduled visits.'},
- {root:'/approvals',tools:['/compliance','/permits','/hse'],ar:'القرارات المعلقة وأدوات الامتثال والتصاريح والسلامة.',en:'Pending decisions, compliance, permits and safety.'},
- {root:'/documents',tools:['/document-control'],ar:'التقارير والشهادات الصادرة؛ ضبط المستندات للمرفقات والمراسلات وإصداراتها.',en:'Issued reports and certificates; Document Control manages attachments, correspondence and revisions.'},
- {root:'/project-setup',tools:['/sites','/locations','/enterprise-structure'],ar:'إعداد الجهات والعقد والمشروع، ثم المنشآت والمباني والطوابق والغرف والفريق.',en:'Set up parties, contract and project, followed by sites, buildings, floors, rooms and team.'},
- {root:'/contracts',tools:['/contract-renewal','/statements','/maintenance-costing'],ar:'بيانات العقد وتجديده والمستخلصات والتكاليف.',en:'Contract records, renewals, statements and costs.'},
- {root:'/users',tools:['/enterprise-access','/access-review'],ar:'المستخدمون وأدوارهم؛ نطاق المشروع والموقع يحدد أين تُستخدم الصلاحية.',en:'Users and their roles; project and site scope determines where permission applies.'},
- {root:'/roles-permissions',tools:['/governance','/audit','/security-readiness','/release-readiness'],ar:'تعريف الأدوار والصلاحيات والحوكمة وسجل التدقيق.',en:'Role definitions, permissions, governance and audit history.'},
- {root:'/inventory',tools:['/advanced-stock'],ar:'الأصناف والمخازن والأرصدة والحركات؛ طلبات القطع والحجز والصرف والمرتجع في أدوات قطع الغيار.',en:'Items, stores, balances and movements; spare-parts tools handle requests, reservations, issues and returns.'},
- {root:'/procurement',tools:[],ar:'طلبات وأوامر الشراء والاستلام.',en:'Purchase requests, orders and receipts.'},
- {root:'/suppliers',tools:['/supplier-performance'],ar:'إضافة الموردين وتقييم أدائهم.',en:'Supplier records and performance evaluation.'},
- {root:'/reports',tools:['/kpi','/executive','/backlog','/reliability','/utilities'],ar:'تقارير المالك والتشغيل، مع تحليلات الأداء والاعتمادية والاستهلاك.',en:'Owner and operational reporting, with performance, reliability and consumption analysis.'}
+ {root:'/corrective',tools:['/ppm','/planning','/technician-execution','/field-mobile','/workforce','/approvals','/work-orders','/documents','/document-control','/notifications','/compliance','/permits','/hse'],ar:'دورة الصيانة الكاملة: البلاغات والوقائية والتنفيذ والاعتماد والشهادة والمستخلص.',en:'The complete maintenance cycle: requests, PPM, execution, approvals, certificates and statements.'},
+ {root:'/facility-asset-cockpit',tools:['/assets','/asset-passport','/asset-lifecycle','/asset-categories','/qr-scan','/sites','/locations','/asset-library','/library-admin','/library-deployment'],ar:'الأصول ومواقعها وجوازاتها ومكتبة إجراءات الصيانة.',en:'Assets, locations, passports and the maintenance procedure library.'},
+ {root:'/inventory',tools:['/advanced-stock','/procurement','/suppliers','/supplier-performance'],ar:'المخزون وطلبات قطع الغيار والمشتريات والموردون.',en:'Stock, spare-parts requests, procurement and suppliers.'},
+ {root:'/reports',tools:['/kpi','/executive','/backlog','/reliability','/utilities','/contracts','/contract-renewal','/statements','/maintenance-costing'],ar:'التقارير التشغيلية وتقارير المالك والعقود والمستخلصات.',en:'Operational and owner reports, contracts and statements.'},
+ {root:'/project-setup',tools:['/owners','/enterprise-structure'],ar:'إعداد الملاك والمشاريع والعقود والمواقع والهيكل المكاني.',en:'Set up owners, projects, contracts, sites and location hierarchy.'},
+ {root:'/users',tools:['/enterprise-access','/access-review'],ar:'المستخدمون وأدوارهم ونطاق وصولهم للمشاريع والمواقع.',en:'Users, roles and their project and site access.'},
+ {root:'/roles-permissions',tools:['/governance','/audit','/security-readiness','/release-readiness'],ar:'الصلاحيات والحوكمة وسجل التدقيق والإعدادات المتقدمة.',en:'Permissions, governance, audit and advanced readiness.'},
+ {root:'/maintenance-companies',tools:['/organizations','/facility-reference-library'],ar:'إنشاء مساحة شركة مستقلة أو فتحها وتعديل هويتها.',en:'Create, open or update an isolated company workspace.'}
 ]
-export const standaloneTools=['/soft-fm','/owner-portal']
+export const standaloneTools=['/owner-portal','/soft-fm']
 export const primaryPaths=new Set(navigationGroups.flatMap(g=>g.paths))
 const familyPaths=new Set(toolFamilies.flatMap(f=>[f.root,...f.tools]))
 const aliases=[
  ['/assets/:id','/facility-asset-cockpit'],['/asset-passport/:id','/facility-asset-cockpit'],
  ['/corrective/:kind/:id','/corrective'],['/maintenance-cycle/:id','/corrective'],
- ['/ppm/:kind/:id','/ppm'],['/inventory/request/:id','/inventory'],
- ['/advanced-stock/:id','/inventory'],['/procurement/:kind/:id','/procurement'],['/statements/:id','/contracts']
+ ['/ppm/:kind/:id','/corrective'],['/inventory/request/:id','/inventory'],
+ ['/advanced-stock/:id','/inventory'],['/procurement/:kind/:id','/inventory'],['/statements/:id','/reports']
 ]
 function matches(pattern,path){
  const parts=pattern.split('/'),actual=path.replace(/\/$/,'').split('/')
@@ -50,7 +42,6 @@ export function toolsForPath(path,can){
 export function secondaryNavigation(can){
  const byPath=new Map(modules.map(m=>[m.path,m])),result=[]
  for(const path of standaloneTools){const m=byPath.get(path);if(m&&permitted(m,can))result.push(m)}
- // A user with only a specialist permission still needs an entry to that tool.
  for(const family of toolFamilies){
   if(permitted(byPath.get(family.root),can))continue
   const fallback=family.tools.map(p=>byPath.get(p)).find(m=>m&&permitted(m,can))
