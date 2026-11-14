@@ -32,7 +32,7 @@ export const modules = [
     "group": "operations",
     "nav": false
   },
-  {"path":"/maintenance-companies","page":"MaintenanceCompanies","permission":"organizations.view","en":"Maintenance companies","ar":"شركات الصيانة","icon":"org","group":"setup","nav":true},
+  {"path":"/maintenance-companies","page":"MaintenanceCompanies","permission":"organizations.view","en":"Company workspace","ar":"مساحة الشركة","icon":"org","group":"setup","nav":true},
   {
     "path": "/organizations",
     "page": "OrganizationOnboarding",
@@ -177,8 +177,8 @@ export const modules = [
     "path": "/corrective",
     "page": "Corrective",
     "permission": "corrective.view",
-    "en": "Work Orders",
-    "ar": "أوامر العمل",
+    "en": "Maintenance Center",
+    "ar": "مركز الصيانة",
     "icon": "work",
     "group": "operations",
     "nav": true
@@ -277,8 +277,8 @@ export const modules = [
     "path": "/reports",
     "page": "ReportsHub",
     "permission": "reports.view",
-    "en": "Management Reports",
-    "ar": "تقارير الإدارة",
+    "en": "Reports & Statements",
+    "ar": "التقارير والمستخلصات",
     "icon": "report",
     "group": "insights",
     "nav": true
@@ -588,8 +588,8 @@ export const modules = [
     "path": "/project-setup",
     "page": "ProjectSetupWizard",
     "permission": "organizations.view",
-    "en": "Project setup",
-    "ar": "إعداد المشروع",
+    "en": "Owners & Projects",
+    "ar": "الملاك والمشاريع",
     "icon": "work",
     "group": "setup",
     "nav": true
@@ -649,8 +649,8 @@ export const modules = [
     "path": "/facility-asset-cockpit",
     "page": "FacilitiesAssetCockpit",
     "permission": "assets.view",
-    "en": "Assets & Maintenance",
-    "ar": "الأصول والصيانة",
+    "en": "Assets & Sites",
+    "ar": "الأصول والمواقع",
     "icon": "asset",
     "group": "operations",
     "nav": true
