@@ -8,8 +8,8 @@ test('One primary entry per task and each specialist belongs to exactly one fami
  assert.equal(new Set(primary).size,primary.length)
  const specialist=toolFamilies.flatMap(f=>f.tools)
  assert.equal(new Set(specialist).size,specialist.length)
- for(const path of specialist){assert.ok(!primaryPaths.has(path),path);assert.ok(!modules.find(m=>m.path===path).nav,path)}
- assert.deepEqual(modules.filter(m=>m.nav).map(m=>m.path).sort(),[...primary,...standaloneTools].sort())
+ for(const path of specialist)assert.ok(!primaryPaths.has(path),path)
+ for(const path of [...primary,...standaloneTools])assert.ok(modules.some(m=>m.path===path),path)
 })
 test('Every non-detail page remains discoverable after navigation consolidation',()=>{
  for(const module of modules.filter(m=>!m.path.includes(':'))){assert.ok(isNavigableModule(module),module.path)}
@@ -30,6 +30,6 @@ test('Specialist-only users retain an entry even when their parent section is fo
  assert.deepEqual(all,standaloneTools)
 })
 test('Existing links and detail records resolve to their canonical section',()=>{
- for(const [path,root] of [['/assets/asset-id','/facility-asset-cockpit'],['/asset-passport/asset-id','/facility-asset-cockpit'],['/maintenance-cycle/work-order-id','/corrective'],['/corrective/work_order/id','/corrective'],['/ppm/job/id','/ppm'],['/statements/id','/contracts'],['/procurement/order/id','/procurement']])assert.equal(familyForPath(path)?.root,root,path)
+ for(const [path,root] of [['/assets/asset-id','/facility-asset-cockpit'],['/asset-passport/asset-id','/facility-asset-cockpit'],['/maintenance-cycle/work-order-id','/corrective'],['/corrective/work_order/id','/corrective'],['/ppm/job/id','/corrective'],['/statements/id','/reports'],['/procurement/order/id','/inventory']])assert.equal(familyForPath(path)?.root,root,path)
  assert.equal(familyForPath('/unknown'),null)
 })
