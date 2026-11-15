@@ -1,3 +1,5 @@
+import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
+import {maintenanceAction,checklistFocus} from '../lib/maintenanceFocus'
 import {readCycle,migrationMissing} from '../lib/maintenanceCycle'
 import {useEffect,useState} from 'react'
 import {Link,useNavigate,useParams} from 'react-router-dom'
@@ -9,7 +11,7 @@ const blankStep={title_ar:'',title_en:'',instructions_ar:'',instructions_en:'',t
 export default function PPMDetails(){
  const {kind,id}=useParams(),navigate=useNavigate(),{can,user}=useAuth(),{t,lang}=useLanguage()
  const [data,setData]=useState(null),[directory,setDirectory]=useState([]),[history,setHistory]=useState([]),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
- const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState('')
+ const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState(''),[reviewStep,setReviewStep]=useState(null)
  const [cycleProjects,setCycleProjects]=useState([]),[cycleProject,setCycleProject]=useState('')
  useEffect(()=>{let alive=true;readCycle(localStorage.getItem('basmat.active.organization')).then(d=>{if(alive)setCycleProjects(d.projects||[])}).catch(e=>{if(alive&&!migrationMissing(e))setError(e.message)});return()=>{alive=false}},[])
  const load=async()=>{
@@ -19,7 +21,7 @@ export default function PPMDetails(){
    setData(bundle);setDirectory(people);setHistory(events)
   }catch(e){setError(e.message)}
  }
- useEffect(()=>{load()},[kind,id])
+ useEffect(()=>{setReviewStep(null);load()},[kind,id])
  const row=(kind==='procedure'?data?.procedures:kind==='plan'?data?.plans:data?.jobs)?.find(x=>x.id===id)
  const matchingProjects=cycleProjects.filter(p=>p.policy?.status==='active'&&p.policy.contract_id===data?.plans.find(pl=>pl.id===row?.plan_id)?.contract_id)
  const selectedProject=cycleProject||(matchingProjects.length===1?matchingProjects[0].id:'')
@@ -44,9 +46,11 @@ export default function PPMDetails(){
  const steps=kind==='procedure'?data?.steps.filter(x=>x.procedure_id===id).sort((a,b)=>a.seq-b.seq)||[]:kind==='job'?(row?.procedure_snapshot?.steps||[]):[]
  const results=data?.results.filter(x=>x.job_id===id)||[]
  const resultFor=stepId=>results.find(x=>x.step_id===stepId)
+ const focus=checklistFocus(steps,results)
+ const nextAction=kind==='job'&&row?maintenanceAction({kind:'ppm',status:row.status,assigned:!!row.assigned_to,technician:directory.find(x=>x.id===row.assigned_to)?.full_name,lang,integrated:!!linkedOrder?.project_id,steps,results}):null
  const update=(stepId,key,value)=>setInputs(old=>({...old,[stepId]:{...old[stepId],[key]:value}}))
  const resultField=(s,key)=>inputs[s.id]?.[key]??resultFor(s.id)?.[key]??''
- const saveResult=s=>run('result',{step_id:s.id,result:resultField(s,'result'),reading:resultField(s,'reading'),comment:resultField(s,'comment')})
+ const saveResult=async s=>{await run('result',{step_id:s.id,result:resultField(s,'result'),reading:resultField(s,'reading'),comment:resultField(s,'comment')});setReviewStep(null)}
  const followup=async s=>{
   if(!confirm(t('confirmAction')))return
   setBusy(true);setError('')
@@ -64,7 +68,7 @@ export default function PPMDetails(){
     <h3>{t(kind)}</h3>
     {kind==='procedure'?details([['nameAr',row.name_ar],['nameEn',row.name_en],['frequency',t(row.frequency)],['category',name(data.categories.find(x=>x.id===row.category_id))],['manufacturer',row.manufacturer],['model',row.model],['reference',row.reference],['estimatedMinutes',row.estimated_minutes],['status',t(row.status)]]):
     kind==='plan'?details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['procedure',data.procedures.find(x=>x.id===row.procedure_id)?.code],['frequency',t(row.frequency)],['startDate',row.start_date],['nextDue',row.next_due],['intervalCount',row.interval_count],['status',t(row.status)]]):
-    details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||row.assigned_to],['workOrder',row.work_order_id?<Link to={(linkedOrder?.project_id?'/maintenance-cycle/':'/corrective/work_order/')+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
+    details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||t('noAssignee')],['workOrder',row.work_order_id?<Link to={(linkedOrder?.project_id?'/maintenance-cycle/':'/corrective/work_order/')+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
     {kind==='procedure'&&<p className="muted">{t('procedureNotice')}</p>}
    </div>
    {kind==='procedure'&&<>
@@ -89,14 +93,15 @@ export default function PPMDetails(){
     <div className="facility-panel"><h3>{t('ppmJobs')}</h3>{data.jobs.filter(x=>x.plan_id===id).sort((a,b)=>a.due_date.localeCompare(b.due_date)).map(j=><div key={j.id} className="row-actions" style={{padding:'8px 0'}}><Link to={'/ppm/job/'+j.id}>{j.job_number}</Link><span>{j.due_date}</span><Status value={j.status}/></div>)}</div>
    </>}
    {kind==='job'&&<>
+    <NextActionCard action={nextAction} lang={lang}/>
     <div className="facility-panel"><h3>{t('actions')}</h3>
-     {manager&&['scheduled','assigned'].includes(row.status)&&<div className="form-grid">{matchingProjects.length>0&&<Field label={lang==='ar'?'المشروع لدورة الصيانة':'Project for the maintenance cycle'}><Select value={selectedProject} onChange={setCycleProject} options={options(matchingProjects,p=>p.name)}/></Field>}<Field label={t('assignedTo')}><Select value={assignee} onChange={setAssignee} options={options(directory.filter(x=>x.organization_id===row.organization_id),x=>x.full_name||x.email)}/></Field><div className="row-actions">{button('assign',!!assignee&&(!matchingProjects.length||!!selectedProject),{user_id:assignee,project_id:selectedProject||undefined},true)}</div></div>}
+     <StageSection completed={!!row.assigned_to} label={lang==='ar'?'الإسناد وتغيير الفني':'Assignment and technician changes'}>     {manager&&['scheduled','assigned'].includes(row.status)&&<div className="form-grid">{matchingProjects.length>0&&<Field label={lang==='ar'?'المشروع لدورة الصيانة':'Project for the maintenance cycle'}><Select value={selectedProject} onChange={setCycleProject} options={options(matchingProjects,p=>p.name)}/></Field>}<Field label={t('assignedTo')}><Select value={assignee} onChange={setAssignee} options={options(directory.filter(x=>x.organization_id===row.organization_id),x=>x.full_name||x.email)}/></Field><div className="row-actions">{button('assign',!!assignee&&(!matchingProjects.length||!!selectedProject),{user_id:assignee,project_id:selectedProject||undefined},true)}</div></div>}</StageSection>
      <div className="row-actions">{button('start',executor&&row.status==='assigned',{},true)}{button('complete',executor&&row.status==='in_progress',{},true)}{button('approve',approver&&row.status==='completed',{},true)}{button('close',approver&&row.status==='approved'&&!linkedOrder?.project_id,{},true)}</div>
      {manager&&row.status==='completed'&&<><Field label={t('reason')}><textarea value={reason} onChange={e=>setReason(e.target.value)}/></Field>{button('reject',reason.trim().length>=5,{reason})}</>}
      <p className="muted">{t('executionNotice')}</p>
     </div>
-    <div className="facility-panel"><h3>{t('checklist')}</h3>
-     {steps.map(s=><div key={s.id} className="facility-panel" style={{marginBlock:'12px'}}>
+    <StageSection completed={row.status!=='in_progress'} label={lang==='ar'?'إجراءات الصيانة ونتائجها':'Maintenance steps and results'}>    <div className="facility-panel"><h3>{t('checklist')}</h3>
+     {(reviewStep?steps.filter(s=>s.id===reviewStep):focus.next?[focus.next]:[]).map(s=><div key={s.id} className="facility-panel" style={{marginBlock:'12px'}}>
       <strong>{s.seq}. {name({name_ar:s.title_ar,name_en:s.title_en})}</strong><p>{lang==='ar'?s.instructions_ar:s.instructions_en}</p>
       {details([['safetyNotes',s.safety_notes],['tools',s.tools],['materials',s.materials],['unit',s.unit],['minValue',s.min_value],['maxValue',s.max_value]])}
       {executor&&row.status==='in_progress'?<div className="form-grid">
@@ -110,9 +115,13 @@ export default function PPMDetails(){
       </div>}
      </div>)}
      <p className="muted">{t('qaNotice')}</p>
-    </div>
+    </div></StageSection>
+    {focus.failed.map(s=><div className="maintenance-focus-failure" key={s.id} role="alert"><strong>{lang==='ar'?'نتيجة فاشلة تحتاج متابعة: ':'Failed result needs follow-up: '}{name({name_ar:s.title_ar,name_en:s.title_en})}</strong><p>{resultFor(s.id)?.comment}</p>{(manager||executor)&&<div className="row-actions">{data.followups.find(f=>f.job_id===id&&f.step_id===s.id)?<Link to={'/corrective/request/'+data.followups.find(f=>f.job_id===id&&f.step_id===s.id).request_id}>{t('followupCreated')}</Link>:<button disabled={busy} className="btn secondary" onClick={()=>followup(s)}>{t('followup')}</button>}</div>}</div>)}
+    {focus.completed.length>0&&<StageSection completed label={(lang==='ar'?'الخطوات المسجلة السابقة':'Previously recorded steps')+' ('+focus.completed.length+')'}>{focus.completed.map(s=><div className="maintenance-saved-step" key={s.id}><strong>{s.seq}. {name({name_ar:s.title_ar,name_en:s.title_en})}</strong><p><Status value={resultFor(s.id)?.result}/> {resultFor(s.id)?.reading??''} {resultFor(s.id)?.comment}</p>{executor&&row.status==='in_progress'&&<button type="button" className="btn secondary" onClick={()=>setReviewStep(s.id)}>{lang==='ar'?'مراجعة وتعديل النتيجة':'Review and edit result'}</button>}</div>)}</StageSection>}
+
    </>}
-   <div className="facility-panel"><h3>{t('history')}</h3>{history.map(e=><div key={e.id} style={{padding:'8px 0',borderBottom:'1px solid #ddd'}}><strong>{t(e.action)}</strong><p className="muted">{new Date(e.created_at).toLocaleString(lang)}</p>{e.details?.reason&&<p>{e.details.reason}</p>}</div>)}</div>
+   <StageSection completed label={lang==='ar'?'سجل الخطوات السابقة':'Previous steps'}>   <div className="facility-panel"><h3>{t('history')}</h3>{history.map(e=><div key={e.id} style={{padding:'8px 0',borderBottom:'1px solid #ddd'}}><strong>{t(e.action)}</strong><p className="muted">{new Date(e.created_at).toLocaleString(lang)}</p>{e.details?.reason&&<p>{e.details.reason}</p>}</div>)}</div></StageSection>
   </>}
  </section>
 }
+
