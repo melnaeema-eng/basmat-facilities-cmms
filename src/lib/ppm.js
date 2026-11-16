@@ -1,3 +1,4 @@
+import {emitNotificationRefresh} from './notifications'
 import {supabase} from './supabaseClient'
 
 export const frequencies=['daily','weekly','monthly','quarterly','semiannual','annual']
@@ -8,15 +9,18 @@ export async function ppmAction(kind,id,command,payload={}){
   if(kind==='job'&&command==='assign'&&payload.project_id){
     const {data,error}=await supabase.rpc('bf44_assign_ppm',{p_job:id,p_user:payload.user_id,p_project:payload.project_id})
     if(error)throw error
+  emitNotificationRefresh()
     return data
   }
   if(kind==='job'&&command==='assign'){
     const {data,error}=await supabase.rpc('bf5_assign_job_work_order',{p_job:id,p_user:payload.user_id})
     if(error)throw error
+  emitNotificationRefresh()
     return data
   }
   const {data,error}=await supabase.rpc('bf5_action',{p_kind:kind,p_id:id||null,p_action:command,p_data:payload})
   if(error)throw error
+  emitNotificationRefresh()
   return data
 }
 
@@ -91,3 +95,4 @@ export async function loadPPMHistory(kind,id){
 }
 
 export {recurrenceDates} from './ppmCore'
+

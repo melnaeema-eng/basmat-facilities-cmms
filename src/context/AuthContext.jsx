@@ -72,6 +72,8 @@ export function AuthProvider({children}){
 
  const can=(permission,org=null)=>{
   if(profile?.status!=='active')return false
+  // Every active user can open their own server-filtered action inbox.
+  if(permission==='notifications.view')return true
   if(permission===companyAdminPermission)return companyWorkspace(access,profile).isSuperAdmin
   if(access?.super_admin)return true
   return hasFacilitiesPermission(access?.permissions,permission,org)||
@@ -122,4 +124,5 @@ export function useAuth(){
  if(!v)throw Error('AuthProvider missing')
  return v
 }
+
 
