@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -39,7 +40,7 @@ export default function LocationManagement(){
   <div className="page-head"><h1>{t('locations')}</h1><div className="row-actions"><button className="btn secondary" onClick={reload}>{t('refresh')}</button>{can('locations.manage',org||null)&&<button className="btn primary" disabled={!site} onClick={()=>start()}>{t('add')}</button>}</div></div>
   <Notice error={error} success={success}/>
   <div className="facility-panel filter-grid">
-   <Field label={t('organization')}><Choice rows={active(data?.organizations)} lang={lang} value={org} onChange={v=>{setOrg(v);setClient('');setSite('')}}/></Field>
+   <CompanyField label={t('organization')}><Choice rows={active(data?.organizations)} lang={lang} value={org} onChange={v=>{setOrg(v);setClient('');setSite('')}}/></CompanyField>
    <Field label={t('client')}><Choice rows={active(data?.clients).filter(c=>!org||c.organization_id===org)} lang={lang} value={client} onChange={v=>{setClient(v);setSite('')}}/></Field>
    <Field label={t('site')}><Choice rows={sites} lang={lang} value={site} onChange={setSite}/></Field>
   </div>
@@ -60,3 +61,4 @@ export default function LocationManagement(){
   </Dialog>
  </section>
 }
+

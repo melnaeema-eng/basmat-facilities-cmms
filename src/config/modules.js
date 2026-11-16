@@ -32,11 +32,11 @@ export const modules = [
     "group": "operations",
     "nav": false
   },
-  {"path":"/maintenance-companies","page":"MaintenanceCompanies","permission":"organizations.view","en":"Company workspace","ar":"مساحة الشركة","icon":"org","group":"setup","nav":true},
+  {"path":"/maintenance-companies","page":"MaintenanceCompanies","permission":"platform.company-workspace","en":"Company workspace","ar":"مساحة الشركة","icon":"org","group":"setup","nav":true},
   {
     "path": "/organizations",
     "page": "OrganizationOnboarding",
-    "permission": "organizations.view",
+    "permission":"platform.company-workspace",
     "en": "Organizations",
     "ar": "المنظمات",
     "icon": "org",
@@ -487,7 +487,7 @@ export const modules = [
   {
     "path": "/facility-reference-library",
     "page": "FacilitiesReferenceLibrary",
-    "permission": "enterprise-structure.view",
+    "permission":"platform.company-workspace",
     "en": "Owner & service-company directory",
     "ar": "دليل الملاك وشركات الصيانة",
     "icon": "building",
@@ -676,3 +676,4 @@ export function moduleForPath(path) {
  return candidates.sort((a,b) => b.path.length-a.path.length)[0] || modules[0]
 }
 export const moduleLabel = (module, lang) => module[lang === 'ar' ? 'ar' : 'en']
+

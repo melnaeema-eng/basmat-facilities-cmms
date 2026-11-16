@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
 import {useAuth} from '../context/AuthContext'
@@ -92,11 +93,11 @@ export default function RolesPermissions(){
  return <section className="facility-panel">
   <div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
    <h1 style={{marginInlineEnd:'auto'}}>الأدوار والصلاحيات | Roles & Permissions</h1>
-   <select value={org} onChange={e=>setOrg(e.target.value)}>
+   <CompanyField><select value={org} onChange={e=>setOrg(e.target.value)}>
     {orgs.map(o=><option key={o.organization_id||o.id} value={o.organization_id||o.id}>
      {o.name_ar||o.name||o.name_en||o.code}
     </option>)}
-   </select>
+   </select></CompanyField>
    <button onClick={load} disabled={busy}>تحديث</button>
   </div>
 
@@ -177,4 +178,5 @@ export default function RolesPermissions(){
   </>}
  </section>
 }
+
 

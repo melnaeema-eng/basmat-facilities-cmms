@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 
 import {useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
@@ -82,7 +83,7 @@ export default function PPM(){
   {tab==='jobs'&&data&&<div className="facility-panel"><h3>{t('ppmSchedule')}</h3><div className="form-grid"><Field label={t('frequency')}><p>{t('scheduleNotice')}</p></Field><Field label={t('dueDate')}><p>{annual.length} {t('ppmJobs')}</p></Field></div></div>}
   <Dialog open={open} title={t(tab==='procedures'?'newProcedure':'newPlan')} onClose={()=>!busy&&setOpen(false)}>
    <form className="facility-form" onSubmit={submit}><div className="form-grid">
-    <Field label={t('organization')} required><Select required value={form.organization_id} onChange={v=>change('organization_id',v)} options={options(data?.organizations.filter(x=>x.status==='active'&&can('ppm.manage',x.id)),name)}/></Field>
+    <CompanyField label={t('organization')} required><Select required value={form.organization_id} onChange={v=>change('organization_id',v)} options={options(data?.organizations.filter(x=>x.status==='active'&&can('ppm.manage',x.id)),name)}/></CompanyField>
     {tab==='procedures'?<>
      {['name_ar','name_en'].map(key=><Field key={key} label={t(key==='name_ar'?'nameAr':'nameEn')} required><input name={key} required value={form[key]} onChange={e=>change(key,e.target.value)} onBlur={e=>e.target.value&&focusNextField(e.target)}/></Field>)}
      <Field label={t('category')}><Select value={form.category_id} onChange={v=>change('category_id',v)} options={options(data?.categories.filter(x=>x.organization_id===form.organization_id),name)}/></Field>
@@ -105,3 +106,4 @@ export default function PPM(){
   </Dialog>
  </section>
 }
+

@@ -1,3 +1,4 @@
+import CompanyField,{CompanyAdminOnly} from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useLanguage} from '../i18n/LanguageContext'
 import {supabase} from '../lib/supabaseClient'
@@ -39,9 +40,9 @@ export default function EnterpriseStructure(){
  const submitMember=e=>{e.preventDefault();run(async()=>{await addTeamMember(member);setMember({team_id:'',user_id:'',role_id:'',member_type:'worker',is_lead:false})})}
 
  return <section className="facility-module">
-  <div className="page-head"><h1>{t('enterpriseStructureTitle')}</h1><div className="row-actions"><button className="btn secondary" type="button" onClick={()=>window.location.href='/facility-reference-library'}>مكتبة المرافق | Facilities Library</button><button className="btn secondary" onClick={()=>load()}>{t('esRefresh')}</button></div></div>
+  <div className="page-head"><h1>{t('enterpriseStructureTitle')}</h1><div className="row-actions"><CompanyAdminOnly><button className="btn secondary" type="button" onClick={()=>window.location.href='/facility-reference-library'}>مكتبة المرافق | Facilities Library</button></CompanyAdminOnly><button className="btn secondary" onClick={()=>load()}>{t('esRefresh')}</button></div></div>
   {error&&<div className="facility-panel" role="alert">{error}</div>}
-  <div className="facility-panel"><div className="form-grid"><label>{t('esOrg')}<select value={org} onChange={e=>setOrg(e.target.value)}>{dir.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label></div><button className="btn secondary" onClick={()=>run(()=>seedServiceLines(org))}>{t('esSeed')}</button></div>
+  <div className="facility-panel"><div className="form-grid"><CompanyField>{t('esOrg')}<select value={org} onChange={e=>setOrg(e.target.value)}>{dir.orgs.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></CompanyField></div><button className="btn secondary" onClick={()=>run(()=>seedServiceLines(org))}>{t('esSeed')}</button></div>
 
   <form className="facility-panel" onSubmit={submitProject}><h2>{t('esNewProject')}</h2><div className="form-grid">
    <label>{t('esClient')}<select required value={project.client_id} onChange={e=>setProject(v=>({...v,client_id:e.target.value,contract_id:''}))}><option value="">—</option>{clients.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
@@ -77,3 +78,4 @@ export default function EnterpriseStructure(){
   <div className="facility-panel"><h2>{t('esTeams')}</h2><div className="security-check-list">{data.teams.map(x=><article className="security-check-card" key={x.id}><div><strong>{x.team_code} — {x.name}</strong><p>{x.discipline_code||'—'} · {x.shift_code||'—'}</p></div><details className="security-human-details"><summary>{t('esMembers')} ({x.members?.length||0})</summary><div className="security-detail-list">{(x.members||[]).map(m=><div key={m.user_id}>{m.full_name||m.email} — {m.role_code||m.member_type}{m.is_lead?' ★':''}</div>)}</div></details></article>)}</div></div>
  </section>
 }
+

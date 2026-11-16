@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -117,12 +118,12 @@ export default function MedicalMaintenanceCenter(){
 
   <div className="facility-panel">
    <div className="med-grid">
-    <Field label={lang==='ar'?'المنظمة':'Organization'}>
+    <CompanyField label={lang==='ar'?'المنظمة':'Organization'}>
      <select value={org} onChange={e=>{setOrg(e.target.value);setAssetForm(v=>({...v,organization_id:e.target.value}))}}>
       <option value="">{lang==='ar'?'كل المتاح':'All available'}</option>
       {allowedOrgs.map(x=><option key={x.id} value={x.id}>{x.name||x.code}</option>)}
      </select>
-    </Field>
+    </CompanyField>
     <Field label={lang==='ar'?'بحث':'Search'}><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ventilator / MRI / GE / Philips / Serial..."/></Field>
    </div>
   </div>
@@ -174,7 +175,7 @@ export default function MedicalMaintenanceCenter(){
    {can('medical.manage',org||null)&&<div className="facility-panel">
     <h2>{lang==='ar'?'تسجيل جهاز طبي':'Register Medical Device'}</h2>
     <div className="med-grid">
-     <Field label={lang==='ar'?'المنظمة':'Organization'}><select value={assetForm.organization_id||org} onChange={e=>setAssetForm({...assetForm,organization_id:e.target.value})}><option value="">Select</option>{allowedOrgs.map(x=><option value={x.id} key={x.id}>{x.name||x.code}</option>)}</select></Field>
+     <CompanyField label={lang==='ar'?'المنظمة':'Organization'}><select value={assetForm.organization_id||org} onChange={e=>setAssetForm({...assetForm,organization_id:e.target.value})}><option value="">Select</option>{allowedOrgs.map(x=><option value={x.id} key={x.id}>{x.name||x.code}</option>)}</select></CompanyField>
      <Field label={lang==='ar'?'نوع الجهاز':'Device type'}><select value={assetForm.master_type_id} onChange={e=>setAssetForm({...assetForm,master_type_id:e.target.value,manufacturer_id:''})}><option value="">Select</option>{data.types.filter(x=>x.status==='active').map(x=><option value={x.id} key={x.id}>{x.icon_text} {lang==='ar'?x.name_ar:x.name_en}</option>)}</select></Field>
      <Field label={lang==='ar'?'الشركة المصنعة':'Manufacturer'}><select value={assetForm.manufacturer_id} onChange={e=>setAssetForm({...assetForm,manufacturer_id:e.target.value})}><option value="">Generic / Other</option>{data.options.filter(o=>!assetForm.master_type_id||o.asset_type_id===assetForm.master_type_id).map(o=>mfrMap.get(o.manufacturer_id)).filter(Boolean).filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i).map(x=><option value={x.id} key={x.id}>{x.name}</option>)}</select></Field>
      <Field label="Asset Tag"><input value={assetForm.asset_tag} onChange={e=>setAssetForm({...assetForm,asset_tag:e.target.value})}/></Field>
@@ -259,3 +260,4 @@ export default function MedicalMaintenanceCenter(){
   </>}
  </section>
 }
+

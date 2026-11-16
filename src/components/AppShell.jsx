@@ -1,3 +1,5 @@
+import CompanyWorkspaceBoundary from './CompanyWorkspaceBoundary'
+import {companyWorkspace,companyAdminPermission} from '../lib/companyWorkspace'
 import NotificationBell from './NotificationBell'
 import {NavLink,Outlet,useLocation,useNavigate,Link} from 'react-router-dom'
 import {useEffect,useMemo,useRef,useState} from 'react'
@@ -49,7 +51,7 @@ export default function AppShell(){
  const [query,setQuery]=useState(''),[mobileOpen,setMobileOpen]=useState(false),[organizations,setOrganizations]=useState([])
  const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
  const [logoutError,setLogoutError]=useState(false),[orgError,setOrgError]=useState(false)
- const content=useRef(null),toggle=useRef(null),platformAdmin=!!access?.super_admin,homeId=access?.home_organization_id||null
+ const content=useRef(null),toggle=useRef(null),platformAdmin=companyWorkspace(access,profile).isSuperAdmin,homeId=companyWorkspace(access,profile).companyId
  const available=useMemo(()=>modules.filter(m=>permitted(m,can)),[can])
  const extra=secondaryNavigation(can)
  const name=profile?.full_name||user?.email||(ar?'المستخدم':'User')
@@ -76,7 +78,8 @@ export default function AppShell(){
   </aside>
   <div className="bafm-main"><header className="bafm-topbar"><button type="button" ref={toggle} className="btn bafm-mobile-toggle" aria-expanded={mobileOpen} aria-controls="workspace-navigation" onClick={()=>setMobileOpen(v=>!v)} aria-label={ar?'فتح القائمة':'Open navigation'}>☰</button><div className="bafm-top-title"><strong>{ar?'بصمة النوابغ لإدارة صيانة المرافق':'Basmat Facilities CMMS'}</strong>{org&&<small className="bafm-company-context">{orgName}</small>}</div><form className="bafm-search" onSubmit={search}><NavIcon type="report"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={ar?'ابحث في الأصول وأوامر العمل…':'Search assets and work orders…'} aria-label={ar?'بحث':'Search'}/></form><div className="bafm-top-actions">{platformAdmin&&<Link className="bafm-top-btn" to="/maintenance-companies">{ar?'الشركة':'Company'}</Link>}<button className="bafm-top-btn" onClick={()=>setLang(ar?'en':'ar')}>{ar?'EN':'عربي'}</button>{can('notifications.view')&&<NotificationBell/>}<div className="bafm-user"><span className="bafm-avatar">{name.slice(0,1)}</span><strong>{name}</strong></div><button type="button" className="bafm-signout" onClick={logout} aria-label={ar?'تسجيل الخروج':'Sign out'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 4H4v16h5M14 7l5 5-5 5M8 12h11"/></svg><span>{ar?'تسجيل الخروج':'Sign out'}</span></button></div></header>
    <div className="bafm-welcome">{ar?'مرحبًا ':'Welcome '}{name} — {orgName}</div>{(logoutError||orgError)&&<div className="alert error" role="alert">{logoutError?(ar?'تعذر تسجيل الخروج.':'Sign out failed.'):(ar?'تعذر تحميل الشركات.':'Could not load companies.')}</div>}
-   <main id="workspace-content" ref={content} tabIndex={-1} className="workspace-content" key={activeOrgId}>{new URLSearchParams(location.search).get('setup')==='1'&&<Link className="workspace-return" to="/project-setup">{ar?'العودة إلى إعداد المشروع':'Back to project setup'}</Link>}<RelatedTools/><GuidedWorkflowBar/><Outlet/></main>
+   <main id="workspace-content" ref={content} tabIndex={-1} className="workspace-content" key={activeOrgId}>{new URLSearchParams(location.search).get('setup')==='1'&&<Link className="workspace-return" to="/project-setup">{ar?'العودة إلى إعداد المشروع':'Back to project setup'}</Link>}<CompanyWorkspaceBoundary><RelatedTools/><GuidedWorkflowBar/><Outlet/></CompanyWorkspaceBoundary></main>
   </div>
  </div>
 }
+

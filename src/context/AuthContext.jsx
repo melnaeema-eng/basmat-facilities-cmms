@@ -1,3 +1,4 @@
+import {bindHomeCompany,companyAdminPermission,companyWorkspace} from '../lib/companyWorkspace'
 import {hasFacilitiesPermission} from '../lib/facilitiesPermissions'
 import {hasScopedCyclePermission} from '../lib/scopedCyclePermissions'
 import {createContext,useContext,useEffect,useMemo,useState} from 'react'
@@ -13,14 +14,15 @@ export function AuthProvider({children}){
  const [loading,setLoading]=useState(true)
 
  async function readAccess(userId){
-  const [p,a,scoped]=await Promise.all([
+  const [p,a,scoped,home]=await Promise.all([
    supabase.from('bf_profiles').select('id,full_name,email,status,is_super_admin').eq('id',userId).maybeSingle(),
    supabase.rpc('bf_acl_my_context'),
-   supabase.rpc('bf44_my_project_access')
+   supabase.rpc('bf44_my_project_access'),
+   supabase.rpc('bf3_my_access')
   ])
   if(p.error)throw p.error
   if(a.error)throw a.error
-  const payload=a.data||empty
+  const payload=bindHomeCompany(a.data||empty,home.error?{}:home.data||{})
   return {
    profile:p.data,
    access:{
@@ -70,6 +72,7 @@ export function AuthProvider({children}){
 
  const can=(permission,org=null)=>{
   if(profile?.status!=='active')return false
+  if(permission===companyAdminPermission)return companyWorkspace(access,profile).isSuperAdmin
   if(access?.super_admin)return true
   return hasFacilitiesPermission(access?.permissions,permission,org)||
    hasFacilitiesPermission(access?.project_permissions,permission,org)
@@ -119,3 +122,4 @@ export function useAuth(){
  if(!v)throw Error('AuthProvider missing')
  return v
 }
+

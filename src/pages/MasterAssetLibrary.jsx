@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 
 import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
@@ -289,12 +290,12 @@ export default function MasterAssetLibrary(){
      </select>
     </Field>
 
-    <Field label={lang==='ar'?'المنظمة':'Organization'}>
+    <CompanyField label={lang==='ar'?'المنظمة':'Organization'}>
      <select value={org} onChange={e=>setOrg(e.target.value)}>
       <option value="">{lang==='ar'?'اختر':'Select'}</option>
       {allowedOrgs.map(x=><option value={x.id} key={x.id}>{x.name_ar||x.name_en||x.name||x.code}</option>)}
      </select>
-    </Field>
+    </CompanyField>
 
     <Field label={lang==='ar'?'بحث':'Search'}>
      <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Avaya / Cisco / Radio / DAS / Zamil / FM-200 / Chiller..."/>
@@ -362,3 +363,4 @@ export default function MasterAssetLibrary(){
   </>}
  </section>
 }
+

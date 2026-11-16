@@ -1,3 +1,4 @@
+import CompanyField from '../components/CompanyField'
 import {adoptReferenceCompany} from '../lib/adoptReferenceCompany'
 import {useEffect,useMemo,useState} from 'react'
 import {useNavigate} from 'react-router-dom'
@@ -319,12 +320,12 @@ export default function FacilitiesReferenceLibrary(){
    </div>}
 
    {tab==='types'&&selected.status!=='archived'&&<div className="ref-detail-grid">
-    <label>{ar?'المنظمة':'Organization'}
+    <CompanyField>{ar?'المنظمة':'Organization'}
      <select value={siteForm.organization_id} onChange={e=>setSiteForm(f=>({...f,organization_id:e.target.value,client_id:''}))}>
       <option value="">{ar?'اختر':'Select'}</option>
       {orgs.map(o=><option key={o.id} value={o.id}>{o.name||o.code}</option>)}
      </select>
-    </label>
+    </CompanyField>
     <label>{ar?'العميل':'Client'}
      <select value={siteForm.client_id} onChange={e=>setSiteForm(f=>({...f,client_id:e.target.value}))}>
       <option value="">{ar?'اختر':'Select'}</option>
@@ -351,3 +352,4 @@ export default function FacilitiesReferenceLibrary(){
   </div>
  </section>
 }
+
