@@ -14,3 +14,7 @@ export function mergeStatementProjects(cycleProjects,structureProjects,owners,co
  }
  return [...result.values()]
 }
+
+
+// Financial authoring and owner activation are separate server-provided capabilities.
+export function statementInboxCapabilities(projects){return {canCreate:projects.some(p=>p.can_finance),activationProjects:projects.filter(p=>p.can_activate&&p.policy?.status==='draft')}}
