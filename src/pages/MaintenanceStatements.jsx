@@ -2,11 +2,30 @@ import {useEffect,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
 import {readCycle,statementAction,migrationMissing} from '../lib/maintenanceCycle'
 import {CycleField,CycleError,CycleSetupNotice,CycleStatus,useCycleLanguage} from '../components/CycleFields'
-import {statementOwners,projectsForOwner,statementReady} from '../lib/statementProjects'
+import {statementOwners,projectsForOwner,statementReady,mergeStatementProjects} from '../lib/statementProjects'
+import {supabase} from '../lib/supabaseClient'
 import '../cycle.css'
 export default function MaintenanceStatements(){
  const L=useCycleLanguage(),navigate=useNavigate(),[data,setData]=useState(null),[missing,setMissing]=useState(false),[error,setError]=useState(null),[busy,setBusy]=useState(false),[owner,setOwner]=useState(''),[form,setForm]=useState({project_id:'',period_start:'',period_end:''})
- async function load(){setError(null);try{setData(await readCycle(localStorage.getItem('basmat.active.organization')))}catch(e){if(migrationMissing(e))setMissing(true);else setError(e)}}
+ async function load(){
+  setError(null)
+  try{
+   const org=localStorage.getItem('basmat.active.organization'),cycle=await readCycle(org)
+   if(org){
+    const results=await Promise.allSettled([
+     supabase.rpc('bf35_structure',{p_org:org}),
+     supabase.from('bf_clients').select('id,name').eq('organization_id',org),
+     supabase.from('bf_contracts').select('id,contract_number').eq('organization_id',org)
+    ])
+    const value=i=>results[i].status==='fulfilled'&&!results[i].value.error?results[i].value.data:null
+    const structure=value(0),owners=value(1),contracts=value(2)
+    if(structure&&owners)cycle.projects=mergeStatementProjects(cycle.projects||[],structure.projects||[],owners,contracts||[])
+    const failed=results.find(x=>x.status==='rejected'||x.value.error&&x.value.error.code!=='42501')
+    if(failed)setError(failed.status==='rejected'?failed.reason:failed.value.error)
+   }
+   setData(cycle);setMissing(false)
+  }catch(e){if(migrationMissing(e))setMissing(true);else setError(e)}
+ }
  useEffect(()=>{load()},[])
  const projects=data?.projects||[],owners=statementOwners(projects),ownerProjects=projectsForOwner(projects,owner),selected=ownerProjects.find(p=>p.id===form.project_id),ready=statementReady(selected)
  async function create(e){e.preventDefault();if(busy||!ready)return;setBusy(true);setError(null);try{const id=await statementAction('create',null,form);navigate('/statements/'+id)}catch(e){setError(e)}finally{setBusy(false)}}
@@ -23,7 +42,8 @@ export default function MaintenanceStatements(){
    {!owners.length&&<p role="status">{L('لا توجد مشاريع مرتبطة بمالك ضمن نطاق وصولك. راجع إسناد المشروع في الملاك والمشاريع.','No owner-linked projects are available within your access scope. Review project access in Owners & Projects.')}</p>}
    {selected&&<div className="cycle-chain"><span>{L('المالك: ','Owner: ')}{selected.owner}</span><span>{L('المشروع: ','Project: ')}{selected.name}</span><span>{L('العقد: ','Contract: ')}{selected.contract||'—'}</span></div>}
    {selected&&!ready&&<div role="status">
-    <p>{selected.policy?.status!=='active'?L('المشروع ظاهر، لكن يلزم إعداد سلسلة الاعتماد وتفعيلها بواسطة ممثل المالك قبل إنشاء المستخلص.','The project is available. Configure its approval chain and have the owner representative activate it before creating a statement.'):L('يلزم أن ينشئ المستخلص مستخدم مخوّل بإدارة مالية هذا المشروع.','A user authorized to manage this project’s finances must create the statement.')}</p>
+    <p>{selected.setup_required?L('المشروع مسجل، لكن إعداد الوصول المالي وسلسلة اعتماده غير مكتمل. أكمل إسناد المستخدمين والصلاحيات لهذا المشروع أولًا.','This project is registered, but its financial access and approval chain are not configured. Complete its user assignments and permissions first.'):selected.policy?.status!=='active'?L('المشروع ظاهر، لكن يلزم إعداد سلسلة الاعتماد وتفعيلها بواسطة ممثل المالك قبل إنشاء المستخلص.','The project is available. Configure its approval chain and have the owner representative activate it before creating a statement.'):L('يلزم أن ينشئ المستخلص مستخدم مخوّل بإدارة مالية هذا المشروع.','A user authorized to manage this project’s finances must create the statement.')}</p>
+    {selected.setup_required&&<Link className="btn secondary" to="/project-setup">{L('مراجعة إعداد المشروع والصلاحيات','Review project setup and access')}</Link>}
     {selected.policy?.status!=='active'&&(selected.can_manage||selected.can_activate)&&<Link className="btn secondary" to={'/work-orders?project='+encodeURIComponent(selected.id)+'&tab=setup'}>{L('إعداد اعتماد هذا المشروع','Set up this project’s approval chain')}</Link>}
    </div>}
    <button disabled={busy||!ready} className="btn primary">{L('إنشاء مسودة المستخلص','Create draft statement')}</button>

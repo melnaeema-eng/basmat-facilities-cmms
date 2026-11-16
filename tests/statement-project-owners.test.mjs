@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {statementOwners,projectsForOwner,statementReady} from '../src/lib/statementProjects.js'
+import {statementOwners,projectsForOwner,statementReady,mergeStatementProjects} from '../src/lib/statementProjects.js'
 const projects=[{id:'real',owner:'Real owner',can_finance:true,policy:null},{id:'test',owner:'Training owner',can_finance:true,policy:{status:'active'}},{id:'draft',owner:'Real owner',can_finance:false,policy:{status:'draft'}}]
 test('Owners remain visible before their project approval chains are activated',()=>{assert.deepEqual(statementOwners(projects),['Real owner','Training owner']);assert.deepEqual(projectsForOwner(projects,'Real owner').map(p=>p.id),['real','draft']);assert.equal(statementReady(projects[0]),false);assert.equal(statementReady(projects[1]),true)})
 test('Owner selection never invents projects or grants financial authority',()=>{assert.deepEqual(projectsForOwner(projects,'Unknown'),[]);assert.deepEqual(projectsForOwner(projects,''),[]);assert.equal(statementReady({...projects[2],policy:{status:'active'}}),false);assert.equal(statementReady(undefined),false)})
+
+test('Registered owners appear from the existing structure API without receiving financial rights',()=>{const merged=mergeStatementProjects(projects,[{id:'ministry',client_id:'owner-1',name:'Registered project',status:'active'},{id:'hidden',client_id:'unreadable',name:'No visible owner',status:'active'}],[{id:'owner-1',name:'Ministry'}],[]);assert(statementOwners(merged).includes('Ministry'));assert.equal(statementReady(merged.find(p=>p.id==='ministry')),false);assert.equal(merged.find(p=>p.id==='ministry').can_manage,false);assert(!merged.some(p=>p.id==='hidden'));assert.equal(merged.find(p=>p.id==='test'),projects[1])})
