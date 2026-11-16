@@ -1,16 +1,17 @@
 import {useEffect,useState} from 'react'
-import {Link,useNavigate} from 'react-router-dom'
+import {Link,useNavigate,useSearchParams} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
 import {readCycle,cycleRpc,migrationMissing} from '../lib/maintenanceCycle'
 import {CycleField,CycleError,CycleSetupNotice,CycleStatus,useCycleLanguage} from '../components/CycleFields'
 import '../cycle.css'
 import CycleAccessReadiness from '../components/CycleAccessReadiness'
 export default function MaintenanceCycle(){
- const {lang}=useLanguage(),L=useCycleLanguage(),navigate=useNavigate()
- const [data,setData]=useState(null),[error,setError]=useState(null),[missing,setMissing]=useState(false),[busy,setBusy]=useState(false),[tab,setTab]=useState('orders'),[project,setProject]=useState(''),[query,setQuery]=useState('')
+ const {lang}=useLanguage(),L=useCycleLanguage(),navigate=useNavigate(),[params]=useSearchParams()
+ const [data,setData]=useState(null),[error,setError]=useState(null),[missing,setMissing]=useState(false),[busy,setBusy]=useState(false),[tab,setTab]=useState(params.get('tab')==='setup'?'setup':'orders'),[project,setProject]=useState(params.get('project')||''),[query,setQuery]=useState('')
  const [policy,setPolicy]=useState({owner_email:'',consultant_email:'',currency:'SAR'}),[fault,setFault]=useState({asset_id:'',title:'',description:'',priority:'P3'}),[notice,setNotice]=useState('')
  async function load(){setError(null);try{const d=await readCycle(localStorage.getItem('basmat.active.organization'));setData(d);setMissing(false)}catch(e){if(migrationMissing(e))setMissing(true);else setError(e)}}
  useEffect(()=>{load()},[])
+ useEffect(()=>{if(params.get('project')){setProject(params.get('project'));if(params.get('tab')==='setup')setTab('setup')}},[params])
  const selected=data?.projects.find(p=>p.id===project)
  const inProject=rows=>(rows||[]).filter(x=>!project||x.project_id===project)
  async function run(fn){if(busy)return;setBusy(true);setError(null);setNotice('');try{await fn();await load();setNotice(L('تم حفظ الإجراء.','Action saved.'))}catch(e){setError(e)}finally{setBusy(false)}}
@@ -35,3 +36,4 @@ export default function MaintenanceCycle(){
   {tab==='setup'&&<div className="facility-panel"><h2>{L('سلسلة اعتماد المشروع','Project approval chain')}</h2><p>{L('تُستخدم الجهات والعقد والمشروع الموجودة. ممثل المالك يفعّل السلسلة، والاستشاري اختياري. لا يمنح هذا النموذج صلاحيات مستخدم جديدة.','Uses existing parties, contract and project. The selected owner activates the chain; a consultant is optional. This form does not grant new user access.')}</p><Link to="/project-setup">{L('إعداد الجهات والعقد والمشروع والمواقع','Set up parties, contract, project and sites')} ↗</Link>{selected?.policy&&<p><CycleStatus value={selected.policy.status}/></p>}{selected?.can_manage&&selected.policy?.status!=='active'&&<form onSubmit={savePolicy}><div className="form-grid"><CycleField label={L('بريد ممثل المالك المسجل','Registered owner representative email')}><input type="email" required value={policy.owner_email} onChange={e=>setPolicy({...policy,owner_email:e.target.value})}/></CycleField><CycleField label={L('بريد الاستشاري المصرح له — اختياري','Authorized consultant email — optional')}><input type="email" value={policy.consultant_email} onChange={e=>setPolicy({...policy,consultant_email:e.target.value})}/></CycleField><CycleField label={L('عملة العقد','Contract currency')}><input required pattern="[A-Z]{3}" maxLength={3} value={policy.currency} onChange={e=>setPolicy({...policy,currency:e.target.value.toUpperCase()})}/></CycleField></div><button disabled={busy} className="btn primary">{L('حفظ مسودة السلسلة','Save draft chain')}</button></form>}{selected?.can_activate&&selected.policy?.status==='draft'&&<button disabled={busy} className="btn primary" onClick={()=>run(()=>cycleRpc('bf44_policy_activate',{p_project:project}))}>{L('اعتماد وتفعيل بواسطة المالك','Approve & activate as owner')}</button>}{!selected&&<p>{L('اختر مشروعًا من القائمة أعلاه.','Choose a project above.')}</p>}</div>}
  </section>
 }
+
