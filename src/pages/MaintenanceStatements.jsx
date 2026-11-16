@@ -1,31 +1,18 @@
 import {useEffect,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
-import {readCycle,statementAction,migrationMissing,cycleRpc} from '../lib/maintenanceCycle'
+import {statementAction,migrationMissing,cycleRpc} from '../lib/maintenanceCycle'
 import {CycleField,CycleError,CycleSetupNotice,CycleStatus,useCycleLanguage} from '../components/CycleFields'
-import {statementOwners,projectsForOwner,statementReady,mergeStatementProjects,statementInboxCapabilities} from '../lib/statementProjects'
-import {supabase} from '../lib/supabaseClient'
+import {statementOwners,projectsForOwner,statementReady,statementInboxCapabilities} from '../lib/statementProjects'
+import {loadStatementCenter} from '../lib/statementCenter'
 import '../cycle.css'
 export default function MaintenanceStatements(){
  const L=useCycleLanguage(),navigate=useNavigate(),[data,setData]=useState(null),[missing,setMissing]=useState(false),[error,setError]=useState(null),[busy,setBusy]=useState(false),[owner,setOwner]=useState(''),[form,setForm]=useState({project_id:'',period_start:'',period_end:''})
  async function load(){
   setError(null)
-  try{
-   const org=localStorage.getItem('basmat.active.organization'),cycle=await readCycle(org)
-   if(org){
-    const results=await Promise.allSettled([
-     supabase.rpc('bf35_structure',{p_org:org}),
-     supabase.from('bf_clients').select('id,name').eq('organization_id',org),
-     supabase.from('bf_contracts').select('id,contract_number').eq('organization_id',org)
-    ])
-    const value=i=>results[i].status==='fulfilled'&&!results[i].value.error?results[i].value.data:null
-    const structure=value(0),owners=value(1),contracts=value(2)
-    if(structure&&owners)cycle.projects=mergeStatementProjects(cycle.projects||[],structure.projects||[],owners,contracts||[])
-    const failed=results.find(x=>x.status==='rejected'||x.value.error&&x.value.error.code!=='42501')
-    if(failed)setError(failed.status==='rejected'?failed.reason:failed.value.error)
-   }
-   setData(cycle);setMissing(false)
-  }catch(e){if(migrationMissing(e))setMissing(true);else setError(e)}
+  try{setData(await loadStatementCenter(cycleRpc,localStorage.getItem('basmat.active.organization')));setMissing(false)}
+  catch(e){if(migrationMissing(e))setMissing(true);else setError(e)}
  }
+
  useEffect(()=>{load()},[])
  const projects=data?.projects||[],owners=statementOwners(projects),ownerProjects=projectsForOwner(projects,owner),selected=ownerProjects.find(p=>p.id===form.project_id),ready=statementReady(selected),{canCreate,activationProjects}=statementInboxCapabilities(projects)
  async function activate(project){if(busy)return;setBusy(true);setError(null);try{await cycleRpc('bf44_policy_activate',{p_project:project.id});await load()}catch(e){setError(e)}finally{setBusy(false)}}
@@ -61,5 +48,6 @@ export default function MaintenanceStatements(){
   <div className="table-wrap"><table><thead><tr>{[L('رقم المستخلص','Statement'),L('المالك','Owner'),L('المشروع','Project'),L('الفترة','Period'),L('الحالة','Status')].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{data?.statements.map(s=><tr key={s.id}><td><Link to={'/statements/'+s.id}>{s.statement_number}</Link></td><td>{data.projects.find(p=>p.id===s.project_id)?.owner||'—'}</td><td>{data.projects.find(p=>p.id===s.project_id)?.name||'—'}</td><td>{s.period_start} — {s.period_end}</td><td><CycleStatus value={s.status}/></td></tr>)}</tbody></table>{data&&!data.statements.length&&<p className="empty">{L('لا توجد مستخلصات ضمن صلاحياتك.','No statements within your access scope.')}</p>}</div><p className="workspace-muted">{L('القيم تمثل قيمة الأعمال المطالب بها بعملة العقد. تكاليف المخزون الداخلية تبقى مستقلة عن قيمة المطالبة.','Values represent claimed work in the contract currency. Internal inventory costs remain separate from claim values.')}</p>
  </section>
 }
+
 
 
