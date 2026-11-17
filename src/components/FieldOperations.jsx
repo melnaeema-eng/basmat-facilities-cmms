@@ -28,7 +28,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
  }
  useEffect(()=>{load()},[wo])
  const run=async(command,id=null,payload={})=>{
-  if(busy)return
+  if(busy||command==='enable'&&!manager||command!=='enable'&&!allowed)return
   if(['finish_visit','cancel_visit','enable'].includes(command)&&!confirm(t('confirmAction')))return
   setBusy(true);setError('');setSuccess('')
   try{
@@ -43,7 +43,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
   finally{setBusy(false)}
  }
  const upload=async e=>{
-  e.preventDefault();if(!file||!ownVisit)return
+  e.preventDefault();if(!allowed||busy||!file||!ownVisit)return
   setBusy(true);setError('');setSuccess('')
   try{await uploadEvidence(wo,ownVisit.id,file,caption);setFile(null);setCaption('');await load();setSuccess(t('saved'))}
   catch(e){setError(e.message)}finally{setBusy(false)}
@@ -71,7 +71,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
   {data?.requirements&&<p className="muted">{t('fieldGateNotice')}</p>}
   {tab==='visits'&&<>
    {allowed&&!ownVisit&&<button type="button" className="btn primary" disabled={busy} onClick={()=>run('start_visit')}>{t('startVisit')}</button>}
-   {ownVisit&&<div className="facility-panel">
+   {ownVisit&&<fieldset disabled={!allowed||busy} className="facility-panel" style={{minWidth:0}}>
     <h3>{t('visitNumber')}: {ownVisit.visit_number}</h3>
     <p>{t('startedAt')}: {localDate(ownVisit.started_at)}</p>
     <div className="form-grid">
@@ -80,7 +80,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
     <div className="row-actions"><button type="button" className="btn primary" disabled={busy||form.work_performed.trim().length<5} onClick={()=>run('finish_visit',ownVisit.id,form)}>{t('finishVisit')}</button></div>
     <Field label={t('reason')}><textarea value={reason} onChange={e=>setReason(e.target.value)}/></Field>
     <button type="button" className="btn secondary" disabled={busy||reason.trim().length<5} onClick={()=>run('cancel_visit',ownVisit.id,{reason})}>{t('cancelVisit')}</button>
-   </div>}
+   </fieldset>}
    {data?.visits.map(v=><div className="facility-panel" key={v.id} style={{marginBlock:'12px'}}>
     <div className="row-actions"><strong>{v.visit_number}</strong><Status value={v.status}/></div>
     <p>{t('technician')}: {v.technician_id}</p>
@@ -94,11 +94,11 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
   {tab==='labor'&&<>
    <p className="muted">{t('laborNotice')}</p>
    {ownVisit&&<form className="facility-form" onSubmit={e=>{e.preventDefault();run('labor',ownVisit.id,{...labor,started_at:new Date(labor.started_at).toISOString(),ended_at:new Date(labor.ended_at).toISOString()})}}>
-    <div className="form-grid">
+    <fieldset disabled={!allowed||busy} style={{border:0,padding:0,margin:0,minWidth:0}}><div className="form-grid">
      <Field label={t('startedAt')} required><input type="datetime-local" step="1" required value={labor.started_at} onChange={e=>setLabor(f=>({...f,started_at:e.target.value}))}/></Field>
      <Field label={t('endedAt')} required><input type="datetime-local" step="1" required value={labor.ended_at} onChange={e=>setLabor(f=>({...f,ended_at:e.target.value}))}/></Field>
      <Field label={t('activity')} required wide><textarea required minLength={5} value={labor.activity} onChange={e=>setLabor(f=>({...f,activity:e.target.value}))}/></Field>
-    </div><button className="btn primary" disabled={busy}>{t('recordLabor')}</button>
+    </div><button className="btn primary" disabled={busy}>{t('recordLabor')}</button></fieldset>
    </form>}
    <div className="facility-panel"><strong>{t('duration')}: {(data?.labor.reduce((n,l)=>n+Number(l.minutes||0),0)||0)} {t('minutes')}</strong></div>
    {data?.labor.map(l=><div className="facility-panel" key={l.id} style={{marginBlock:'8px'}}>
@@ -109,9 +109,9 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
   {tab==='evidence'&&<>
    <p className="muted">{t('evidenceNotice')}</p>
    {ownVisit&&<form className="facility-form" onSubmit={upload}>
-    <Field label={t('file')} required><input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" required onChange={e=>setFile(e.target.files?.[0]||null)}/></Field>
+    <fieldset disabled={!allowed||busy} style={{border:0,padding:0,margin:0,minWidth:0}}><Field label={t('file')} required><input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" required onChange={e=>setFile(e.target.files?.[0]||null)}/></Field>
     <Field label={t('caption')}><input value={caption} onChange={e=>setCaption(e.target.value)}/></Field>
-    <button className="btn primary" disabled={busy||!file}>{t('uploadEvidence')}</button>
+    <button className="btn primary" disabled={busy||!file}>{t('uploadEvidence')}</button></fieldset>
    </form>}
    {data?.evidence.map(e=><div className="facility-panel" key={e.id} style={{marginBlock:'8px'}}>
     <div className="row-actions"><strong>{e.file_name}</strong><Status value={e.status}/></div>
@@ -130,3 +130,4 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
   </div>
  </div>
 }
+
