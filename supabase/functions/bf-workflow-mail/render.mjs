@@ -1,0 +1,7 @@
+export function renderWorkflowMail(job){
+ const url=new URL(job.url);if(!['https://medical.basmat-alnawabig.com.sa','https://facilities.basmat-alnawabig.com.sa'].includes(url.origin)||url.username||url.password)throw Error('Invalid workflow destination');
+ // Email carries no record title, identifier, phase, comment or private deep link.
+ // The authenticated inbox resolves the user's currently authorized actions.
+ const inbox=url.origin+'/notifications';
+ return {subject:'بصمة النوابغ — إجراء جديد بانتظارك | Action awaiting you',text:`يوجد إجراء جديد يتطلب متابعتك في نظام بصمة النوابغ.\nسجّل الدخول بحسابك للاطلاع على التفاصيل.\nA new action requires your attention in Basmat CMMS. Sign in to view it.\n${inbox}`,html:`<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:640px;margin:auto;border:1px solid #dbe3ec;border-radius:12px;overflow:hidden"><header style="background:#0b2b4b;color:white;padding:22px"><b>بصمة النوابغ | Basmat Alnawabigh</b><h2>إجراء جديد بانتظارك</h2></header><main style="padding:24px;line-height:1.8"><p>يوجد إجراء جديد يتطلب متابعتك. سجّل الدخول بحسابك للاطلاع على التفاصيل.</p><p dir="ltr">A new action requires your attention. Sign in with your assigned account to view the details.</p><a href="${inbox}" style="display:inline-block;background:#0b2b4b;color:white;padding:12px 20px;border-radius:8px;text-decoration:none">فتح الإشعارات | Open notifications</a></main></div>`};
+}
