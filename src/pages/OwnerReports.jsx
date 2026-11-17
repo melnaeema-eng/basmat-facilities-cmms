@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useRef,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
+import {completeReportLogos,archivedReportLogos,waitForReportImages} from '../lib/reportLogos'
 import {readOwnerLogo} from '../lib/ownerLogo'
 import {ownerLogoSource} from '../lib/ownerLogo'
 import {useAuth} from '../context/AuthContext'
@@ -33,8 +34,9 @@ function distLabel(status,ar){
  return map[status]||map.final
 }
 
-function printSamePage(node){
+async function printSamePage(node){
  if(!node)return
+ await waitForReportImages(node)
  const body=document.body
  const cleanup=()=>{
   body.classList.remove('owner-report-print-mode')
@@ -116,7 +118,7 @@ export default function OwnerReports(){
   contractor_name_ar:org?.name_ar||org?.name||'',contractor_name_en:org?.name_en||org?.name||'',
   owner_logo_data:'',contractor_logo_data:'',primary_color:'#0b2b4b',secondary_color:'#b8892d',
   prepared_by:'',reviewed_by:'',approved_by:'',report_prefix:'FM'
- },...(branding||{}),owner_logo_data:ownerLogoSource(owner?.logo_url)||ownerLogoSource(branding?.owner_logo_data),contractor_logo_data:ownerLogoSource(org?.logo_url)||ownerLogoSource(branding?.contractor_logo_data)}
+ },...(branding||{}),owner_logo_data:ownerLogoSource(owner?.logo_url)||ownerLogoSource(report?.client?.logo_url)||ownerLogoSource(branding?.owner_logo_data),contractor_logo_data:ownerLogoSource(org?.logo_url)||ownerLogoSource(report?.organization?.logo_url)||ownerLogoSource(branding?.contractor_logo_data)}
  const saveSharedOwnerLogo=async()=>{
   if(!owner?.id||!organizationId||ownerLogoDraft===null)return
   try{
@@ -158,7 +160,7 @@ export default function OwnerReports(){
    await refreshArchive()
   }catch(e){setError(e.message)}finally{setLoading(false)}
  }
- const printCurrent=()=>printSamePage(printRef.current)
+ const printCurrent=async()=>{try{setError('');await printSamePage(printRef.current)}catch(e){setError(e.message)}}
  const previewArchived=run=>{
   setArchivePreview(run)
   window.setTimeout(()=>archivePrintRef.current?.scrollIntoView({behavior:'smooth',block:'start'}),60)
@@ -170,7 +172,7 @@ export default function OwnerReports(){
    await refreshArchive()
    setArchivePreview(updated)
    setSaved(ar?'تم تسجيل عملية الطباعة.':'Print action recorded.')
-   window.setTimeout(()=>printSamePage(archivePrintRef.current),120)
+   window.setTimeout(()=>printSamePage(archivePrintRef.current).catch(e=>setError(e.message)),120)
   }catch(e){setError(e.message)}finally{setLoading(false)}
  }
  const openHistory=async run=>{
@@ -201,7 +203,7 @@ export default function OwnerReports(){
    .owner-report-document{font-family:Tahoma,Arial,sans-serif;color:#18324b}.owner-report-document p{line-height:1.85}.owner-report-document thead{display:table-header-group}.owner-report-document tr{break-inside:avoid}
    .or-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
    .or-cover{min-height:0;gap:24px;display:flex;flex-direction:column;justify-content:space-between;padding:24px;border:1px solid #dfe6ee;border-radius:18px;background:linear-gradient(145deg,#fff,#f8fafc)}
-   .or-logos{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}.or-logo{text-align:center}.or-logo img{max-width:190px;max-height:95px;object-fit:contain}
+   .or-logos{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}.or-logo{text-align:center}.or-logo img{display:block;width:190px;height:95px;object-fit:contain;margin:0 auto 10px}
    .or-title{text-align:center;margin:60px 0}.or-title h1{font-size:32px;color:#0b2b4b;margin:0}.or-title h2{font-size:18px;margin:12px 0;color:#475569}
    .or-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 28px;font-size:12px}.or-meta div{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:7px 0}
    .or-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}.or-kpi{padding:15px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}.or-kpi span{font-size:10px;color:#64748b;display:block}.or-kpi strong{font-size:24px;color:#0b2b4b}
@@ -225,7 +227,7 @@ export default function OwnerReports(){
      margin:0!important;padding:0!important;background:#fff!important
     }
     body.owner-report-print-mode .owner-report-print-target .or-cover{
-     min-height:270mm!important;border-radius:0!important;page-break-after:always!important
+     min-height:160mm!important;box-sizing:border-box!important;break-inside:avoid!important;border-radius:0!important;page-break-after:always!important
     }
     body.owner-report-print-mode .owner-report-print-target .or-section{break-inside:auto!important}
     @page{size:A4 landscape;margin:12mm}
@@ -276,7 +278,7 @@ export default function OwnerReports(){
   </div>}
 
   {reportMode==='owner'&&<p className="muted no-print">{ar?'يشمل عقود المالك والأعمال غير المرتبطة بعقد داخل الشركة الحالية. يمكن طباعته؛ الأرشفة النهائية تتطلب اختيار عقد محدد.':'Includes the owner’s contracts and work without a contract at the current company. Printing is available; final archiving requires a specific contract.'}</p>}
-  {report&&<div ref={printRef}><ReportDocument report={report} brand={currentBrand} reportType={reportType} start={start} end={end} ar={ar}/></div>}
+  {report&&<div ref={printRef}><ReportDocument report={report} brand={completeReportLogos(currentBrand,owner||report?.client,org||report?.organization)} reportType={reportType} start={start} end={end} ar={ar}/></div>}
 
   <div className="facility-panel no-print" style={{marginTop:16}}>
    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
@@ -316,7 +318,7 @@ export default function OwnerReports(){
   {archivePreview&&<div className="no-print">
    <div className="archive-preview-head"><h2>{ar?'معاينة التقرير السابق':'Archived Report Preview'} — {archivePreview.report_number}</h2><div style={{display:'flex',gap:8}}><button className="btn primary" onClick={()=>printArchived(archivePreview)}>{ar?'طباعة التقرير فقط':'Print Report Only'}</button><button className="btn" onClick={()=>setArchivePreview(null)}>{ar?'إغلاق':'Close'}</button></div></div>
   </div>}
-  {archivePreview&&<div ref={archivePrintRef}><ArchivedReportDocument run={archivePreview} ar={ar}/></div>}
+  {archivePreview&&<div ref={archivePrintRef}><ArchivedReportDocument run={archivePreview} ar={ar} directory={directory}/></div>}
 
   {selectedRun&&<div className="or-dialog-backdrop no-print" onClick={()=>setSelectedRun(null)}>
    <div className="or-dialog" onClick={e=>e.stopPropagation()}>
@@ -360,8 +362,8 @@ function reportFromRun(run){
   ppm:s.ppm||[]
  }
 }
-function ArchivedReportDocument({run,ar}){
- const brand=run.branding_snapshot||{}
+function ArchivedReportDocument({run,ar,directory}){
+ const brand=archivedReportLogos(run,directory)
  const report=reportFromRun(run)
  return <ReportDocument report={report} brand={brand} reportType={run.report_type} start={run.period_start} end={run.period_end} ar={ar} archived/>
 }
@@ -375,8 +377,8 @@ export function ReportDocument({report,brand,reportType,start,end,ar,archived=fa
  return <div className="owner-report-document" lang={ar?'ar':'en'} dir={ar?'rtl':'ltr'}>
   <div className="or-cover" style={{borderTop:`8px solid ${brand.primary_color||'#0b2b4b'}`}}>
    <div className="or-logos">
-    <div className="or-logo">{brand.owner_logo_data?<img src={brand.owner_logo_data} alt="Owner logo"/>:<div style={{height:12}}/>}<div><b>{ar?brand.owner_name_ar:brand.owner_name_en}</b></div></div>
-    <div className="or-logo">{brand.contractor_logo_data?<img src={brand.contractor_logo_data} alt="Contractor logo"/>:<div style={{height:12}}/>}<div><b>{ar?brand.contractor_name_ar:brand.contractor_name_en}</b></div></div>
+    <div className="or-logo">{brand.owner_logo_data?<img src={brand.owner_logo_data} alt={ar?'شعار الجهة المالكة':'Owner logo'} width="190" height="95" loading="eager" decoding="sync"/>:<div style={{height:12}}/>}<div><b>{ar?brand.owner_name_ar:brand.owner_name_en}</b></div></div>
+    <div className="or-logo">{brand.contractor_logo_data?<img src={brand.contractor_logo_data} alt={ar?'شعار شركة الصيانة':'Maintenance company logo'} width="190" height="95" loading="eager" decoding="sync"/>:<div style={{height:12}}/>}<div><b>{ar?brand.contractor_name_ar:brand.contractor_name_en}</b></div></div>
    </div>
    <div className="or-title"><h1>{reportTitle(ar,reportType)}</h1><h2>{ar?brand.project_name_ar:brand.project_name_en}</h2><p>{report.labels?.contract||'—'}</p></div>
    <div className="or-meta">
@@ -449,3 +451,4 @@ function OwnerReportInsights({report,ar,reportType}){
   {section(ar?'أولويات المتابعة المقترحة للمالك':'Suggested owner follow-up priorities',<div className="facility-panel">{followup.length?<ul>{followup.map(item=><li key={item} style={{marginBottom:10}}>{item}</li>)}</ul>:<p>{ar?'لم تظهر أولويات آلية من البنود المحملة. راجع اكتمال السجلات والجدولة قبل الاعتماد.':'No automatic priorities were identified in the returned records. Review data and scheduling completeness before approval.'}</p>}</div>)}
  </>
 }
+
