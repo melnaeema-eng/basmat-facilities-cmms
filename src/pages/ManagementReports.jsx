@@ -1,3 +1,4 @@
+import {useAuth} from '../context/AuthContext'
 import CompanyField from '../components/CompanyField'
 import OwnerBrand from '../components/OwnerBrand'
 import {useEffect,useMemo,useState} from 'react'
@@ -11,7 +12,8 @@ import {exportXlsx,openPrintWindow,printReport,printCurrentReport} from '../lib/
 const labels={overview:'reportOverview',work_orders:'reportWorkOrders',ppm:'reportPPM',technicians:'reportTechnicians',materials:'reportMaterials',monthly:'reportMonthly',quality:'reportQuality'}
 const today=()=>new Date().toISOString().slice(0,10)
 const defaultStart=()=>{const d=new Date();d.setUTCDate(d.getUTCDate()-89);return d.toISOString().slice(0,10)}
-export default function ManagementReports({capabilities}){
+export default function ManagementReports(){
+ const {can}=useAuth()
  const {t,lang}=useLanguage()
  const [scopes,setScopes]=useState(null),[filters,setFilters]=useState({organization_id:'',client_id:'',site_id:'',start_date:defaultStart(),end_date:today()})
  const [section,setSection]=useState('overview'),[result,setResult]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[exporting,setExporting]=useState(false),[progress,setProgress]=useState(0),[page,setPage]=useState(0)
@@ -67,7 +69,7 @@ export default function ManagementReports({capabilities}){
   }
  }
  const exportData=async(kind)=>{
-  if(!applied||!capabilities?.organizations?.some(o=>o.id===applied.organization_id&&o.can_export))return
+  if(!applied||!canExport)return
   const printWindow=kind==='pdf'?openPrintWindow(lang):null
   if(kind==='pdf'&&!printWindow){setError(lang==='ar'?'اسمح بالنوافذ المنبثقة لهذا الموقع، ثم حاول الطباعة مرة أخرى.':'Allow pop-ups for this site, then try printing again.');return}
   setExporting(true);setProgress(0);setError('')
@@ -94,7 +96,7 @@ export default function ManagementReports({capabilities}){
   ['reportLabor',((Number(totals.labor_minutes)||0)/60).toLocaleString(lang,{maximumFractionDigits:1})+' '+t('reportHours')]
  ]:[]
  const rows=section==='overview'?[]:result?.rows||[]
- const canExport=!!capabilities?.organizations?.some(o=>o.id===applied?.organization_id&&o.can_export)
+ const canExport=!!applied?.organization_id&&can('reports.export',applied.organization_id)
  const printCurrent=()=>{
   if(!result||!applied)return
   const cols=section==='overview'?Object.keys(result.totals||{}).filter(k=>k!=='report_limitations'):displayCols
