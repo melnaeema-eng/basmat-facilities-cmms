@@ -27,7 +27,7 @@ export default function DashboardIdentity(){
 
  const name=profile?.full_name||user?.email||'User'
  const orgName=org?.name_ar||org?.name||org?.name_en||org?.code||''
- const roleText=roles.map(r=>r.role_name_ar||r.role_name_en||r.role_code).join(' • ')
+ const roleText=roles.map(r=>r.role_code==='org_admin'?'أدمن الشركة':(r.role_name_ar||r.role_name_en||r.role_code)).join(' • ')
  const projectText=projects.map(p=>p.name||p.project_code).join(' • ')
 
  return <div className="facility-panel" style={{marginBottom:18}}>
