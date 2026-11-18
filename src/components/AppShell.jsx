@@ -77,9 +77,24 @@ export default function AppShell(){
    </nav><div className="bafm-sidebar-footer"><button type="button" className="bafm-signout" onClick={logout} aria-label={ar?'تسجيل الخروج':'Sign out'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 4H4v16h5M14 7l5 5-5 5M8 12h11"/></svg><span>{ar?'تسجيل الخروج':'Sign out'}</span></button>BAFM · Facilities</div>
   </aside>
   <div className="bafm-main"><header className="bafm-topbar"><button type="button" ref={toggle} className="btn bafm-mobile-toggle" aria-expanded={mobileOpen} aria-controls="workspace-navigation" onClick={()=>setMobileOpen(v=>!v)} aria-label={ar?'فتح القائمة':'Open navigation'}>☰</button><div className="bafm-top-title"><strong>{ar?'بصمة النوابغ لإدارة صيانة المرافق':'Basmat Facilities CMMS'}</strong>{org&&<small className="bafm-company-context">{orgName}</small>}</div><form className="bafm-search" onSubmit={search}><NavIcon type="report"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={ar?'ابحث في الأصول وأوامر العمل…':'Search assets and work orders…'} aria-label={ar?'بحث':'Search'}/></form><div className="bafm-top-actions">{platformAdmin&&<Link className="bafm-top-btn" to="/maintenance-companies">{ar?'الشركة':'Company'}</Link>}<button className="bafm-top-btn" onClick={()=>setLang(ar?'en':'ar')}>{ar?'EN':'عربي'}</button>{can('notifications.view')&&<NotificationBell/>}<div className="bafm-user"><span className="bafm-avatar">{name.slice(0,1)}</span><strong>{name}</strong></div><button type="button" className="bafm-signout" onClick={logout} aria-label={ar?'تسجيل الخروج':'Sign out'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 4H4v16h5M14 7l5 5-5 5M8 12h11"/></svg><span>{ar?'تسجيل الخروج':'Sign out'}</span></button></div></header>
-   <div className="bafm-welcome">{ar?'مرحبًا ':'Welcome '}{name} — {orgName}</div>{(logoutError||orgError)&&<div className="alert error" role="alert">{logoutError?(ar?'تعذر تسجيل الخروج.':'Sign out failed.'):(ar?'تعذر تحميل الشركات.':'Could not load companies.')}</div>}
+   <div className="bafm-welcome" style={{flexWrap:"wrap"}}>{ar?'مرحبًا ':'Welcome '}{name} — {orgName}<WelcomeAccess access={access} profile={profile} organizationId={org?.id||access?.home_organization_id} ar={ar}/></div>{(logoutError||orgError)&&<div className="alert error" role="alert">{logoutError?(ar?'تعذر تسجيل الخروج.':'Sign out failed.'):(ar?'تعذر تحميل الشركات.':'Could not load companies.')}</div>}
    <main id="workspace-content" ref={content} tabIndex={-1} className="workspace-content" key={activeOrgId}>{new URLSearchParams(location.search).get('setup')==='1'&&<Link className="workspace-return" to="/project-setup">{ar?'العودة إلى إعداد المشروع':'Back to project setup'}</Link>}<CompanyWorkspaceBoundary><RelatedTools/><GuidedWorkflowBar/><Outlet/></CompanyWorkspaceBoundary></main>
   </div>
  </div>
 }
 
+
+
+function WelcomeAccess({access, profile, organizationId, ar}) {
+ const scoped = rows => (rows || []).filter(row => !organizationId || row.organization_id === organizationId)
+ const roles = [...new Set(scoped(access?.role_assignments).map(role =>
+  role.role_code === 'org_admin' ? (ar ? 'أدمن الشركة' : 'Company admin') :
+   (ar ? role.role_name_ar || role.role_name_en : role.role_name_en || role.role_name_ar) || role.role_code
+ ).filter(Boolean))]
+ const projects = [...new Set(scoped(access?.projects).map(project => project.name || project.project_code).filter(Boolean))]
+ const platformAdmin = profile?.is_super_admin || access?.super_admin
+ return <span style={{display:'block',width:'100%',minWidth:0,overflowWrap:'anywhere',fontSize:'.85em',fontWeight:400}}>
+  <strong>{ar?'الدور':'Role'}</strong>{' · '}{platformAdmin?(ar?'مدير المنصة':'Platform admin'):roles.join('، ')||'—'}
+  {' | '}<strong>{ar?'المشاريع':'Projects'}</strong>{' · '}{platformAdmin?(ar?'جميع المشاريع':'All projects'):projects.join('، ')||'—'}
+ </span>
+}
