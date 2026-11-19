@@ -25,6 +25,20 @@ export function cycleNextAction(d){
  }
  if(!d.certificate)return {key:'certificate',role:'supervisor'}
  if(!d.statement)return {key:'statement',role:'contractor'}
- if(d.statement.status!=='approved')return {key:'statement',role:d.statement.status==='owner_review'?'owner':'contractor'}
+ if(d.statement.status!=='approved')return statementNextAction(d.statement.status,true).action
  return {key:'close',role:'supervisor'}
+}
+
+export function statementNextAction(status,hasLines,cycleClosed=false){
+ const steps={
+  draft: hasLines ? ['statementSubmit','contractor','تقديم المستخلص للاعتماد','Submit the statement for approval'] : ['statementPrepare','contractor','إضافة شهادة الإنجاز إلى المستخلص','Add a completion certificate to the statement'],
+  rejected:['statementRework','contractor','تصحيح المستخلص وإعادة تقديمه','Correct and resubmit the statement'],
+  consultant_review:['statementConsultant','consultant','مراجعة المستخلص لدى الاستشاري','Consultant review of the statement'],
+  owner_review:['statementOwner','owner','اعتماد المستخلص وإغلاق الدورة','Approve the statement and close the cycle'],
+  approved: cycleClosed ? ['closed',null,'تم الإغلاق','Closed'] : ['close','supervisor','التحقق من إغلاق أوامر العمل المرتبطة','Verify closure of linked work orders']
+ }
+ const step=steps[status]
+ if(!step)return null
+ const [key,role,ar,en]=step
+ return {action:{key,role,terminal:role===null},title:[ar,en]}
 }
