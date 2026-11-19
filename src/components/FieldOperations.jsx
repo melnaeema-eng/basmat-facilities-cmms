@@ -1,3 +1,4 @@
+import WorkOrderSpareParts from './WorkOrderSpareParts'
 import {useEffect,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
@@ -59,6 +60,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
  return <div className="facility-panel">
   <div className="page-head"><h2>{t('fieldOperations')}</h2><button type="button" className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
+  <WorkOrderSpareParts key={wo} workOrder={workOrder}/>
   <p className="muted">{t('fieldNotice')}</p>
   <div className="row-actions">
    {[['visits','fieldVisits'],['labor','fieldLabor'],['evidence','fieldEvidence']].map(([key,label])=><button type="button" key={key} className={'btn '+(tab===key?'primary':'secondary')} onClick={()=>setTab(key)}>{t(label)}</button>)}
