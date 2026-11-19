@@ -6,7 +6,7 @@ import {statementOwners,projectsForOwner,statementReady,statementInboxCapabiliti
 import {loadStatementCenter} from '../lib/statementCenter'
 import '../cycle.css'
 export default function MaintenanceStatements(){
- const L=useCycleLanguage(),navigate=useNavigate(),[data,setData]=useState(null),[missing,setMissing]=useState(false),[error,setError]=useState(null),[busy,setBusy]=useState(false),[owner,setOwner]=useState(''),[form,setForm]=useState({project_id:'',period_start:'',period_end:''})
+ const L=useCycleLanguage(),navigate=useNavigate(),[data,setData]=useState(null),[missing,setMissing]=useState(false),[error,setError]=useState(null),[busy,setBusy]=useState(false),[owner,setOwner]=useState(''),[form,setForm]=useState({project_id:'',period_start:'',period_end:'',kind:'monthly',month:''})
  async function load(){
   setError(null)
   try{setData(await loadStatementCenter(cycleRpc,localStorage.getItem('basmat.active.organization')));setMissing(false)}
@@ -16,7 +16,7 @@ export default function MaintenanceStatements(){
  useEffect(()=>{load()},[])
  const projects=data?.projects||[],owners=statementOwners(projects),ownerProjects=projectsForOwner(projects,owner),selected=ownerProjects.find(p=>p.id===form.project_id),ready=statementReady(selected),{canCreate,activationProjects}=statementInboxCapabilities(projects)
  async function activate(project){if(busy)return;setBusy(true);setError(null);try{await cycleRpc('bf44_policy_activate',{p_project:project.id});await load()}catch(e){setError(e)}finally{setBusy(false)}}
- async function create(e){e.preventDefault();if(busy||!ready)return;setBusy(true);setError(null);try{const id=await statementAction('create',null,form);navigate('/statements/'+id)}catch(e){setError(e)}finally{setBusy(false)}}
+ async function create(e){e.preventDefault();if(busy||!ready)return;setBusy(true);setError(null);try{const id=form.kind==='monthly'?await cycleRpc('bf44_create_monthly_statement',{p_project:form.project_id,p_month:form.month+'-01'}):await statementAction('create',null,form);navigate('/statements/'+id)}catch(e){setError(e)}finally{setBusy(false)}}
  if(missing)return <CycleSetupNotice/>
  return <section className="facility-module"><div className="page-head"><div><h1>{L('مستخلصات أعمال الصيانة','Maintenance work statements')}</h1><p>{L('شهادة إنجاز واحدة لكل بند؛ اعتماد المستخلص يغلق دورة الصيانة المرتبطة.','One completion certificate per line; statement approval closes its maintenance cycles.')}</p></div><button className="btn secondary" onClick={load}>{L('تحديث','Refresh')}</button></div><CycleError error={error}/>
   {activationProjects.map(project=><div className="facility-panel no-print" key={project.id}>
@@ -32,8 +32,14 @@ export default function MaintenanceStatements(){
    <div className="form-grid">
     <CycleField label={L('المالك','Owner')}><select required value={owner} onChange={e=>{setOwner(e.target.value);setForm(f=>({...f,project_id:''}))}}><option value="">{L('اختر المالك','Select owner')}</option>{owners.map(name=><option key={name} value={name}>{name}</option>)}</select></CycleField>
     <CycleField label={L('المشروع','Project')}><select required disabled={!owner} value={form.project_id} onChange={e=>setForm({...form,project_id:e.target.value})}><option value="">{L('اختر المشروع','Select project')}</option>{ownerProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></CycleField>
+    <CycleField label={L('نوع المستخلص','Statement type')}><select value={form.kind} onChange={e=>setForm({...form,kind:e.target.value})}>
+     <option value="monthly">{L('شهري','Monthly')}</option><option value="period">{L('فترة مخصصة','Custom period')}</option>
+    </select></CycleField>
+    {form.kind==='monthly'?<CycleField label={L('الشهر','Month')}><input type="month" required pattern="[0-9]{4}-[0-9]{2}" placeholder="YYYY-MM" value={form.month} onChange={e=>setForm({...form,month:e.target.value})}/></CycleField>:<>
     <CycleField label={L('بداية الفترة','Period start')}><input type="date" required value={form.period_start} onChange={e=>setForm({...form,period_start:e.target.value})}/></CycleField>
     <CycleField label={L('نهاية الفترة','Period end')}><input type="date" required min={form.period_start} value={form.period_end} onChange={e=>setForm({...form,period_end:e.target.value})}/></CycleField>
+    </>}
+
    </div>
    {!owners.length&&<p role="status">{L('لا توجد مشاريع مرتبطة بمالك ضمن نطاق وصولك. راجع إسناد المشروع في الملاك والمشاريع.','No owner-linked projects are available within your access scope. Review project access in Owners & Projects.')}</p>}
    {selected&&<div className="cycle-chain"><span>{L('المالك: ','Owner: ')}{selected.owner}</span><span>{L('المشروع: ','Project: ')}{selected.name}</span><span>{L('العقد: ','Contract: ')}{selected.contract||'—'}</span></div>}
@@ -45,7 +51,7 @@ export default function MaintenanceStatements(){
    <button disabled={busy||!ready} className="btn primary">{L('إنشاء مسودة المستخلص','Create draft statement')}</button>
   </form>}
 
-  <div className="table-wrap"><table><thead><tr>{[L('رقم المستخلص','Statement'),L('المالك','Owner'),L('المشروع','Project'),L('الفترة','Period'),L('الحالة','Status')].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{data?.statements.map(s=><tr key={s.id}><td><Link to={'/statements/'+s.id}>{s.statement_number}</Link></td><td>{data.projects.find(p=>p.id===s.project_id)?.owner||'—'}</td><td>{data.projects.find(p=>p.id===s.project_id)?.name||'—'}</td><td>{s.period_start} — {s.period_end}</td><td><CycleStatus value={s.status}/></td></tr>)}</tbody></table>{data&&!data.statements.length&&<p className="empty">{L('لا توجد مستخلصات ضمن صلاحياتك.','No statements within your access scope.')}</p>}</div><p className="workspace-muted">{L('القيم تمثل قيمة الأعمال المطالب بها بعملة العقد. تكاليف المخزون الداخلية تبقى مستقلة عن قيمة المطالبة.','Values represent claimed work in the contract currency. Internal inventory costs remain separate from claim values.')}</p>
+  <div className="table-wrap"><table><thead><tr>{[L('رقم المستخلص','Statement'),L('المالك','Owner'),L('المشروع','Project'),L('النوع','Type'),L('الفترة','Period'),L('الحالة','Status')].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{data?.statements.map(s=><tr key={s.id}><td><Link to={'/statements/'+s.id}>{s.statement_number}</Link></td><td>{data.projects.find(p=>p.id===s.project_id)?.owner||'—'}</td><td>{data.projects.find(p=>p.id===s.project_id)?.name||'—'}</td><td>{s.statement_kind==='monthly'?L('شهري','Monthly'):L('فترة مخصصة','Custom period')}</td><td>{s.period_start} — {s.period_end}</td><td><CycleStatus value={s.status}/></td></tr>)}</tbody></table>{data&&!data.statements.length&&<p className="empty">{L('لا توجد مستخلصات ضمن صلاحياتك.','No statements within your access scope.')}</p>}</div><p className="workspace-muted">{L('القيم تمثل قيمة الأعمال المطالب بها بعملة العقد. تكاليف المخزون الداخلية تبقى مستقلة عن قيمة المطالبة.','Values represent claimed work in the contract currency. Internal inventory costs remain separate from claim values.')}</p>
  </section>
 }
 
