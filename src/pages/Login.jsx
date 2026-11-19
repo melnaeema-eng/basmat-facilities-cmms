@@ -1,46 +1,51 @@
 import { useState } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../i18n/LanguageContext'
+import '../landing.css'
 
 export default function Login() {
   const { signIn, user } = useAuth()
-  const location=useLocation()
-  const requestedPath=location.state?.from
-  const returnPath=typeof requestedPath==='string'&&requestedPath.startsWith('/')&&!requestedPath.startsWith('//')&&!requestedPath.startsWith('/login')?requestedPath:'/'
   const { t, lang, setLang } = useLanguage()
   const [form, setForm] = useState({ email:'', password:'' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const ar = lang === 'ar'
 
-  if (user) return <Navigate to={returnPath} replace />
+  if (user) return <Navigate to="/" replace />
 
   const submit = async (e) => {
     e.preventDefault()
     setBusy(true); setError('')
-    try {
-      const {error}=await signIn(form.email.trim(),form.password)
-      if(error)setError(error.message)
-    } catch {setError(lang==='ar'?'تعذر الاتصال. حاول مجدداً.':'Connection failed. Please retry.')}
-    finally {setBusy(false)}
+    const { error } = await signIn(form.email, form.password)
+    if (error) setError(error.message)
+    setBusy(false)
   }
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-head">
-          <img src="/bafm-logo.png" alt="Basmat Alnawabigh" style={{width:80,height:80,objectFit:"contain",borderRadius:16}}/>
-          <h1>{t('appName')}</h1>
-          <p>{lang==='ar'?'إدارة الأصول والصيانة والتشغيل':'Assets, maintenance and operations'}</p>
+    <div className="lg">
+      <aside className="lg-side">
+        <div>
+          <img src="/bafm-logo.png" alt="" />
+          <h2>{ar ? 'بصمة النوابغ لإدارة صيانة المرافق' : 'Basmat Alnawabigh Facility Maintenance'}</h2>
+          <p>{ar ? 'أوامر العمل، الصيانة الوقائية، المخزون والتقارير في نظام واحد.' : 'Work orders, preventive maintenance, stores and reports in one system.'}</p>
         </div>
-        <form onSubmit={submit} className="form-grid one">
-          <label>{t('email')}<input type="email" autoComplete="username" required value={form.email} onChange={e=>setForm({...form,email:e.target.value})} /></label>
-          <label>{t('password')}<input type="password" autoComplete="current-password" required value={form.password} onChange={e=>setForm({...form,password:e.target.value})} /></label>
-          {error && <div className="alert error">{error}</div>}
-          <button className="btn primary" disabled={busy}>{busy ? t('signingIn') : t('signIn')}</button>
-          <button type="button" className="btn secondary" onClick={()=>setLang(lang==='ar'?'en':'ar')}>{t('language')}</button>
-        </form>
-      </div>
+        <small>© 2026 BAFM</small>
+      </aside>
+      <main className="lg-main">
+        <div className="lg-box">
+          <Link className="back" to="/welcome">{ar ? 'العودة للصفحة الرئيسية' : 'Back to home'}</Link>
+          <h1>{t('signIn')}</h1>
+          <p>{ar ? 'أدخل بيانات حسابك للمتابعة.' : 'Enter your account details to continue.'}</p>
+          <form onSubmit={submit} className="form-grid one">
+            <label>{t('email')}<input type="email" required autoComplete="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} /></label>
+            <label>{t('password')}<input type="password" required autoComplete="current-password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} /></label>
+            {error && <div className="alert error">{error}</div>}
+            <button className="btn primary" disabled={busy}>{busy ? t('signingIn') : t('signIn')}</button>
+            <button type="button" className="btn secondary" onClick={()=>setLang(ar?'en':'ar')}>{t('language')}</button>
+          </form>
+        </div>
+      </main>
     </div>
   )
 }

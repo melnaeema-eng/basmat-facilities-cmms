@@ -7,6 +7,7 @@ import {useLanguage} from '../i18n/LanguageContext'
 import {loadAll,display,locationLabel,PUBLIC_ASSET_COLUMNS} from '../lib/facility'
 import {Dialog,Notice,Status} from '../components/FacilityFields'
 import AssetEditor from '../components/AssetEditor'
+import AssetWork from '../components/AssetWork'
 export default function AssetDetails(){
  const {id}=useParams(),{can}=useAuth(),{t,lang}=useLanguage()
  const [data,setData]=useState(null),[asset,setAsset]=useState(null),[events,setEvents]=useState([]),[qr,setQr]=useState(''),[cost,setCost]=useState(null),[open,setOpen]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('')
@@ -49,6 +50,7 @@ export default function AssetDetails(){
  return <section className="facility-module">
   <div className="page-head"><div><Link to="/assets">{t('back')}</Link><h1>{asset.asset_tag}</h1><p>{display(asset,lang)}</p></div><div className="row-actions">{can('assets.manage',asset.organization_id)&&<button className="btn primary" onClick={()=>setOpen(true)}>{t('edit')}</button>}</div></div>
   <Notice error={error} success={success}/>
+  <AssetWork asset={asset}/>
   <div className="detail-grid"><div className="facility-panel"><h3>{t('assetDetails')}</h3><Status value={asset.status}/><div className="details-list">{info.map(([key,value])=><div key={key}>{row(key,value)}</div>)}</div></div>
    <div className="detail-side">
     <div className="facility-panel qr-card"><h3>{t('qr')}</h3>{qr&&<img src={qr} alt={t('qr')+' '+asset.asset_tag}/>}<p>{asset.asset_tag}</p><div className="row-actions"><button className="btn secondary" onClick={download}>{t('download')}</button><button className="btn secondary" onClick={print}>{t('print')}</button><button className="btn secondary" onClick={()=>navigator.clipboard?.writeText(url).then(()=>setSuccess(t('copy'))).catch(e=>setError(e.message))}>{t('copy')}</button></div></div>

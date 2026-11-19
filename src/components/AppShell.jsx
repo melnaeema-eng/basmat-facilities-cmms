@@ -1,19 +1,74 @@
-import CompanyWorkspaceBoundary from './CompanyWorkspaceBoundary'
-import {companyWorkspace,companyAdminPermission} from '../lib/companyWorkspace'
-import NotificationBell from './NotificationBell'
-import {NavLink,Outlet,useLocation,useNavigate,Link} from 'react-router-dom'
-import {useEffect,useMemo,useRef,useState} from 'react'
+import {NavLink,Outlet,useLocation,useNavigate} from 'react-router-dom'
+import {useEffect,useMemo,useState} from 'react'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
-import {modules,moduleLabel,permitted} from '../config/modules'
 import {supabase} from '../lib/supabaseClient'
 import GuidedWorkflowBar from './GuidedWorkflowBar'
-import RelatedTools from './RelatedTools'
-import {navigationGroups as groups,isNavigableModule,secondaryNavigation,familyForPath} from '../config/navigation'
+import {useSmartLanguageInputs} from '../lib/smartLanguage'
 import '../bafm-theme.css'
-import '../workspace.css'
-import '../facilities-product.css'
-import './AppShellActions.css'
+
+const groups=[
+ {title:'Core Operations | العمليات الأساسية',items:[
+  ['/', 'Dashboard | لوحة التحكم', null,'home'],
+  ['/corrective','Work Orders | أوامر العمل','corrective.view','work'],
+  ['/ppm','Preventive Maintenance | الصيانة الوقائية','ppm.view','calendar'],
+  ['/field-mobile','Mobile Field | العمل الميداني','mobile-field.view','mobile'],
+  ['/qr-scan','Scan Asset QR | مسح QR للأصل','mobile-field.view','mobile'],
+  ['/soft-fm','Soft FM | الخدمات المساندة','soft-fm.view','services'],
+  ['/workforce','Workforce | القوى العاملة','workforce.view','users'],
+  ['/planning','Operations Calendar | التقويم التشغيلي','planning.view','calendar'],
+  ['/notifications','Notifications | الإشعارات','notifications.view','bell'],
+  ['/roles-permissions','Roles & Permissions | الأدوار والصلاحيات','roles.view','lock'],
+ ]},
+ {title:'Assets & Facilities | الأصول والمرافق',items:[
+  ['/sites','Facilities / Sites | المرافق والمواقع','sites.view','building'],
+  ['/locations','Locations | المواقع','locations.view','pin'],
+  ['/asset-categories','Asset Categories | تصنيفات الأصول','assets.view','grid'],
+  ['/asset-library','Asset Library | مكتبة الأصول والصيانة','assets.view','grid'],
+  ['/library-deployment','Library → Project → PPM | المكتبة → المشروع → PPM','assets.view','calendar'],
+  ['/assets','Assets | الأصول','assets.view','asset'],
+  ['/asset-lifecycle','Asset Lifecycle | دورة حياة الأصل','lifecycle.view','cycle'],
+  ['/utilities','Utilities | المرافق الخدمية','utilities.view','bolt'],
+ ]},
+ {title:'Supply & Commercial | الإمداد والتجاري',items:[
+  ['/inventory','Inventory | المخزون','inventory.view','box'],
+  ['/advanced-stock','Advanced Stock | المخزون المتقدم','inventory.view','stack'],
+  ['/procurement','Procurement | المشتريات','procurement.view','cart'],
+  ['/supplier-performance','Vendors | الموردون','supplier-performance.view','truck'],
+  ['/facility-reference-library','Facilities Maintenance Companies | شركات صيانة المرافق','facilities.assets.view','building'],
+  ['/maintenance-costing','Maintenance Cost | تكاليف الصيانة','costing.view','money'],
+  ['/contracts','Contracts | العقود','contracts.view','contract'],
+  ['/contract-renewal','Contract Renewal | تجديد العقود','contract-renewal.view','renew'],
+ ]},
+ {title:'Safety & Compliance | السلامة والامتثال',items:[
+  ['/hse','HSE | السلامة والصحة المهنية','hse.view','shield'],
+  ['/permits','Permits | التصاريح','permit.view','permit'],
+  ['/compliance','Compliance | الامتثال','compliance.view','check'],
+  ['/documents','Documents | المستندات','documents.view','doc'],
+  ['/document-control','Document Control | ضبط المستندات','document-control.view','folder'],
+  ['/approvals','Approvals | الاعتمادات','approvals.view','approve'],
+  ['/audit','Audit Log | سجل التدقيق','audit.view','audit'],
+ ]},
+ {title:'Performance & Analytics | الأداء والتحليلات',items:[
+  ['/reports','Reports | التقارير','reports.view','report'],
+  ['/kpi','KPIs | مؤشرات الأداء','kpi.view','chart'],
+  ['/backlog','Backlog | الأعمال المتراكمة','backlog.view','list'],
+  ['/reliability','Reliability | الاعتمادية','reliability.view','pulse'],
+  ['/executive','Executive Dashboard | اللوحة التنفيذية','executive.view','dashboard'],
+ ]},
+ {title:'Administration | الإدارة',items:[
+  ['/project-setup','Project Setup | إعداد المشروع','organizations.view','check'],
+  ['/organizations','Organizations | المنظمات','organizations.view','org'],
+  ['/clients','Clients | العملاء','clients.view','client'],
+  ['/enterprise-structure','Structure | الهيكل التشغيلي','enterprise-structure.view','tree'],
+  ['/users','Users & Access | المستخدمون والصلاحيات','users.view','users'],
+  ['/security-readiness','Security | الأمن','security.view','lock'],
+  ['/release-readiness','System Readiness | جاهزية النظام','release.view','check'],
+ ]}
+]
+
+const SIMPLE=['/','/corrective','/ppm','/assets','/asset-categories','/sites','/contracts','/approvals','/reports','/project-setup','/clients','/users']
+
 function NavIcon({type}){
  const common={width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.9,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true}
  const paths={
@@ -44,57 +99,222 @@ function NavIcon({type}){
 }
 
 export default function AppShell(){
- const {signOut,profile,user,can,access}=useAuth(),{lang,setLang}=useLanguage(),ar=lang==='ar'
- const location=useLocation(),navigate=useNavigate()
- const [orgRevision,setOrgRevision]=useState(0)
- useEffect(()=>{const refresh=()=>setOrgRevision(v=>v+1);window.addEventListener('basmat-organizations-changed',refresh);return()=>window.removeEventListener('basmat-organizations-changed',refresh)},[])
- const [query,setQuery]=useState(''),[mobileOpen,setMobileOpen]=useState(false),[organizations,setOrganizations]=useState([])
+ const {signOut,profile,user,can,access}=useAuth()
+ const {lang,setLang}=useLanguage()
+ const navigate=useNavigate(),location=useLocation()
+ const [query,setQuery]=useState('')
+ const [showAll,setShowAll]=useState(()=>localStorage.getItem('bf_nav_all')==='1')
+ const toggleAll=()=>setShowAll(v=>{localStorage.setItem('bf_nav_all',v?'0':'1');return !v})
+ const [organizations,setOrganizations]=useState([])
  const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
- const [logoutError,setLogoutError]=useState(false),[orgError,setOrgError]=useState(false)
- const content=useRef(null),toggle=useRef(null),platformAdmin=companyWorkspace(access,profile).isSuperAdmin,homeId=companyWorkspace(access,profile).companyId
- const available=useMemo(()=>modules.filter(m=>permitted(m,can)),[can])
- const extra=secondaryNavigation(can)
- const name=profile?.full_name||user?.email||(ar?'المستخدم':'User')
- useEffect(()=>{let alive=true;async function load(){if(!platformAdmin&&!homeId)return;let q=supabase.from('bf_organizations').select('id,name,name_ar,name_en,code,status,logo_url').neq('status','archived').order('name');if(!platformAdmin)q=q.eq('id',homeId);const {data,error}=await q;if(alive){setOrganizations(data||[]);setOrgError(!!error)}}load();return()=>{alive=false}},[platformAdmin,homeId,orgRevision,location.pathname])
- useEffect(()=>{if(!platformAdmin){setActiveOrgId(homeId||'');if(homeId)localStorage.setItem('basmat.active.organization',homeId);else localStorage.removeItem('basmat.active.organization')}},[platformAdmin,homeId])
- useEffect(()=>{setMobileOpen(false);setQuery('');content.current?.focus()},[location.pathname])
- useEffect(()=>{if(platformAdmin&&!orgError&&organizations.length&&activeOrgId&&!organizations.some(o=>o.id===activeOrgId)){setActiveOrgId('');localStorage.removeItem('basmat.active.organization')}},[platformAdmin,orgError,organizations,activeOrgId])
- useEffect(()=>{if(!mobileOpen)return;const close=e=>{if(e.key==='Escape'){setMobileOpen(false);toggle.current?.focus()}};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[mobileOpen])
- useEffect(()=>{if(!mobileOpen)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[mobileOpen])
- const org=organizations.find(o=>o.id===activeOrgId)
- const orgName=org?(ar?org.name_ar||org.name||org.name_en:org.name_en||org.name||org.name_ar):(ar?'نطاق الصلاحيات المسندة':'Assigned access scope')
- async function logout(){setLogoutError(false);try{const result=await signOut();if(result?.error)throw result.error}catch{setLogoutError(true)}}
- function search(e){e.preventDefault();const term=query.trim().toLowerCase();if(!term)return;const hit=available.filter(isNavigableModule).find(m=>[m.ar,m.en].join(' ').toLowerCase().includes(term));if(hit)navigate(hit.path);else navigate('/facility-asset-cockpit',{state:{query}})}
- const item=(m)=><NavLink key={m.path} to={m.path} end={m.path==='/'} className={({isActive})=>'bafm-nav-item '+(isActive||familyForPath(location.pathname)?.root===m.path?'active':'')}><span className="bafm-nav-icon"><NavIcon type={m.icon}/></span><span>{moduleLabel(m,lang)}</span></NavLink>
- return <div className="bafm-shell" dir={ar?'rtl':'ltr'}>
-  <a className="bafm-skip" href="#workspace-content">{ar?'انتقل إلى المحتوى':'Skip to content'}</a>
-  {mobileOpen&&<button className="bafm-mobile-scrim" onClick={()=>setMobileOpen(false)} aria-label={ar?'إغلاق القائمة':'Close navigation'}/>}
-  <aside id="workspace-navigation" className={'bafm-sidebar '+(mobileOpen?'is-open':'')} aria-label={ar?'القائمة الرئيسية':'Main navigation'}>
-   <button type="button" className="bafm-drawer-close" onClick={()=>{setMobileOpen(false);toggle.current?.focus()}} aria-label={ar?'إغلاق القائمة':'Close navigation'}>×</button>
-   <div className="bafm-logo-block"><div className="dual-brand-row"><Link to="/"><img src="/bafm-logo.png" alt="Basmat Alnawabigh"/></Link>{org?.logo_url&&<div><img src={org.logo_url} alt={orgName} onError={e=>{e.currentTarget.hidden=true}}/><small>{orgName}</small></div>}</div><div className="bafm-logo-word">BAFM</div><div className="bafm-logo-sub">{ar?'بصمة النوابغ · إدارة المرافق':'Basmat Alnawabigh · Facilities'}</div><div className="bafm-logo-tiny">{ar?'نظام إدارة صيانة المرافق والأصول':'FACILITIES & ASSET MAINTENANCE MANAGEMENT SYSTEM'}</div></div>
-   <nav className="bafm-nav">{groups.map(g=>{const items=g.paths.map(p=>available.find(m=>m.path===p)).filter(Boolean);return !!items.length&&<section className="bafm-nav-section" key={g.en}><h2 className="bafm-nav-title">{ar?g.ar:g.en}</h2>{items.map(item)}</section>})}
-    {!!extra.length&&<section className="bafm-nav-section"><h2 className="bafm-nav-title">{ar?'خدمات إضافية':'Additional services'}</h2>{extra.map(item)}</section>}
-   </nav><div className="bafm-sidebar-footer"><button type="button" className="bafm-signout" onClick={logout} aria-label={ar?'تسجيل الخروج':'Sign out'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 4H4v16h5M14 7l5 5-5 5M8 12h11"/></svg><span>{ar?'تسجيل الخروج':'Sign out'}</span></button>BAFM · Facilities</div>
+ useSmartLanguageInputs()
+ const visible=permission=>permission===null||permission==='__client__'||can(permission)
+ const isPlatformAdmin=!!(profile?.is_super_admin||access?.super_admin)
+ const homeOrganizationId=access?.home_organization_id||null
+
+ useEffect(()=>{
+  let alive=true
+  async function loadOrganizations(){
+   try{
+    let q=supabase.from('bf_organizations')
+     .select('id,name,name_ar,name_en,code,status,logo_url,organization_type')
+     .order('name')
+
+    // A normal user represents exactly one organization.
+    // The organization selector must never become a cross-company switcher.
+    if(!isPlatformAdmin){
+     if(!homeOrganizationId){
+      if(alive)setOrganizations([])
+      return
+     }
+     const home=access?.home_organization
+     if(home){
+      const normalized={...home,id:home.id||home.organization_id||homeOrganizationId}
+      if(alive)setOrganizations([normalized])
+      return
+     }
+     q=q.eq('id',homeOrganizationId)
+    }
+
+    const {data,error}=await q
+    if(error)throw error
+    if(alive)setOrganizations(data||[])
+   }catch{
+    if(alive)setOrganizations([])
+   }
+  }
+  if(user)loadOrganizations()
+  return()=>{alive=false}
+ },[user,isPlatformAdmin,homeOrganizationId])
+
+ const activeOrganization=useMemo(()=>{
+  if(!organizations.length)return null
+  if(!isPlatformAdmin)return organizations.find(x=>x.id===homeOrganizationId)||organizations[0]
+  const selected=organizations.find(x=>x.id===activeOrgId)
+  return selected||null
+ },[organizations,activeOrgId,isPlatformAdmin,homeOrganizationId])
+
+ useEffect(()=>{
+  if(!isPlatformAdmin){
+   const fixed=homeOrganizationId||''
+   if(activeOrgId!==fixed)setActiveOrgId(fixed)
+   if(fixed)localStorage.setItem('basmat.active.organization',fixed)
+   else localStorage.removeItem('basmat.active.organization')
+   window.dispatchEvent(new CustomEvent('basmat-organization-changed',{detail:{organization_id:fixed||null}}))
+   return
+  }
+  if(organizations.length===1&&activeOrgId!==organizations[0].id){
+   setActiveOrgId(organizations[0].id)
+   localStorage.setItem('basmat.active.organization',organizations[0].id)
+  }
+ },[organizations,activeOrgId,isPlatformAdmin,homeOrganizationId])
+
+ const chooseOrganization=id=>{
+  if(!isPlatformAdmin)return
+  setActiveOrgId(id)
+  if(id)localStorage.setItem('basmat.active.organization',id)
+  else localStorage.removeItem('basmat.active.organization')
+  window.dispatchEvent(new CustomEvent('basmat-organization-changed',{detail:{organization_id:id||null}}))
+ }
+ const organizationLogo=activeOrganization?.logo_url||'/bafm-logo.png'
+ const organizationBrand=activeOrganization
+  ?(lang==='ar'?(activeOrganization.name_ar||activeOrganization.name||activeOrganization.name_en):(activeOrganization.name_en||activeOrganization.name||activeOrganization.name_ar))
+  :'Basmat Alnawabigh'
+
+ const displayName=profile?.full_name||user?.email||'User'
+ const organizationLabel=useMemo(()=>{
+  if(isPlatformAdmin){
+   if(activeOrganization)return activeOrganization.name||activeOrganization.code||''
+   return lang==='ar'?'الإدارة العامة · جميع المنظمات':'General Administration · All Organizations'
+  }
+  if(!activeOrganization){
+   return lang==='ar'?'لا توجد منظمة مسندة للمستخدم':'No organization assigned to this user'
+  }
+  return activeOrganization.name||activeOrganization.code||''
+ },[activeOrganization,isPlatformAdmin,lang])
+
+ const welcomeText=lang==='ar'
+  ? `مرحباً ${displayName} — ${organizationLabel}`
+  : `Welcome ${displayName} — ${organizationLabel}`
+
+ const allowed=useMemo(()=>groups.flatMap(g=>g.items).filter(x=>visible(x[2])),[can,access])
+ const orderedGroups=useMemo(()=>{
+  const core=groups.find(g=>g.title.startsWith('Core Operations'))
+  const admin=groups.find(g=>g.title.startsWith('Administration'))
+  const rest=groups.filter(g=>g!==core&&g!==admin)
+  const dashboardItems=core?core.items.filter(x=>x[0]==='/'):[]
+  const coreItems=core?core.items.filter(x=>x[0]!=='/'):[]
+  return [
+   {title:'Dashboard',items:dashboardItems},
+   admin,
+   core?{...core,items:coreItems}:null,
+   ...rest
+  ].filter(Boolean)
+ },[])
+ const submit=e=>{
+  e.preventDefault()
+  const q=query.trim().toLowerCase()
+  if(!q)return
+  const hit=allowed.find(([,label])=>label.toLowerCase().includes(q))
+  if(hit)navigate(hit[0])
+ }
+
+ return <div className="bafm-shell">
+  <aside className="bafm-sidebar">
+   <div className="bafm-logo-block dual-branding">
+    <div className="dual-brand-row">
+     <div className="dual-brand-primary">
+      <img src="/bafm-logo.png" alt="Basmat Alnawabigh"/>
+      <span>Basmat Alnawabigh</span>
+     </div>
+     {activeOrganization&&<div className="dual-brand-divider">×</div>}
+     {activeOrganization&&<div className="dual-brand-org">
+      {organizationLogo
+       ?<img src={organizationLogo} alt={organizationBrand} onError={e=>{e.currentTarget.style.display='none';e.currentTarget.nextElementSibling.style.display='grid'}}/>
+       :null}
+      <span className="org-logo-fallback" style={{display:organizationLogo?'none':'grid'}}>{(organizationBrand||'ORG').slice(0,2)}</span>
+      <small>{organizationBrand}</small>
+     </div>}
+    </div>
+    <div className="bafm-logo-word">BAFM</div>
+    <div className="bafm-logo-sub">{organizationBrand?('Basmat CMMS · '+organizationBrand):'Basmat Alnawabigh'}</div>
+    <div className="bafm-logo-tiny">Facility Maintenance Management System</div>
+   </div>
+   <nav className="bafm-nav">
+    {showAll?orderedGroups.map(group=>{
+     const items=group.items.filter(([, ,permission])=>visible(permission))
+     if(!items.length)return null
+     return <section className="bafm-nav-section" key={group.title}>
+      <div className="bafm-nav-title">{group.title}</div>
+      {items.map(([to,label,,icon])=><NavLink key={to} end={to==='/'}
+       to={to} className={({isActive})=>'bafm-nav-item '+(isActive?'active':'')}>
+       <span className="bafm-nav-icon"><NavIcon type={icon}/></span>
+       <span>{label}</span>
+      </NavLink>)}
+     </section>
+    }):<section className="bafm-nav-section">
+     {SIMPLE.map(to=>allowed.find(x=>x[0]===to)).filter(Boolean).map(([to,label,,icon])=><NavLink key={to} end={to==='/'}
+      to={to} className={({isActive})=>'bafm-nav-item bafm-nav-big '+(isActive?'active':'')}>
+      <span className="bafm-nav-icon"><NavIcon type={icon}/></span>
+      <span>{label}</span>
+     </NavLink>)}
+    </section>}
+    <button type="button" className="bafm-nav-more" onClick={toggleAll}>
+     {showAll?'Show core modules only | عرض الوحدات الأساسية فقط':'Show all modules | عرض كل الوحدات'}
+    </button>
+   </nav>
+   <div className="bafm-sidebar-footer">BAFM · v1.0</div>
   </aside>
-  <div className="bafm-main"><header className="bafm-topbar"><button type="button" ref={toggle} className="btn bafm-mobile-toggle" aria-expanded={mobileOpen} aria-controls="workspace-navigation" onClick={()=>setMobileOpen(v=>!v)} aria-label={ar?'فتح القائمة':'Open navigation'}>☰</button><div className="bafm-top-title"><strong>{ar?'بصمة النوابغ لإدارة صيانة المرافق':'Basmat Facilities CMMS'}</strong>{org&&<small className="bafm-company-context">{orgName}</small>}</div><form className="bafm-search" onSubmit={search}><NavIcon type="report"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={ar?'ابحث في الأصول وأوامر العمل…':'Search assets and work orders…'} aria-label={ar?'بحث':'Search'}/></form><div className="bafm-top-actions">{platformAdmin&&<Link className="bafm-top-btn" to="/maintenance-companies">{ar?'الشركة':'Company'}</Link>}<button className="bafm-top-btn" onClick={()=>setLang(ar?'en':'ar')}>{ar?'EN':'عربي'}</button>{can('notifications.view')&&<NotificationBell/>}<div className="bafm-user"><span className="bafm-avatar">{name.slice(0,1)}</span><strong>{name}</strong></div><button type="button" className="bafm-signout" onClick={logout} aria-label={ar?'تسجيل الخروج':'Sign out'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 4H4v16h5M14 7l5 5-5 5M8 12h11"/></svg><span>{ar?'تسجيل الخروج':'Sign out'}</span></button></div></header>
-   <div className="bafm-welcome" style={{flexWrap:"wrap"}}>{ar?'مرحبًا ':'Welcome '}{name} — {orgName}<WelcomeAccess access={access} profile={profile} organizationId={org?.id||access?.home_organization_id} ar={ar}/></div>{(logoutError||orgError)&&<div className="alert error" role="alert">{logoutError?(ar?'تعذر تسجيل الخروج.':'Sign out failed.'):(ar?'تعذر تحميل الشركات.':'Could not load companies.')}</div>}
-   <main id="workspace-content" ref={content} tabIndex={-1} className="workspace-content" key={activeOrgId}>{new URLSearchParams(location.search).get('setup')==='1'&&<Link className="workspace-return" to="/project-setup">{ar?'العودة إلى إعداد المشروع':'Back to project setup'}</Link>}<CompanyWorkspaceBoundary><RelatedTools/><GuidedWorkflowBar/><Outlet/></CompanyWorkspaceBoundary></main>
+
+  <div className="bafm-main">
+   <header className="bafm-topbar">
+    <div className="bafm-top-title">
+     <strong>Basmat Facilities CMMS</strong>
+     <span>| بصمة النوابغ لإدارة صيانة المرافق</span>
+    </div>
+    <form className="bafm-search" onSubmit={submit}>
+     <NavIcon type="report"/>
+     <input value={query} onChange={e=>setQuery(e.target.value)}
+      placeholder={lang==='ar'?'البحث في أوامر العمل والأصول والمرافق...':'Search work orders, assets, facilities...'}/>
+    </form>
+    <div className="bafm-top-actions">
+     {isPlatformAdmin&&organizations.length>0&&<select className="org-context-select" value={activeOrgId} onChange={e=>chooseOrganization(e.target.value)}>
+      <option value="">{lang==='ar'?'كل المنظمات / إدارة المنصة':'All organizations / Platform'}</option>
+      {organizations.map(o=><option key={o.id} value={o.id}>{lang==='ar'?(o.name_ar||o.name||o.name_en):(o.name_en||o.name||o.name_ar)}</option>)}
+     </select>}
+     <button className="bafm-top-btn" onClick={()=>setLang(lang==='ar'?'en':'ar')}>{lang==='ar'?'EN':'عربي'}</button>
+     <button className="bafm-bell" onClick={()=>navigate('/notifications')} aria-label="Notifications"><NavIcon type="bell"/><span>•</span></button>
+     <div className="bafm-user">
+      <div className="bafm-avatar">{displayName.slice(0,1).toUpperCase()}</div>
+      <div>
+       <strong>{displayName}</strong>
+       <small>{organizationLabel}</small>
+      </div>
+     </div>
+     <button className="bafm-signout" onClick={signOut}>↪</button>
+    </div>
+   </header>
+   <div style={{
+    margin:'12px 22px 0',
+    padding:'12px 16px',
+    borderRadius:14,
+    background:'linear-gradient(135deg, rgba(8,34,75,.06), rgba(30,136,229,.08))',
+    border:'1px solid rgba(8,34,75,.10)',
+    fontWeight:700,
+    color:'#08224b',
+    display:'flex',
+    alignItems:'center',
+    gap:8
+   }}>
+    <span aria-hidden="true">👋</span>
+    <span>{welcomeText}</span>
+   </div>
+   <main className="bafm-content" key={location.pathname}>
+    {new URLSearchParams(location.search).get('setup')==='1'&&<div className="facility-panel" style={{marginBottom:12,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
+      <strong>{lang==='ar'?'وضع إعداد المشروع':'Project Setup Mode'}</strong>
+      <button type="button" className="btn secondary" onClick={()=>navigate(sessionStorage.getItem('bafm-project-setup-return')||'/project-setup')}>{lang==='ar'?'العودة إلى إعداد المشروع':'Back to Project Setup'}</button>
+    </div>}<GuidedWorkflowBar/><Outlet/></main>
   </div>
  </div>
 }
 
-
-
-function WelcomeAccess({access, profile, organizationId, ar}) {
- const scoped = rows => (rows || []).filter(row => !organizationId || row.organization_id === organizationId)
- const roles = [...new Set(scoped(access?.role_assignments).map(role =>
-  role.role_code === 'org_admin' ? (ar ? 'أدمن الشركة' : 'Company admin') :
-   (ar ? role.role_name_ar || role.role_name_en : role.role_name_en || role.role_name_ar) || role.role_code
- ).filter(Boolean))]
- const projects = [...new Set(scoped(access?.projects).map(project => project.name || project.project_code).filter(Boolean))]
- const platformAdmin = profile?.is_super_admin || access?.super_admin
- return <span style={{display:'block',width:'100%',minWidth:0,overflowWrap:'anywhere',fontSize:'.85em',fontWeight:400}}>
-  <strong>{ar?'الدور':'Role'}</strong>{' · '}{platformAdmin?(ar?'مدير المنصة':'Platform admin'):roles.join('، ')||'—'}
-  {' | '}<strong>{ar?'المشاريع':'Projects'}</strong>{' · '}{platformAdmin?(ar?'جميع المشاريع':'All projects'):projects.join('، ')||'—'}
- </span>
-}
