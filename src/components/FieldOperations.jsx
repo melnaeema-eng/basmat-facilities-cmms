@@ -17,6 +17,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
  const manager=can('corrective.manage',workOrder?.organization_id)
  const executor=canExecute
  const [ownVisit,setOwnVisit]=useState(null)
+ const [blockingVisit,setBlockingVisit]=useState(null)
  const load=async()=>{
   if(!wo)return
   try{
@@ -29,9 +30,11 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
  }
  useEffect(()=>{load()},[wo])
  const run=async(command,id=null,payload={})=>{
-  if(busy||command==='enable'&&!manager||command!=='enable'&&!allowed)return
+  const closesVisit=['finish_visit','cancel_visit'].includes(command)
+  const permitted=command==='enable'?manager:closesVisit?canCloseVisit:allowed
+  if(busy||!permitted)return
   if(['finish_visit','cancel_visit','enable'].includes(command)&&!confirm(t('confirmAction')))return
-  setBusy(true);setError('');setSuccess('')
+  setBusy(true);setError('');setSuccess('');setBlockingVisit(null)
   try{
    if(command==='enable')await enableField(wo,requireEvidence)
    else await fieldAction(command,wo,id,payload)
@@ -40,7 +43,13 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
    if(command==='labor')setLabor({started_at:'',ended_at:'',activity:''})
    if(command==='cancel_visit')setReason('')
    onRefresh?.()
-  }catch(e){setError(e.message)}
+  }catch(e){
+   if(command==='start_visit'&&e.code==='PT409'&&e.message==='An earlier field visit is still open'){
+    let details={}
+    try{details=JSON.parse(e.details)||{}}catch{/* Details are hidden outside the current scope. */}
+    setBlockingVisit(details)
+   }else setError(e.message)
+  }
   finally{setBusy(false)}
  }
  const upload=async e=>{
@@ -57,9 +66,16 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
  }
  const localDate=value=>value?new Date(value).toLocaleString(lang):'—'
  const allowed=executor&&['accepted','in_progress'].includes(workOrder.status)
+ const canCloseVisit=Boolean(ownVisit&&(executor||manager))
  return <div className="facility-panel">
   <div className="page-head"><h2>{t('fieldOperations')}</h2><button type="button" className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
+  {blockingVisit&&<div className="alert warning" role="alert">
+   <p>{lang==='ar'?'لديك زيارة ميدانية مفتوحة. أنهِ الزيارة السابقة قبل بدء زيارة لأمر عمل آخر.':'You have an open field visit. Finish it before starting a visit on another work order.'}</p>
+   {blockingVisit.work_order_id&&<Link to={'/corrective/work_order/'+blockingVisit.work_order_id} target="_blank" rel="noopener noreferrer">
+    {lang==='ar'?'فتح أمر العمل السابق':'Open previous work order'} · {blockingVisit.work_order_number} · {blockingVisit.visit_number}
+   </Link>}
+  </div>}
   <WorkOrderSpareParts key={wo} workOrder={workOrder}/>
   <p className="muted">{t('fieldNotice')}</p>
   <div className="row-actions">
@@ -73,7 +89,7 @@ export default function FieldOperations({workOrder,onRefresh,canExecute=false}){
   {data?.requirements&&<p className="muted">{t('fieldGateNotice')}</p>}
   {tab==='visits'&&<>
    {allowed&&!ownVisit&&<button type="button" className="btn primary" disabled={busy} onClick={()=>run('start_visit')}>{t('startVisit')}</button>}
-   {ownVisit&&<fieldset disabled={!allowed||busy} className="facility-panel" style={{minWidth:0}}>
+   {ownVisit&&<fieldset disabled={!canCloseVisit||busy} className="facility-panel" style={{minWidth:0}}>
     <h3>{t('visitNumber')}: {ownVisit.visit_number}</h3>
     <p>{t('startedAt')}: {localDate(ownVisit.started_at)}</p>
     <div className="form-grid">
