@@ -63,7 +63,7 @@ export default function CorrectiveDetails(){
      {button('accept',executor&&row.status==='assigned')}
      {button('start',executor&&row.status==='accepted')}
      {button('resume',(executor||manager)&&row.status==='on_hold')}
-     {button('submit_qa',manager&&row.status==='completed')}
+     {button('submit_qa',manager&&row.status==='completed'&&['not_submitted','rejected'].includes(row.approval_status))}
      {button('approve',approver&&row.status==='completed'&&row.approval_status==='pending',{},true)}
      {button('close',approver&&row.status==='approved'&&!row.project_id,{},true)}
     </div><p className="muted">{t('qaNotice')}</p>
