@@ -4,6 +4,7 @@ import {statementAction,migrationMissing,cycleRpc} from '../lib/maintenanceCycle
 import {CycleField,CycleError,CycleSetupNotice,CycleStatus,useCycleLanguage} from '../components/CycleFields'
 import {statementOwners,projectsForOwner,statementReady,statementInboxCapabilities} from '../lib/statementProjects'
 import {loadStatementCenter} from '../lib/statementCenter'
+import FinalStatementPanel from '../components/FinalStatementPanel'
 import '../cycle.css'
 export default function MaintenanceStatements(){
  const L=useCycleLanguage(),navigate=useNavigate(),[data,setData]=useState(null),[missing,setMissing]=useState(false),[error,setError]=useState(null),[busy,setBusy]=useState(false),[owner,setOwner]=useState(''),[form,setForm]=useState({project_id:'',period_start:'',period_end:'',kind:'monthly',month:''})
@@ -51,6 +52,7 @@ export default function MaintenanceStatements(){
    <button disabled={busy||!ready} className="btn primary">{L('إنشاء مسودة المستخلص','Create draft statement')}</button>
   </form>}
 
+  {data&&<FinalStatementPanel projects={projects}/>}
   <div className="table-wrap"><table><thead><tr>{[L('رقم المستخلص','Statement'),L('المالك','Owner'),L('المشروع','Project'),L('النوع','Type'),L('الفترة','Period'),L('الحالة','Status')].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{data?.statements.map(s=><tr key={s.id}><td><Link to={'/statements/'+s.id}>{s.statement_number}</Link></td><td>{data.projects.find(p=>p.id===s.project_id)?.owner||'—'}</td><td>{data.projects.find(p=>p.id===s.project_id)?.name||'—'}</td><td>{s.statement_kind==='monthly'?L('شهري','Monthly'):L('فترة مخصصة','Custom period')}</td><td>{s.period_start} — {s.period_end}</td><td><CycleStatus value={s.status}/></td></tr>)}</tbody></table>{data&&!data.statements.length&&<p className="empty">{L('لا توجد مستخلصات ضمن صلاحياتك.','No statements within your access scope.')}</p>}</div><p className="workspace-muted">{L('القيم تمثل قيمة الأعمال المطالب بها بعملة العقد. تكاليف المخزون الداخلية تبقى مستقلة عن قيمة المطالبة.','Values represent claimed work in the contract currency. Internal inventory costs remain separate from claim values.')}</p>
  </section>
 }
