@@ -1,6 +1,5 @@
-import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useRef,useState} from 'react'
-import {Link,useLocation,useNavigate} from 'react-router-dom'
+import {Link,useLocation,useNavigate,useOutletContext} from 'react-router-dom'
 import {useLanguage} from '../i18n/LanguageContext'
 import {useAuth} from '../context/AuthContext'
 import {supabase} from '../lib/supabaseClient'
@@ -9,28 +8,41 @@ import {assetsInProject,normalized,recordName} from '../lib/facilitiesProduct'
 import AssetEditor from '../components/AssetEditor'
 import '../facilities-product.css'
 export default function FacilitiesAssetCockpit(){
- const {lang}=useLanguage(),ar=lang==='ar',{can,access}=useAuth(),nav=useNavigate(),location=useLocation()
+ const {lang}=useLanguage(),ar=lang==='ar'
+ const org=useOutletContext()
+ if(!org)return <section className="facility-module">
+  <div className="facility-panel">
+   <h1>{ar?'تشغيل أصول المرافق':'Facilities Assets & Maintenance'}</h1>
+   <p>{ar?'افتح مساحة شركة لعرض مشاريعها وأصولها.':'Open a company workspace to view its projects and assets.'}</p>
+   <Link className="btn secondary" to="/maintenance-companies">{ar?'مساحات الشركات':'Company workspaces'}</Link>
+  </div>
+ </section>
+ return <CompanyAssets key={org} org={org}/>
+}
+
+function CompanyAssets({org}){
+ const {lang}=useLanguage(),ar=lang==='ar',{can}=useAuth(),nav=useNavigate(),location=useLocation()
  const pick=location.state?.registration||null
  const [data,setData]=useState(null),[projects,setProjects]=useState([]),[links,setLinks]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[loading,setLoading]=useState(false)
- const [org,setOrg]=useState(()=>localStorage.getItem('basmat.active.organization')||access?.home_organization_id||''),[project,setProject]=useState(''),[site,setSite]=useState(''),[query,setQuery]=useState(location.state?.query||''),[registration,setRegistration]=useState(!!pick),[editing,setEditing]=useState(null),[limit,setLimit]=useState(40)
+ const [project,setProject]=useState(''),[site,setSite]=useState(''),[query,setQuery]=useState(location.state?.query||''),[registration,setRegistration]=useState(!!pick),[editing,setEditing]=useState(null),[limit,setLimit]=useState(40)
  const request=useRef(0)
  async function load(){
   const ticket=++request.current
   setLoading(true);setError('')
   try{
-   const d=await loadAll()
-   if(ticket!==request.current)return
-   setData(d)
-   if(!org)return
-   const [map,structure]=await Promise.all([
+   const [dataset,map,structure]=await Promise.all([
+    loadAll(org),
     supabase.from('bf35_project_sites').select('project_id,organization_id,site_id,client_id').eq('organization_id',org),
     supabase.rpc('bf35_structure',{p_org:org})
    ])
    if(ticket!==request.current)return
    if(map.error)throw map.error
    if(structure.error)throw structure.error
+   setData(dataset)
    setLinks(map.data||[])
-   setProjects((structure.data?.projects||[]).map(p=>({...p,organization_id:org})).filter(p=>p.status!=='closed'))
+   const available=(structure.data?.projects||[]).filter(p=>p.status!=='closed')
+   setProjects(available)
+   setProject(current=>available.some(p=>p.id===current)?current:'')
   }catch(e){if(ticket===request.current){setError(e.message);setProjects([]);setLinks([])}}finally{if(ticket===request.current)setLoading(false)}
  }
  useEffect(()=>{setProjects([]);setLinks([]);load();return()=>{++request.current}},[org])
@@ -54,9 +66,9 @@ export default function FacilitiesAssetCockpit(){
  return <section className="facility-module facilities-product">
   <div className="page-head"><div><h1>{ar?'تشغيل أصول المرافق':'Facilities Assets & Maintenance'}</h1><p>{ar?'ملف أصل موحد من الوقائية والبلاغ حتى التنفيذ والاعتماد وشهادة الإنجاز.':'One asset record from PPM and faults through execution, approval and completion certification.'}</p></div><div className="row-actions"><Link className="btn" to="/ppm">{ar?'مركز الصيانة الوقائية':'Preventive maintenance'}</Link><Link className="btn secondary" to="/asset-library">{ar?'مكتبة الأصول':'Asset library'}</Link></div></div>
   {error&&<div className="alert error" role="alert">{error}</div>}{notice&&<div className="alert success" role="status">{notice}</div>}
-  <div className="facility-panel product-search"><CompanyField>{ar?'شركة الصيانة':'Maintenance company'}<select value={org} onChange={e=>{setOrg(e.target.value);setProject('');setSite('');setEditing(null)}}><option value="">{ar?'اختر الشركة':'Select company'}</option>{(data?.organizations||[]).filter(o=>o.status==='active').map(o=><option key={o.id} value={o.id}>{recordName(o,lang)}</option>)}</select></CompanyField><label>{ar?'المشروع':'Project'}<select value={project} disabled={!org||loading} onChange={e=>{setProject(e.target.value);setSite('');setEditing(null)}}><option value="">{ar?'كل المشاريع المتاحة':'All available projects'}</option>{projects.map(p=><option key={p.id} value={p.id}>{recordName(p,lang)}</option>)}</select></label><button className="btn secondary" disabled={loading} onClick={load}>{loading?(ar?'جارٍ التحديث…':'Refreshing…'):(ar?'تحديث المشاريع والمواقع':'Refresh projects & sites')}</button></div>
+  <div className="facility-panel product-search"><label>{ar?'المشروع':'Project'}<select value={project} disabled={loading} onChange={e=>{setProject(e.target.value);setSite('');setEditing(null)}}><option value="">{ar?'كل المشاريع المتاحة':'All available projects'}</option>{projects.map(p=><option key={p.id} value={p.id}>{recordName(p,lang)}</option>)}</select></label><button className="btn secondary" disabled={loading} onClick={load}>{loading?(ar?'جارٍ التحديث…':'Refreshing…'):(ar?'تحديث المشاريع والمواقع':'Refresh projects & sites')}</button></div>
   <form className="facility-panel product-search" onSubmit={e=>{e.preventDefault();setLimit(40)}}><label>{ar?'البحث عن الأصل':'Find an asset'}<input type="search" value={query} onChange={e=>{setQuery(e.target.value);setLimit(40)}} placeholder={ar?'التاق / السيريال / الاسم / البراند / الموديل / الموقع':'Tag / serial / name / brand / model / location'}/></label><button className="btn primary">{ar?'بحث':'Search'}</button><button type="button" className="btn secondary" onClick={()=>nav('/asset-library')}>{ar?'البحث في المكتبة':'Search the library'}</button></form>
-  <details className="facility-panel" open={registration} onToggle={e=>setRegistration(e.currentTarget.open)}><summary>{ar?'إضافة أصل جديد من المكتبة إلى المشروع':'Register a catalog asset to a project'}</summary><div style={{paddingTop:16}}>{!selected?<p>{ar?'اختر الشركة والمشروع أعلاه، ثم اختر الموقع.':'Select the company and project above, then the site.'} <Link to="/project-setup">{ar?'إضافة / إعداد مشروع':'Add / set up project'}</Link></p>:<><label>{ar?'المنشأة / الموقع':'Facility / site'}<select value={chosenSite?.id||''} onChange={e=>setSite(e.target.value)}><option value="">{ar?'اختر الموقع':'Select site'}</option>{siteRows.map(s=><option key={s.id} value={s.id}>{recordName(s,lang)}</option>)}</select></label>{!siteRows.length&&<p>{ar?'اربط موقعًا نشطًا بهذا المشروع من إعداد المشروع أولًا.':'Link an active site to this project in Project Setup first.'}</p>}{scopedData&&can('assets.manage',org)&&<AssetEditor key={[project,chosenSite.id,pick?.option?.id||pick?.type?.id||''].join(':')} data={scopedData} initial={initial} librarySelection={pick} onCancel={()=>setRegistration(false)} onSaved={async()=>{setNotice(ar?'تم تسجيل الأصل؛ التاق أُنشئ آليًا.':'Asset registered; its tag was generated automatically.');setRegistration(false);await load()}}/>}{scopedData&&!can('assets.manage',org)&&<p>{ar?'تسجيل الأصل يحتاج صلاحية إدارة الأصول في الشركة المختارة.':'Asset registration requires asset management permission in the selected company.'}</p>}</>}</div></details>
+  <details className="facility-panel" open={registration} onToggle={e=>setRegistration(e.currentTarget.open)}><summary>{ar?'إضافة أصل جديد من المكتبة إلى المشروع':'Register a catalog asset to a project'}</summary><div style={{paddingTop:16}}>{!selected?<p>{ar?'اختر المشروع أعلاه، ثم اختر الموقع.':'Select the project above, then the site.'} <Link to="/project-setup">{ar?'إضافة / إعداد مشروع':'Add / set up project'}</Link></p>:<><label>{ar?'المنشأة / الموقع':'Facility / site'}<select value={chosenSite?.id||''} onChange={e=>setSite(e.target.value)}><option value="">{ar?'اختر الموقع':'Select site'}</option>{siteRows.map(s=><option key={s.id} value={s.id}>{recordName(s,lang)}</option>)}</select></label>{!siteRows.length&&<p>{ar?'اربط موقعًا نشطًا بهذا المشروع من إعداد المشروع أولًا.':'Link an active site to this project in Project Setup first.'}</p>}{scopedData&&can('assets.manage',org)&&<AssetEditor key={[project,chosenSite.id,pick?.option?.id||pick?.type?.id||''].join(':')} data={scopedData} initial={initial} librarySelection={pick} onCancel={()=>setRegistration(false)} onSaved={async()=>{setNotice(ar?'تم تسجيل الأصل؛ التاق أُنشئ آليًا.':'Asset registered; its tag was generated automatically.');setRegistration(false);await load()}}/>}{scopedData&&!can('assets.manage',org)&&<p>{ar?'تسجيل الأصل يحتاج صلاحية إدارة الأصول في الشركة الحالية.':'Asset registration requires asset management permission in the current company.'}</p>}</>}</div></details>
   <div className="page-head"><h2>{ar?'الأصول المسجلة':'Registered assets'} ({rows.length})</h2><Link className="btn secondary" to="/work-orders">{ar?'متابعة دورة الصيانة':'Track maintenance cycle'}</Link></div>
   {loading&&<p role="status">{ar?'جارٍ التحميل…':'Loading…'}</p>}
   {!loading&&!rows.length&&<div className="facility-panel">{ar?'لا توجد أصول مطابقة ضمن النطاق الحالي.':'No matching assets in this scope.'}</div>}

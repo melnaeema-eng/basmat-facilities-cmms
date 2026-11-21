@@ -50,6 +50,11 @@ export default function AppShell(){
  useEffect(()=>{const refresh=()=>setOrgRevision(v=>v+1);window.addEventListener('basmat-organizations-changed',refresh);return()=>window.removeEventListener('basmat-organizations-changed',refresh)},[])
  const [query,setQuery]=useState(''),[mobileOpen,setMobileOpen]=useState(false),[organizations,setOrganizations]=useState([])
  const [activeOrgId,setActiveOrgId]=useState(()=>localStorage.getItem('basmat.active.organization')||'')
+ useEffect(()=>{
+  const changed=e=>setActiveOrgId(e.detail?.organization_id||'')
+  window.addEventListener('basmat-organization-changed',changed)
+  return()=>window.removeEventListener('basmat-organization-changed',changed)
+ },[])
  const [logoutError,setLogoutError]=useState(false),[orgError,setOrgError]=useState(false)
  const content=useRef(null),toggle=useRef(null),platformAdmin=companyWorkspace(access,profile).isSuperAdmin,homeId=companyWorkspace(access,profile).companyId
  const available=useMemo(()=>modules.filter(m=>permitted(m,can)),[can])
@@ -61,7 +66,8 @@ export default function AppShell(){
  useEffect(()=>{if(platformAdmin&&!orgError&&organizations.length&&activeOrgId&&!organizations.some(o=>o.id===activeOrgId)){setActiveOrgId('');localStorage.removeItem('basmat.active.organization')}},[platformAdmin,orgError,organizations,activeOrgId])
  useEffect(()=>{if(!mobileOpen)return;const close=e=>{if(e.key==='Escape'){setMobileOpen(false);toggle.current?.focus()}};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[mobileOpen])
  useEffect(()=>{if(!mobileOpen)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous}},[mobileOpen])
- const org=organizations.find(o=>o.id===activeOrgId)
+ const workspaceId=platformAdmin?activeOrgId:homeId
+ const org=organizations.find(o=>o.id===workspaceId)
  const orgName=org?(ar?org.name_ar||org.name||org.name_en:org.name_en||org.name||org.name_ar):(ar?'نطاق الصلاحيات المسندة':'Assigned access scope')
  async function logout(){setLogoutError(false);try{const result=await signOut();if(result?.error)throw result.error}catch{setLogoutError(true)}}
  function search(e){e.preventDefault();const term=query.trim().toLowerCase();if(!term)return;const hit=available.filter(isNavigableModule).find(m=>[m.ar,m.en].join(' ').toLowerCase().includes(term));if(hit)navigate(hit.path);else navigate('/facility-asset-cockpit',{state:{query}})}
@@ -78,7 +84,7 @@ export default function AppShell(){
   </aside>
   <div className="bafm-main"><header className="bafm-topbar"><button type="button" ref={toggle} className="btn bafm-mobile-toggle" aria-expanded={mobileOpen} aria-controls="workspace-navigation" onClick={()=>setMobileOpen(v=>!v)} aria-label={ar?'فتح القائمة':'Open navigation'}>☰</button><div className="bafm-top-title"><strong>{ar?'بصمة النوابغ لإدارة صيانة المرافق':'Basmat Facilities CMMS'}</strong>{org&&<small className="bafm-company-context">{orgName}</small>}</div><form className="bafm-search" onSubmit={search}><NavIcon type="report"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={ar?'ابحث في الأصول وأوامر العمل…':'Search assets and work orders…'} aria-label={ar?'بحث':'Search'}/></form><div className="bafm-top-actions">{platformAdmin&&<Link className="bafm-top-btn" to="/maintenance-companies">{ar?'الشركة':'Company'}</Link>}<button className="bafm-top-btn" onClick={()=>setLang(ar?'en':'ar')}>{ar?'EN':'عربي'}</button>{can('notifications.view')&&<NotificationBell/>}<div className="bafm-user"><span className="bafm-avatar">{name.slice(0,1)}</span><strong>{name}</strong></div><button type="button" className="bafm-signout" onClick={logout} aria-label={ar?'تسجيل الخروج':'Sign out'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M9 4H4v16h5M14 7l5 5-5 5M8 12h11"/></svg><span>{ar?'تسجيل الخروج':'Sign out'}</span></button></div></header>
    <div className="bafm-welcome" style={{flexWrap:"wrap"}}>{ar?'مرحبًا ':'Welcome '}{name} — {orgName}<WelcomeAccess access={access} profile={profile} organizationId={org?.id||access?.home_organization_id} ar={ar}/></div>{(logoutError||orgError)&&<div className="alert error" role="alert">{logoutError?(ar?'تعذر تسجيل الخروج.':'Sign out failed.'):(ar?'تعذر تحميل الشركات.':'Could not load companies.')}</div>}
-   <main id="workspace-content" ref={content} tabIndex={-1} className="workspace-content" key={activeOrgId}>{new URLSearchParams(location.search).get('setup')==='1'&&<Link className="workspace-return" to="/project-setup">{ar?'العودة إلى إعداد المشروع':'Back to project setup'}</Link>}<CompanyWorkspaceBoundary><RelatedTools/><GuidedWorkflowBar/><Outlet/></CompanyWorkspaceBoundary></main>
+   <main id="workspace-content" ref={content} tabIndex={-1} className="workspace-content" key={workspaceId}>{new URLSearchParams(location.search).get('setup')==='1'&&<Link className="workspace-return" to="/project-setup">{ar?'العودة إلى إعداد المشروع':'Back to project setup'}</Link>}<CompanyWorkspaceBoundary><RelatedTools/><GuidedWorkflowBar/><Outlet context={workspaceId}/></CompanyWorkspaceBoundary></main>
   </div>
  </div>
 }
