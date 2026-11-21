@@ -3,22 +3,46 @@ import {useEffect,useMemo,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
-import {loadCorrective,action,priorities} from '../lib/corrective'
+import {loadCorrective,action,priorities,correctiveCreationStatus} from '../lib/corrective'
 import {Field,Select,Dialog,Notice,Status,FormActions} from '../components/FacilityFields'
 import DataTable from '../components/DataTable'
 
 const blank={organization_id:'',client_id:'',site_id:'',contract_id:'',asset_id:'',title:'',description:'',priority:'P3'}
 const closedRequest=new Set(['converted','rejected','cancelled'])
 const closedWork=new Set(['closed','cancelled'])
+const creationMessages={
+ project_access:['حسابك يحتاج إلى صلاحية إنشاء أوامر العمل لهذا المشروع والموقع.','Your account needs work order creation access for this project and site.'],
+ organization_access:['حسابك يحتاج إلى صلاحية إنشاء أوامر العمل لهذه الشركة.','Your account needs work order creation access for this company.'],
+ invalid_site:['اختر موقعًا نشطًا تابعًا للمالك المحدد.','Select an active site for the selected owner.'],
+ invalid_contract:['اختر عقدًا تابعًا للشركة والمالك المحددين.','Select a contract for the selected company and owner.'],
+ ambiguous_project:['هذا العقد والموقع مرتبطان بأكثر من مشروع. أنشئ الأمر من المشروع المحدد.','More than one project matches this contract and site. Create the order from the specific project.'],
+ verification_failed:['تعذّر التحقق من صلاحية الإنشاء. اضغط إعادة التحقق.','Creation access could not be verified. Select Retry check.']
+}
 
 export default function Corrective(){
  const {can,user}=useAuth(),{t,lang}=useLanguage(),navigate=useNavigate()
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [tab,setTab]=useState('work_order'),[form,setForm]=useState(blank),[open,setOpen]=useState(false)
+ const [check,setCheck]=useState(null),[checkRevision,retryCheck]=useState(0)
  const [query,setQuery]=useState(''),[filter,setFilter]=useState(''),[scope,setScope]=useState('attention')
 
  const load=async()=>{setError('');try{setData(await loadCorrective())}catch(e){setError(e.message)}}
  useEffect(()=>{load()},[])
+ const {organization_id,client_id,site_id,contract_id}=form
+ const createScope=open&&tab==='work_order'&&organization_id&&client_id&&site_id
+ const scopeKey=createScope?[organization_id,client_id,site_id,contract_id,checkRevision].join(':'):''
+ useEffect(()=>{
+  if(!scopeKey)return
+  let active=true
+  correctiveCreationStatus({organization_id,client_id,site_id,contract_id})
+   .then(status=>{if(active)setCheck({key:scopeKey,status})})
+   .catch(()=>{if(active)setCheck({key:scopeKey,status:'verification_failed'})})
+  return()=>{active=false}
+ },[scopeKey,organization_id,client_id,site_id,contract_id])
+ const creationStatus=scopeKey&&check?.key===scopeKey?check.status:null
+ const needsAsset=creationStatus==='asset_required'
+ const canSave=tab==='request'||creationStatus==='allowed'||(needsAsset&&!!form.asset_id)
+ const creationMessage=creationMessages[creationStatus]?.[lang==='ar'?0:1]
 
  const myWorkIds=useMemo(()=>new Set((data?.assignments||[]).filter(x=>x.user_id===user?.id).map(x=>x.work_order_id)),[data,user?.id])
  const now=Date.now()
@@ -63,7 +87,11 @@ export default function Corrective(){
   })
  },[data,tab,filter,query,scope,myWorkIds])
 
- const change=(key,value)=>setForm(f=>({...f,[key]:value,...(key==='organization_id'?{client_id:'',site_id:'',contract_id:'',asset_id:''}:key==='client_id'?{site_id:'',contract_id:'',asset_id:''}:key==='site_id'?{asset_id:''}:{})}))
+ const change=(key,value)=>{
+  setError('')
+  if(['organization_id','client_id','site_id','contract_id'].includes(key)&&form[key]!==value)setCheck(null)
+  setForm(f=>({...f,[key]:value,...(key==='organization_id'?{client_id:'',site_id:'',contract_id:'',asset_id:''}:key==='client_id'?{site_id:'',contract_id:'',asset_id:''}:key==='site_id'?{asset_id:''}:{})}))
+ }
  const opts=(rows,label)=>[{value:'',label:t('select')},...(rows||[]).map(x=>({value:x.id,label:label(x)}))]
  const name=x=>lang==='ar'?x.name_ar||x.name_en||x.name:x.name_en||x.name_ar||x.name
  const options=(key)=>{
@@ -75,11 +103,13 @@ export default function Corrective(){
  }
 
  const submit=async e=>{
-  e.preventDefault();if(busy)return;setBusy(true);setError('')
+  e.preventDefault();if(busy||!canSave)return;setBusy(true);setError('')
   try{
    const id=await action(tab,null,'create',form)
    setOpen(false);setForm(blank);await load();setSuccess(t('saved'));navigate('/corrective/'+tab+'/'+id)
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){
+   setError(e.message==='Project work order creation permission required'?creationMessages.project_access[lang==='ar'?0:1]:e.message)
+  }finally{setBusy(false)}
  }
 
  const run=async(row,command)=>{
@@ -124,11 +154,11 @@ export default function Corrective(){
    <div><h1>{t('workControlCenter')}</h1><p className="muted">{t('workControlHelp')}</p></div>
    <div className="row-actions">
     <button className="btn secondary" onClick={load}>{t('refresh')}</button>
-    {newAllowed&&<button className="btn primary" onClick={()=>{setForm(blank);setOpen(true)}}>{t(tab==='request'?'newRequest':'newWO')}</button>}
+    {newAllowed&&<button className="btn primary" onClick={()=>{setForm(blank);setError('');setCheck(null);setOpen(true)}}>{t(tab==='request'?'newRequest':'newWO')}</button>}
    </div>
   </div>
 
-  <Notice error={error} success={success}/>
+  <Notice error={open?'':error} success={success}/>
 
   <div className="row-actions module-tabs">
    <button className={'btn '+(tab==='work_order'?'primary':'secondary')} onClick={()=>{setTab('work_order');setFilter('');setScope('attention')}}>{t('workOrders')} ({data?.workOrders.length||0})</button>
@@ -155,13 +185,16 @@ export default function Corrective(){
 
   <Dialog open={open} title={t(tab==='request'?'newRequest':'newWO')} onClose={()=>!busy&&setOpen(false)}>
    <form onSubmit={submit} className="facility-form">
+    <Notice error={error||creationMessage}/>
+    {scopeKey&&!creationStatus&&<p role="status">{lang==='ar'?'جارٍ التحقق من صلاحية الإنشاء…':'Checking work order creation access…'}</p>}
+    {creationStatus==='verification_failed'&&<button type="button" className="btn secondary" onClick={()=>retryCheck(n=>n+1)}>{lang==='ar'?'إعادة التحقق':'Retry check'}</button>}
     <div className="form-grid">
-     {['organization_id','client_id','site_id','contract_id','asset_id'].map((key,i)=><CompanyField company={key==='organization_id'} key={key} label={t(({organization_id:'organization',client_id:'client',site_id:'site',contract_id:'contractNumber',asset_id:'asset'})[key])} required={i<3}><Select required={i<3} value={form[key]} onChange={v=>change(key,v)} options={options(key)} disabled={i>0&&!form[({client_id:'organization_id',site_id:'client_id',contract_id:'client_id',asset_id:'site_id'})[key]]}/></CompanyField>)}
+     {['organization_id','client_id','site_id','contract_id','asset_id'].map((key,i)=><CompanyField company={key==='organization_id'} key={key} label={t(({organization_id:'organization',client_id:'client',site_id:'site',contract_id:'contractNumber',asset_id:'asset'})[key])} required={i<3||(key==='asset_id'&&needsAsset)}><Select required={i<3||(key==='asset_id'&&needsAsset)} value={form[key]} onChange={v=>change(key,v)} options={options(key)} disabled={i>0&&!form[({client_id:'organization_id',site_id:'client_id',contract_id:'client_id',asset_id:'site_id'})[key]]}/></CompanyField>)}
      <Field label={t('title')} required><input required minLength={3} maxLength={250} value={form.title} onChange={e=>change('title',e.target.value)}/></Field>
      <Field label={t('priority')}><Select value={form.priority} onChange={v=>change('priority',v)} options={priorities.map(x=>({value:x,label:t(x)}))}/></Field>
      <Field label={t('description')} wide><textarea value={form.description} onChange={e=>change('description',e.target.value)}/></Field>
     </div>
-    <FormActions busy={busy} onCancel={()=>setOpen(false)}/>
+    <FormActions busy={busy} disabled={!canSave} onCancel={()=>setOpen(false)}/>
    </form>
   </Dialog>
  </section>

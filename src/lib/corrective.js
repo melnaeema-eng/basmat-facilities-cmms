@@ -40,3 +40,11 @@ export async function loadHistory(kind,id){
  return data||[]
 }
 
+
+export async function correctiveCreationStatus({organization_id,client_id,site_id,contract_id}){
+ const {data,error}=await supabase.rpc('bf44_corrective_creation_status',{
+  p_org:organization_id,p_owner:client_id,p_site:site_id,p_contract:contract_id||null
+ })
+ if(error)throw error
+ return data
+}
