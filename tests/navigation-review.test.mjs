@@ -30,6 +30,15 @@ test('Specialist-only users retain an entry even when their parent section is fo
  assert.deepEqual(all,standaloneTools)
 })
 test('Existing links and detail records resolve to their canonical section',()=>{
- for(const [path,root] of [['/assets/asset-id','/facility-asset-cockpit'],['/asset-passport/asset-id','/facility-asset-cockpit'],['/maintenance-cycle/work-order-id','/corrective'],['/corrective/work_order/id','/corrective'],['/ppm/job/id','/corrective'],['/statements/id','/reports'],['/procurement/order/id','/inventory']])assert.equal(familyForPath(path)?.root,root,path)
+ for(const [path,root] of [['/assets/asset-id','/facility-asset-cockpit'],['/asset-passport/asset-id','/facility-asset-cockpit'],['/maintenance-cycle/work-order-id','/corrective'],['/corrective/work_order/id','/corrective'],['/statements/id','/reports'],['/procurement/order/id','/inventory']])assert.equal(familyForPath(path)?.root,root,path)
  assert.equal(familyForPath('/unknown'),null)
+})
+
+test('Preventive maintenance appears in daily work for permitted users without a second sidebar entry',()=>{
+ const can=permission=>permission==='ppm.view'
+ const ppm=modules.find(module=>module.path==='/ppm')
+ assert.ok(primaryPaths.has(ppm.path))
+ assert.ok(isNavigableModule(ppm))
+ assert.ok(!secondaryNavigation(can).some(module=>module.path===ppm.path))
+ assert.equal(familyForPath('/ppm/job/id'),null)
 })

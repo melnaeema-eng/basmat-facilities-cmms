@@ -2,11 +2,11 @@ import {modules,permitted} from './modules.js'
 
 // One entrance per user goal. Detailed modules remain inside their centre.
 export const navigationGroups=[
- {en:'Daily work',ar:'العمل اليومي',paths:['/','/corrective','/facility-asset-cockpit','/inventory','/reports']},
+ {en:'Daily work',ar:'العمل اليومي',paths:['/','/corrective','/ppm','/facility-asset-cockpit','/inventory','/reports']},
  {en:'Company administration',ar:'إدارة الشركة',paths:['/project-setup','/users','/maintenance-companies']}
 ]
 export const toolFamilies=[
- {root:'/corrective',tools:['/ppm','/planning','/technician-execution','/field-mobile','/workforce','/approvals','/work-orders','/documents','/document-control','/notifications','/compliance','/permits','/hse'],ar:'دورة الصيانة الكاملة: البلاغات والوقائية والتنفيذ والاعتماد والشهادة والمستخلص.',en:'The complete maintenance cycle: requests, PPM, execution, approvals, certificates and statements.'},
+ {root:'/corrective',tools:['/planning','/technician-execution','/field-mobile','/workforce','/approvals','/work-orders','/documents','/document-control','/notifications','/compliance','/permits','/hse'],ar:'دورة الصيانة الكاملة: البلاغات والوقائية والتنفيذ والاعتماد والشهادة والمستخلص.',en:'The complete maintenance cycle: requests, PPM, execution, approvals, certificates and statements.'},
  {root:'/facility-asset-cockpit',tools:['/assets','/asset-passport','/asset-lifecycle','/asset-categories','/qr-scan','/sites','/locations','/asset-library','/library-admin','/library-deployment'],ar:'الأصول ومواقعها وجوازاتها ومكتبة إجراءات الصيانة.',en:'Assets, locations, passports and the maintenance procedure library.'},
  {root:'/inventory',tools:['/advanced-stock','/procurement','/suppliers','/supplier-performance'],ar:'المخزون وطلبات قطع الغيار والمشتريات والموردون.',en:'Stock, spare-parts requests, procurement and suppliers.'},
  {root:'/reports',tools:['/kpi','/executive','/backlog','/reliability','/utilities','/contracts','/contract-renewal','/statements','/maintenance-costing'],ar:'التقارير التشغيلية وتقارير المالك والعقود والمستخلصات.',en:'Operational and owner reports, contracts and statements.'},
@@ -20,7 +20,7 @@ const familyPaths=new Set(toolFamilies.flatMap(f=>[f.root,...f.tools]))
 const aliases=[
  ['/assets/:id','/facility-asset-cockpit'],['/asset-passport/:id','/facility-asset-cockpit'],
  ['/corrective/:kind/:id','/corrective'],['/maintenance-cycle/:id','/corrective'],
- ['/ppm/:kind/:id','/corrective'],['/inventory/request/:id','/inventory'],
+ ['/inventory/request/:id','/inventory'],
  ['/advanced-stock/:id','/inventory'],['/procurement/:kind/:id','/inventory'],['/statements/:id','/reports']
 ]
 function matches(pattern,path){
