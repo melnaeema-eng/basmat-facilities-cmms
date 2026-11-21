@@ -14,7 +14,7 @@ const ROUTES={
   title:'Corrective / Service Request',
   titleAr:'البلاغ / الصيانة التصحيحية',
   steps:[
-   step('organization',['organization_id','organization'],/organization|المنظمة|الجهة/i,'/organizations'),
+   step('organization',['organization_id','organization'],/organization|المنظمة|الجهة/i,'/maintenance-companies'),
    step('client',['client_id','client','customer'],/client|customer|owner|المالك/i,'/owners'),
    step('site',['site_id','site','facility'],/site|facility|الموقع|المرفق/i,'/sites'),
    step('asset',['asset_id','asset','equipment','device'],/asset|equipment|device|الأصل|الجهاز/i,'/assets',false),
@@ -28,7 +28,7 @@ const ROUTES={
   title:'Preventive Maintenance',
   titleAr:'الصيانة الوقائية PPM',
   steps:[
-   step('organization',['organization_id','organization'],/organization|المنظمة/i,'/organizations'),
+   step('organization',['organization_id','organization'],/organization|المنظمة/i,'/maintenance-companies'),
    step('asset',['asset_id','asset'],/asset|الأصل|الجهاز/i,'/assets'),
    step('procedure',['procedure_id','procedure'],/procedure|الإجراء|إجراء الصيانة/i,'/asset-library'),
    step('contract',['contract_id','contract'],/contract|العقد/i,'/contracts',false),
@@ -41,7 +41,7 @@ const ROUTES={
   title:'Project Setup',
   titleAr:'إعداد المشروع',
   steps:[
-   step('organization',['organization_id','organization'],/organization|المنظمة/i,'/organizations'),
+   step('organization',['organization_id','organization'],/organization|المنظمة/i,'/maintenance-companies'),
    step('client',['client_id','client'],/client|owner|المالك/i,'/owners'),
    step('contract',['contract_id','contract'],/contract|العقد/i,'/contracts',false),
    step('project_name',['name','project_name'],/project name|اسم المشروع|الاسم/i,null),
@@ -55,7 +55,7 @@ const ROUTES={
   title:'Asset Registration',
   titleAr:'تسجيل الأصل',
   steps:[
-   step('organization',['organization_id','organization'],/organization|المنظمة/i,'/organizations'),
+   step('organization',['organization_id','organization'],/organization|المنظمة/i,'/maintenance-companies'),
    step('client',['client_id','client'],/client|owner|المالك/i,'/owners'),
    step('site',['site_id','site'],/site|الموقع/i,'/sites'),
    step('category',['category_id','category'],/category|التصنيف/i,'/asset-categories'),

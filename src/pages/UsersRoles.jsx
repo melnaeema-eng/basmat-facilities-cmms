@@ -1,4 +1,4 @@
-import {Link} from 'react-router-dom'
+import {Link,Navigate} from 'react-router-dom'
 import CompanyField from '../components/CompanyField'
 import {useEffect,useMemo,useState} from 'react'
 import {supabase} from '../lib/supabaseClient'
@@ -6,16 +6,25 @@ import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {Dialog,Notice,FormActions} from '../components/FacilityFields'
 import DataTable from '../components/DataTable'
+import {companyWorkspace} from '../lib/companyWorkspace'
 
 const emptyProjectForm=()=>({
  project_id:'',role_id:'',site_id:'',discipline_code:'',valid_from:'',valid_until:''
 })
 
-export default function UsersRoles(){
- const {profile,access,can,refreshProfile}=useAuth()
+export default function UsersRoles({organization}={}){
+ const {access,profile}=useAuth()
+ const scope=companyWorkspace(access,profile)
+ if(scope.isSuperAdmin&&!organization)return <Navigate to="/maintenance-companies?users=current" replace/>
+ const targetOrg=scope.isSuperAdmin?organization?.id:scope.companyId
+ if(!targetOrg)return null
+ return <CompanyUsers key={targetOrg} targetOrg={targetOrg} platformAdmin={scope.isSuperAdmin} organization={organization}/>
+}
+
+function CompanyUsers({targetOrg,platformAdmin:isPlatformAdmin,organization}){
+ const {profile,can,refreshProfile}=useAuth()
  const {lang}=useLanguage()
  const ar=lang==='ar'
- const isPlatformAdmin=!!(profile?.is_super_admin||access?.super_admin)
 
  const [data,setData]=useState({users:[],organizations:[],roles:[],conflicts:[]})
  const [assignments,setAssignments]=useState([])
@@ -36,10 +45,10 @@ export default function UsersRoles(){
  const [roleId,setRoleId]=useState('')
  const [projectForm,setProjectForm]=useState(emptyProjectForm())
 
- const homeOrgId=access?.home_organization_id||null
- const targetOrg=homeOrgId||(isPlatformAdmin?'25abee4e-0084-4c44-ab95-649392aea091':null)
-
- const canInvite=adminAccess.can_manage&&targetOrg==='25abee4e-0084-4c44-ab95-649392aea091'
+ const homeOrgId=targetOrg
+ const companyName=organization?.name||(data.organizations||[]).find(row=>row.id===targetOrg)?.name
+ const canInvite=adminAccess.can_manage
+ const inviteRoles=(adminAccess.roles||[]).filter(role=>!['super_admin','platform_admin','owner_rep','owner_representative','client_admin','client_user','consultant'].includes(role.code))
 
  const load=async()=>{
   setBusy(true);setError('')
@@ -65,11 +74,11 @@ export default function UsersRoles(){
  const orgMap=useMemo(()=>Object.fromEntries((data.organizations||[]).map(x=>[x.id,x])),[data.organizations])
 
  const rolesForOrg=org=>(data.roles||[]).filter(r=>
-  !['client_admin','client_user'].includes(r.code)&&
+  !['client_admin','client_user','super_admin','platform_admin'].includes(r.code)&&
   (!r.organization_id||r.organization_id===org)
  )
 
- const canManageOrg=org=>adminAccess.can_manage&&org===targetOrg||isPlatformAdmin||!!(org&&(can('users.manage',org)||can('enterprise-access.manage',org)))
+ const canManageOrg=org=>org===targetOrg&&(adminAccess.can_manage||can('users.manage',org)||can('enterprise-access.manage',org))
 
  const startOrg=user=>{
   setSelected(user)
@@ -196,11 +205,11 @@ export default function UsersRoles(){
  }
  async function inviteMember(e){
   e.preventDefault();if(!canInvite||busy)return
-  const role=(adminAccess.roles||[]).find(r=>r.id===newMember.role_id)
+  const role=inviteRoles.find(r=>r.id===newMember.role_id)
   if(!role)return
   setBusy(true);setError('');setSuccess('');let created=false
   try{
-   const response=await supabase.functions.invoke('bf-org-admin',{body:{action:'invite',member:{organization_id:targetOrg,email:newMember.email.trim(),full_name:newMember.full_name.trim(),role_code:role.code}}})
+   const response=await supabase.functions.invoke('bf-org-admin',{body:{action:'invite',member:{organization_id:targetOrg,role_id:role.id,email:newMember.email.trim(),full_name:newMember.full_name.trim(),role_code:role.code},app:'facilities'}})
    if(response.error){let message=response.error.message;try{const detail=await response.error.context.json();message=detail.error||message}catch{}throw Error(message)}
    if(response.data?.error)throw Error(response.data.error)
    created=true
@@ -275,8 +284,8 @@ export default function UsersRoles(){
    <div>
     <h1>{ar?'المستخدمون والصلاحيات ونطاق المشروع':'Users, Roles & Project Access'}</h1>
     <p className="muted">{ar
-     ?'أضف مستخدمًا إلى بصمة النوابغ، وحدد دوره وصلاحياته والمشاريع التي يعمل بها.'
-     :'Add a Basmat user, choose their role and permissions, and assign their working projects.'}</p>
+     ?(companyName||'إدارة مستخدمي الشركة')
+     :(companyName||'Manage company users')}</p>
    </div>
    <div className="row-actions">{canInvite&&<button type="button" className="btn primary" onClick={startInvite} disabled={busy}>{ar?'+ إضافة مستخدم':'+ Add user'}</button>}<Link className="btn secondary" to="/roles-permissions">{ar?'الأدوار والصلاحيات':'Roles & permissions'}</Link>
    <button className="btn secondary" onClick={load} disabled={busy}>{ar?'تحديث':'Refresh'}</button></div>
@@ -303,12 +312,12 @@ export default function UsersRoles(){
   <DataTable columns={cols} rows={data.users||[]} emptyText={ar?'لا توجد بيانات':'No data'}/>
 
 
-  <Dialog open={inviteOpen} title={ar?'إضافة مستخدم إلى بصمة النوابغ':'Add a user to Basmat Alnawabigh'} onClose={()=>setInviteOpen(false)}>
+  <Dialog open={inviteOpen} title={ar?'إضافة مستخدم إلى الشركة':'Add a company user'} onClose={()=>setInviteOpen(false)}>
    <form className="form-grid" onSubmit={inviteMember}>
     <p className="span-2">{ar?'سنرسل دعوة بالبريد. يعيّن المستخدم كلمة مروره عبر صفحة قبول الدعوة، ثم يسجّل الدخول إلى المرافق.':'The invitation lets the user set their password on the acceptance page, then sign in to Facilities.'}</p>
     <label><span>{ar?'الاسم الكامل':'Full name'} *</span><input required maxLength={150} value={newMember.full_name} onChange={e=>setNewMember({...newMember,full_name:e.target.value})}/></label>
     <label><span>{ar?'البريد الإلكتروني':'Email'} *</span><input type="email" required maxLength={254} autoComplete="off" value={newMember.email} onChange={e=>setNewMember({...newMember,email:e.target.value})}/></label>
-    <label className="span-2"><span>{ar?'الدور والصلاحيات':'Role & permissions'} *</span><select required value={newMember.role_id} onChange={e=>setNewMember({...newMember,role_id:e.target.value})}><option value="">{ar?'اختر الدور':'Select role'}</option>{(adminAccess.roles||[]).map(r=><option key={r.id} value={r.id}>{ar?r.name_ar:r.name_en}</option>)}</select></label>
+    <label className="span-2"><span>{ar?'الدور والصلاحيات':'Role & permissions'} *</span><select required value={newMember.role_id} onChange={e=>setNewMember({...newMember,role_id:e.target.value})}><option value="">{ar?'اختر الدور':'Select role'}</option>{inviteRoles.map(r=><option key={r.id} value={r.id}>{r.code==='org_admin'?(ar?'أدمن الشركة':'Company admin'):(ar?r.name_ar:r.name_en)}</option>)}</select></label>
     <fieldset className="span-2"><legend>{ar?'المشاريع المسندة':'Assigned projects'}</legend>{inviteProjects.map(project=><label key={project.id} style={{display:'flex',alignItems:'center',gap:8}}><input type="checkbox" style={{width:'auto'}} checked={newMember.project_ids.includes(project.id)} onChange={e=>setNewMember({...newMember,project_ids:e.target.checked?[...newMember.project_ids,project.id]:newMember.project_ids.filter(id=>id!==project.id)})}/>{project.name}</label>)}{!inviteProjects.length&&<p>{ar?'لا توجد مشاريع متاحة. يمكنك إسناد المشروع لاحقًا.':'No projects available. Assign projects later.'}</p>}</fieldset>
     <div className="form-actions span-2"><button type="button" className="btn secondary" disabled={busy} onClick={()=>setInviteOpen(false)}>{ar?'إلغاء':'Cancel'}</button><button className="btn primary" disabled={busy||!canInvite}>{ar?'إضافة المستخدم وإرسال الدعوة':'Add user and send invitation'}</button></div>
    </form>

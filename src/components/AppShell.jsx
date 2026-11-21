@@ -57,7 +57,7 @@ export default function AppShell(){
  },[])
  const [logoutError,setLogoutError]=useState(false),[orgError,setOrgError]=useState(false)
  const content=useRef(null),toggle=useRef(null),platformAdmin=companyWorkspace(access,profile).isSuperAdmin,homeId=companyWorkspace(access,profile).companyId
- const available=useMemo(()=>modules.filter(m=>permitted(m,can)),[can])
+ const available=useMemo(()=>modules.filter(m=>permitted(m,can)&&(!platformAdmin||m.path!=='/users')),[can,platformAdmin])
  const extra=secondaryNavigation(can)
  const name=profile?.full_name||user?.email||(ar?'المستخدم':'User')
  useEffect(()=>{let alive=true;async function load(){if(!platformAdmin&&!homeId)return;let q=supabase.from('bf_organizations').select('id,name,name_ar,name_en,code,status,logo_url').neq('status','archived').order('name');if(!platformAdmin)q=q.eq('id',homeId);const {data,error}=await q;if(alive){setOrganizations(data||[]);setOrgError(!!error)}}load();return()=>{alive=false}},[platformAdmin,homeId,orgRevision,location.pathname])

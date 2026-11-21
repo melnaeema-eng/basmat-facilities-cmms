@@ -34,16 +34,6 @@ export const modules = [
   },
   {"path":"/maintenance-companies","page":"MaintenanceCompanies","permission":"platform.company-workspace","en":"Company workspace","ar":"مساحة الشركة","icon":"org","group":"setup","nav":true},
   {
-    "path": "/organizations",
-    "page": "OrganizationOnboarding",
-    "permission":"platform.company-workspace",
-    "en": "Organizations",
-    "ar": "المنظمات",
-    "icon": "org",
-    "group": "setup",
-    "nav": false
-  },
-  {
     "path": "/soft-fm",
     "page": "SoftFmOperations",
     "permission": "soft-fm.view",
@@ -577,7 +567,7 @@ export const modules = [
   {
     "path": "/owner-portal",
     "page": "OwnerPortal",
-    "permission": "clients.view",
+    "permission": "owner-portal.view",
     "en": "Owner portal",
     "ar": "بوابة المالك",
     "icon": "work",

@@ -1,6 +1,15 @@
 const live=o=>o&&o.is_active!==false&&!['inactive','archived','disabled'].includes(o.status)
 export const companyAdministrationPaths=['/maintenance-companies','/organizations','/facility-reference-library','/medical-knowledge-library','/medical-smart-onboarding','/medical-tenant-admin','/medical-service-library']
 export const companyAdminPermission='platform.company-workspace'
+export const ownerPortalPermission='owner-portal.view'
+export function hasOwnerPortalAccess(access){
+ const memberships=new Set((access?.organizations||[]).filter(live).map(org=>org.organization_id||org.id))
+ const ownerOrganizations=new Set((access?.role_assignments||[])
+  .filter(role=>role.role_code==='owner_rep'&&memberships.has(role.organization_id))
+  .map(role=>role.organization_id))
+ return (access?.projects||[]).some(project=>project.client_id&&project.status!=='archived'
+  &&ownerOrganizations.has(project.organization_id))
+}
 export function bindHomeCompany(payload={},canonical={}){
  const organizations=(payload.organizations||[]).filter(live).map(o=>({...o,id:o.organization_id||o.id,organization_id:o.organization_id||o.id})).filter(o=>o.id)
  const requested=canonical.home_organization_id||canonical.home_organization?.organization_id||canonical.home_organization?.id||payload.home_organization_id||payload.home_organization?.organization_id||payload.home_organization?.id

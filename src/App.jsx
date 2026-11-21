@@ -51,7 +51,6 @@ const pages = {
  MobileField:lazy(()=>import('./pages/MobileField.jsx')),
  Notifications:lazy(()=>import('./pages/Notifications.jsx')),
  MaintenanceCompanies:lazy(()=>import('./pages/MaintenanceCompanies.jsx')),
- OrganizationOnboarding:lazy(()=>import('./pages/OrganizationOnboarding.jsx')),
  OwnerPortal:lazy(()=>import('./pages/OwnerPortal.jsx')),
  PPM:lazy(()=>import('./pages/PPM.jsx')),
  PPMDetails:lazy(()=>import('./pages/PPMDetails.jsx')),
@@ -84,6 +83,7 @@ export default function App(){
    {modules.map(m=>{const Page=pages[m.page];return <Route key={m.path} path={m.path} element={
     <PermissionRoute permission={m.permission}><WorkspaceErrorBoundary key={m.path}><Suspense fallback={<Loading/>}><Page/></Suspense></WorkspaceErrorBoundary></PermissionRoute>
    }/>})}
+   <Route path="/organizations" element={<Navigate to="/maintenance-companies" replace/>}/>
    <Route path="/clients" element={<Navigate to="/owners" replace/>}/>
    <Route path="/medical" element={<Navigate to="/work-orders" replace/>}/>
    <Route path="*" element={<Navigate to="/" replace/>}/>

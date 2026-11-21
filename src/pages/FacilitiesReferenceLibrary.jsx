@@ -136,12 +136,12 @@ export default function FacilitiesReferenceLibrary(){
    const found=(existing||[]).find(r=>String(r.name||'').trim().toLowerCase()===name.toLowerCase())
    if(found){
     setSuccess(ar?'الجهة موجودة مسبقاً وتم فتح قائمة المنظمات.':'Organization already exists. Opening organizations.')
-    setTimeout(()=>navigate('/organizations'),350);return
+    setTimeout(()=>navigate('/maintenance-companies'),350);return
    }
    const {error}=await supabase.from('bf_organizations').insert({name,status:'active'})
    if(error)throw error
    setSuccess(ar?'تم اعتماد الجهة كمنظمة تشغيلية.':'Owner adopted as an operational organization.')
-   setTimeout(()=>navigate('/organizations'),450)
+   setTimeout(()=>navigate('/maintenance-companies'),450)
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
 

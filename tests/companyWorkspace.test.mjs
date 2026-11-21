@@ -39,3 +39,18 @@ test('guards company administration URLs while keeping projects, owners and manu
  for(const p of ['/maintenance-companies','/organizations','/organizations/new','/medical-knowledge-library','/facility-reference-library','/medical-service-library'])assert.equal(isCompanyAdministrationPath(p),true,p)
  for(const p of ['/project-setup','/owners','/asset-library','/corrective','/organizations-report'])assert.equal(isCompanyAdministrationPath(p),false,p)
 })
+test('owner portal requires an owner role and live project in the same represented organization',async()=>{
+ const {hasOwnerPortalAccess,ownerPortalPermission}=await import('../src/lib/companyWorkspace.js')
+ const {modules,permitted}=await import('../src/config/modules.js')
+ const route=modules.find(m=>m.path==='/owner-portal')
+ const access={organizations:[{id:'a'},{id:'b'}],role_assignments:[{organization_id:'a',role_code:'owner_rep'}],
+  projects:[{organization_id:'a',client_id:'owner',status:'active'}]}
+ assert.equal(route.permission,ownerPortalPermission)
+ assert.equal(permitted(route,key=>key==='clients.view'),false)
+ assert.equal(hasOwnerPortalAccess(access),true)
+ assert.equal(hasOwnerPortalAccess({...access,role_assignments:[{organization_id:'a',role_code:'contracts_manager'}]}),false)
+ assert.equal(hasOwnerPortalAccess({...access,super_admin:true,role_assignments:[]}),false)
+ assert.equal(hasOwnerPortalAccess({...access,projects:[{organization_id:'b',client_id:'owner'}]}),false)
+ assert.equal(hasOwnerPortalAccess({...access,projects:[{organization_id:'a',client_id:'owner',status:'archived'}]}),false)
+ assert.equal(hasOwnerPortalAccess({...access,organizations:[{id:'a',is_active:false}]}),false)
+})

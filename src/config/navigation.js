@@ -12,7 +12,7 @@ export const toolFamilies=[
  {root:'/reports',tools:['/kpi','/executive','/backlog','/reliability','/utilities','/contracts','/contract-renewal','/statements','/maintenance-costing'],ar:'التقارير التشغيلية وتقارير المالك والعقود والمستخلصات.',en:'Operational and owner reports, contracts and statements.'},
  {root:'/project-setup',tools:['/owners','/enterprise-structure'],ar:'إعداد الملاك والمشاريع والعقود والمواقع والهيكل المكاني.',en:'Set up owners, projects, contracts, sites and location hierarchy.'},
  {root:'/users',tools:['/roles-permissions','/enterprise-access','/access-review','/governance','/audit','/security-readiness','/release-readiness'],ar:'المستخدمون وأدوارهم وصلاحياتهم ونطاق وصولهم للمشاريع والمواقع.',en:'Users, roles, permissions and their project and site access.'},
- {root:'/maintenance-companies',tools:['/organizations','/facility-reference-library'],ar:'إنشاء مساحة شركة مستقلة أو فتحها وتعديل هويتها.',en:'Create, open or update an isolated company workspace.'}
+ {root:'/maintenance-companies',tools:['/facility-reference-library'],ar:'إنشاء مساحة شركة مستقلة أو فتحها وتعديل هويتها.',en:'Create, open or update an isolated company workspace.'}
 ]
 export const standaloneTools=['/owner-portal','/soft-fm']
 export const primaryPaths=new Set(navigationGroups.flatMap(g=>g.paths))

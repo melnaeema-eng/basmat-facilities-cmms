@@ -1,4 +1,4 @@
-import {bindHomeCompany,companyAdminPermission,companyWorkspace} from '../lib/companyWorkspace'
+import {bindHomeCompany,companyAdminPermission,companyWorkspace,hasOwnerPortalAccess,ownerPortalPermission} from '../lib/companyWorkspace'
 import {hasFacilitiesPermission} from '../lib/facilitiesPermissions'
 import {hasScopedCyclePermission} from '../lib/scopedCyclePermissions'
 import {createContext,useContext,useEffect,useMemo,useState} from 'react'
@@ -75,6 +75,7 @@ export function AuthProvider({children}){
   // Every active user can open their own server-filtered action inbox.
   if(permission==='notifications.view')return true
   if(permission===companyAdminPermission)return companyWorkspace(access,profile).isSuperAdmin
+  if(permission===ownerPortalPermission)return hasOwnerPortalAccess(access)
   if(access?.super_admin)return true
   return hasFacilitiesPermission(access?.permissions,permission,org)||
    hasFacilitiesPermission(access?.project_permissions,permission,org)

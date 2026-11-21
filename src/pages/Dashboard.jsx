@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react'
-import {Link} from 'react-router-dom'
+import {Link,useOutletContext} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadWorkspaceDashboard} from '../lib/workspaceDashboard'
@@ -17,33 +17,40 @@ const metricIcons={
  review:<><path d="M16 4h3v17H5V4h3M8 2h8v4H8z"/><path d="m8 13 3 3 5-6"/></>
 }
 export default function Dashboard(){
- const {can,profile}=useAuth(),{lang,t}=useLanguage(),ar=lang==='ar',s=labels[lang]||labels.en
+ const {can,profile,access}=useAuth(),{lang,t}=useLanguage(),ar=lang==='ar',s=labels[lang]||labels.en
+ const organizationId=useOutletContext()
+ const companyAdmin=access?.super_admin||profile?.is_super_admin||access?.role_assignments?.some(role=>role.organization_id===organizationId&&role.role_code==='org_admin')
+ const hasAssignedProjects=(access?.projects||[]).some(project=>project.organization_id===organizationId&&['shared','facilities'].includes(project.module_code))
+ const projectScope=Boolean(organizationId&&!companyAdmin&&hasAssignedProjects)
+ const inWorkspace=permission=>Boolean(organizationId&&can(permission,organizationId))
  const [data,setData]=useState(null),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0)
  useEffect(()=>{
   let alive=true;setLoading(true)
-  loadWorkspaceDashboard(can,localStorage.getItem('basmat.active.organization')||null).then(result=>{if(alive)setData(result)}).catch(()=>{if(alive)setData({counts:{},errors:['load'],rows:[],assets:{}})}).finally(()=>{if(alive)setLoading(false)})
+  loadWorkspaceDashboard(permission=>Boolean(organizationId&&can(permission,organizationId)),organizationId,projectScope).then(result=>{if(alive)setData(result)}).catch(()=>{if(alive)setData({counts:{},errors:['load'],rows:[],assets:{}})}).finally(()=>{if(alive)setLoading(false)})
   return()=>{alive=false}
- },[can,revision])
+ },[can,organizationId,projectScope,revision])
  const c=data?.counts||{}
  const value=key=>loading?'…':c[key]===null||c[key]===undefined?'—':new Intl.NumberFormat(lang).format(c[key])
- const cards=[['active','corrective.view','blue'],['closed','corrective.view','green'],['execution','corrective.view','orange'],['overdue','corrective.view','red'],['assets','assets.view','teal'],['review','corrective.view','purple']].filter(([,p])=>can(p))
- const quick=[['/project-setup','setup','organizations.view'],['/facility-asset-cockpit','register','assets.view'],['/asset-library','library','assets.view'],['/work-orders','work',['corrective.view','ppm.view']],['/approvals','approve','approvals.view'],['/reports','reports','reports.view']].filter(([, ,p])=>Array.isArray(p)?p.some(x=>can(x)):can(p))
+ const cards=[['active','corrective.view','blue'],['closed','corrective.view','green'],['execution','corrective.view','orange'],['overdue','corrective.view','red'],['assets','assets.view','teal'],['review','corrective.view','purple']].filter(([,p])=>inWorkspace(p))
+ const quick=[['/project-setup','setup','organizations.view'],['/facility-asset-cockpit','register','assets.view'],['/asset-library','library','assets.view'],['/work-orders','work',['corrective.view','ppm.view']],['/approvals','approve','approvals.view'],['/reports','reports','reports.view']].filter(([, ,p])=>Array.isArray(p)?p.some(inWorkspace):inWorkspace(p))
  const ratio=c.ppmTotal>0&&c.ppmDone!=null?Math.round(c.ppmDone/c.ppmTotal*100):null
  return <section className="workspace-dashboard">
   <div className="workspace-hero"><div><span className="workspace-eyebrow">{s.kicker}</span><h1>{s.title}</h1><p>{s.intro}</p><small>{profile?.full_name}</small></div><div className="workspace-hero-symbol" aria-hidden="true"><span/><span/><span/></div></div>
-  <div className="workspace-section-head"><p>{s.scope}</p><button className="btn secondary" onClick={()=>setRevision(x=>x+1)} disabled={loading}>{s.refresh}</button></div>
+  <div className="workspace-section-head"><p>{projectScope?(ar?'الإحصاءات للمشاريع والمواقع المسندة لحسابك.':'Counts reflect the projects and sites assigned to your account.'):s.scope}</p><button className="btn secondary" onClick={()=>setRevision(x=>x+1)} disabled={loading}>{s.refresh}</button></div>
   {!!data?.errors.length&&<div className="alert error" role="alert">{s.error}</div>}
   {loading&&<p className="workspace-sr" role="status">{s.loading}</p>}
   <div className="workspace-metrics">{cards.map(([key,,tone])=><article key={key} className={'workspace-metric '+tone}><div className="workspace-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{metricIcons[key]}</svg></div><div className="workspace-metric-copy"><span>{s[key]}</span><strong>{value(key)}</strong>{!loading&&c[key]===null&&<small>{s.unavailable}</small>}</div></article>)}</div>
   <div className="workspace-dashboard-grid">
-   {can('corrective.view')&&<article className="workspace-panel"><div className="workspace-section-head"><h2>{s.workflow}</h2><Link to="/work-orders">{s.all} ↗</Link></div><p className="workspace-muted">{s.workflowNote}</p><div className="workspace-pipeline">{['assignment','execution','review','closeout','closed'].map((key,i)=><div key={key}><span className="workspace-step-number">{i+1}</span><strong>{value(key)}</strong><span>{s[key]}</span></div>)}</div></article>}
-   {can('ppm.view')&&<article className="workspace-panel"><div className="workspace-section-head"><h2>{s.ppm}</h2><span className="workspace-pill">{s.month}</span></div><div className="workspace-ppm-summary"><div className="workspace-ppm-ring" role="img" aria-label={s.completionRate+': '+(loading?s.loading:ratio===null?(c.ppmTotal===0?s.noSchedule:s.unavailable):new Intl.NumberFormat(lang,{style:'percent',maximumFractionDigits:0}).format(ratio/100))} style={{'--ppm-ratio':Math.min(100,Math.max(0,ratio||0))}}><div><strong>{loading?'…':ratio===null?'—':new Intl.NumberFormat(lang,{style:'percent',maximumFractionDigits:0}).format(ratio/100)}</strong><span>{s.completionRate}</span></div></div><ul className="workspace-ppm-legend"><li className="scheduled"><span>{s.scheduled}</span><strong>{value('ppmTotal')}</strong></li><li className="done"><span>{s.done}</span><strong>{value('ppmDone')}</strong></li><li className="remaining"><span>{s.remaining}</span><strong>{loading?'…':c.ppmTotal==null||c.ppmDone==null?'—':new Intl.NumberFormat(lang).format(Math.max(0,c.ppmTotal-c.ppmDone))}</strong></li></ul></div>{!loading&&c.ppmTotal===0&&<p className="workspace-muted">{s.noSchedule}</p>}<small className="workspace-muted">{s.ppmNote}</small></article>}
+   {inWorkspace('corrective.view')&&<article className="workspace-panel"><div className="workspace-section-head"><h2>{s.workflow}</h2><Link to="/work-orders">{s.all} ↗</Link></div><p className="workspace-muted">{s.workflowNote}</p><div className="workspace-pipeline">{['assignment','execution','review','closeout','closed'].map((key,i)=><div key={key}><span className="workspace-step-number">{i+1}</span><strong>{value(key)}</strong><span>{s[key]}</span></div>)}</div></article>}
+   {inWorkspace('ppm.view')&&<article className="workspace-panel"><div className="workspace-section-head"><h2>{s.ppm}</h2><span className="workspace-pill">{s.month}</span></div><div className="workspace-ppm-summary"><div className="workspace-ppm-ring" role="img" aria-label={s.completionRate+': '+(loading?s.loading:ratio===null?(c.ppmTotal===0?s.noSchedule:s.unavailable):new Intl.NumberFormat(lang,{style:'percent',maximumFractionDigits:0}).format(ratio/100))} style={{'--ppm-ratio':Math.min(100,Math.max(0,ratio||0))}}><div><strong>{loading?'…':ratio===null?'—':new Intl.NumberFormat(lang,{style:'percent',maximumFractionDigits:0}).format(ratio/100)}</strong><span>{s.completionRate}</span></div></div><ul className="workspace-ppm-legend"><li className="scheduled"><span>{s.scheduled}</span><strong>{value('ppmTotal')}</strong></li><li className="done"><span>{s.done}</span><strong>{value('ppmDone')}</strong></li><li className="remaining"><span>{s.remaining}</span><strong>{loading?'…':c.ppmTotal==null||c.ppmDone==null?'—':new Intl.NumberFormat(lang).format(Math.max(0,c.ppmTotal-c.ppmDone))}</strong></li></ul></div>{!loading&&c.ppmTotal===0&&<p className="workspace-muted">{s.noSchedule}</p>}<small className="workspace-muted">{s.ppmNote}</small></article>}
   </div>
-  {can('corrective.view')&&<article className="workspace-panel"><div className="workspace-section-head"><h2>{s.recent}</h2><Link to="/work-orders">{s.all} ↗</Link></div><div className="workspace-table"><table><thead><tr>{['number','asset','priority','status','due'].map(k=><th key={k}>{s[k]}</th>)}</tr></thead><tbody>{!loading&&data?.rows.map(row=>{
+  {inWorkspace('corrective.view')&&<article className="workspace-panel"><div className="workspace-section-head"><h2>{s.recent}</h2><Link to="/work-orders">{s.all} ↗</Link></div><div className="workspace-table"><table><thead><tr>{['number','asset','priority','status','due'].map(k=><th key={k}>{s[k]}</th>)}</tr></thead><tbody>{!loading&&data?.rows.map(row=>{
    const a=data.assets[row.asset_id]
    return <tr key={row.id}><td><Link to={'/corrective/work_order/'+row.id}><strong>{row.work_order_number}</strong></Link><small>{row.title}</small></td><td>{a?(ar?a.name_ar||a.name_en:a.name_en||a.name_ar)||a.asset_tag:'—'}<small>{a?.serial_number||a?.asset_tag}</small></td><td><span className={'workspace-priority '+(row.priority==='P1'?'urgent':'')}>{t(row.priority)}</span></td><td>{t(row.status)}</td><td>{row.completion_due_at?new Date(row.completion_due_at).toLocaleDateString(lang,{timeZone:'Asia/Riyadh'}):'—'}</td></tr>
-  })}{!loading&&!data?.rows.length&&<tr><td colSpan={5} className="empty">{data?.errors.includes('recent')?s.unavailable:s.empty}</td></tr>}{loading&&<tr><td colSpan={5} className="empty">{s.loading}</td></tr>}</tbody></table></div></article>}
+  })}{!loading&&!data?.rows.length&&<tr><td colSpan={5} className="empty">{data?.errors.some(key=>['recent','load','projects'].includes(key))?s.unavailable:s.empty}</td></tr>}{loading&&<tr><td colSpan={5} className="empty">{s.loading}</td></tr>}</tbody></table></div></article>}
   {!!quick.length&&<article className="workspace-panel"><h2>{s.quick}</h2><div className="workspace-quick-grid">{quick.map(([to,key])=><Link key={key} to={to}><span>{s[key]}</span><b aria-hidden="true">↗</b></Link>)}</div></article>}
-  {!cards.length&&!quick.length&&!can('ppm.view')&&<div className="facility-panel">{s.noAccess}</div>}
+  {!organizationId&&<div className="facility-panel"><Link to="/maintenance-companies">{ar?'افتح مساحة شركة لعرض لوحة المعلومات.':'Open a company workspace to view its dashboard.'}</Link></div>}
+  {organizationId&&!cards.length&&!quick.length&&!inWorkspace('ppm.view')&&<div className="facility-panel">{s.noAccess}</div>}
+  {organizationId&&!companyAdmin&&!hasAssignedProjects&&<p className="workspace-muted">{ar?'لا توجد مشاريع مرافق مسندة لحسابك حاليًا. راجع أدمن الشركة إذا كنت تتوقع ظهور مشروع محدد.':'No Facilities projects are assigned to your account. Contact your company administrator if you expect a particular project.'}</p>}
  </section>
 }
