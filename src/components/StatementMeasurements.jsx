@@ -42,7 +42,20 @@ export function StatementMeasurementTable({ rows, currency }) {
   </section>
 }
 
-export default function StatementMeasurements({ data, busy, run }) {
+export function StatementCostEvidence({selectedCost,currency}) {
+  const L=useCycleLanguage()
+  const {lang}=useLanguage()
+  if(!selectedCost)return null
+  return <div className="span-2">
+          <p>{L('سجل أمر العمل الداخلي','Internal work order record')} · {selectedCost.labor_minutes} {L('دقيقة عمل','labor minutes')}
+             {' · '}{L('العمالة','Labor')} {formatCycleMoney(selectedCost.labor_cost,lang)}
+             {' · '}{L('المواد','Materials')} {formatCycleMoney(selectedCost.material_cost,lang)}
+             {' · '}{L('المصاريف','Expenses')} {formatCycleMoney(selectedCost.additional_cost,lang)} {currency}</p>
+          {Number(selectedCost.unpriced_labor_minutes)>0&&<p>{selectedCost.unpriced_labor_minutes} {L('دقيقة دون تكلفة ساعة داخلية','minutes without an internal hourly cost')}</p>}
+  </div>
+}
+
+export default function StatementMeasurements({ data, busy, run, loadEvidence, importLabor }) {
   const L = useCycleLanguage()
   const { lang } = useLanguage()
   const [rate, setRate] = useState(blankRate)
@@ -50,7 +63,11 @@ export default function StatementMeasurements({ data, busy, run }) {
   const rates = data.rate_items || []
   const rows = data.work_measurements || []
   const certificates = [...data.eligible, ...data.lines.map(line => ({ id: line.certificate_id, number: line.certificate_number, work_order_number: line.work_order_number }))]
+  const [evidence, setEvidence] = useState(null)
+  const selectedCost=evidence?.[measurement.certificate_id]
   const selectedRate = rates.find(item => item.id === measurement.price_item_id)
+  const hourly=selectedRate?.category==='labor' && ['unit','included'].includes(selectedRate.pricing)
+    && ['h','hr','hrs','hour','hours','ساعة','ساعات'].includes(selectedRate.unit.trim().toLowerCase())
   const rateCurrency = item => Number(item.unit_rate).toLocaleString(lang, { maximumFractionDigits: 4 }) + ' ' + data.currency
   function selectMeasurement(next) {
     const existing = rows.find(row => row.certificate_id === next.certificate_id && row.price_item_id === next.price_item_id)
@@ -96,6 +113,7 @@ export default function StatementMeasurements({ data, busy, run }) {
         </fieldset>
       </form>
     </details>
+    {loadEvidence&&<button type="button" className="btn secondary" disabled={busy} onClick={async()=>setEvidence(await loadEvidence())}>{L('عرض تكاليف أوامر العمل الداخلية','Show internal work order costs')}</button>}
     {rates.length > 0 && certificates.length > 0 && <form onSubmit={async event => {
       event.preventDefault()
       if (await run('save', measurement)) setMeasurement({ ...blankMeasurement, certificate_id: measurement.certificate_id })
@@ -117,6 +135,11 @@ export default function StatementMeasurements({ data, busy, run }) {
         <CycleField label={L('مرجع الحصر أو سبب التغطية', 'Measurement reference or coverage basis')}>
           <input required minLength={5} maxLength={1000} value={measurement.basis} onChange={e => setMeasurement({ ...measurement, basis: e.target.value })} />
         </CycleField>
+        <StatementCostEvidence selectedCost={selectedCost} currency={data.currency}/>
+        {hourly&&Number(selectedCost?.labor_minutes)>0&&<button type="button" className="btn secondary" onClick={async()=>{
+          if(await importLabor(measurement.certificate_id,measurement.price_item_id))
+           setMeasurement(next=>({...next,quantity:String(Number((Number(selectedCost.labor_minutes)/60).toFixed(3))),basis:L('سجل ساعات أمر العمل','Work order labor log')}))
+        }}>{L('استيراد ساعات العمل وتسعيرها ببند العقد','Import labor hours at the contract rate')}</button>}
         <button className="btn primary">{L('حفظ الحصر واحتساب القيمة', 'Save measurement and calculate value')}</button>
       </fieldset>
     </form>}
