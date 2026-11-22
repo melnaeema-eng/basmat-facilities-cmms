@@ -14,6 +14,7 @@ const blankStep={title_ar:'',title_en:'',instructions_ar:'',instructions_en:'',t
 export default function PPMDetails(){
  const {kind,id}=useParams(),navigate=useNavigate(),{can,user}=useAuth(),{t,lang}=useLanguage()
  const routeState=useLocation().state
+ const ppmDeskAsset=routeState?.ppmDeskAsset
  const pendingPlan=routeState?.pendingPlan
  const [medicalMaster,setMedicalMaster]=useState(null)
  const [oemReference,setOem]=useState(null),[reviewComment,setReviewComment]=useState(''),[oemChecked,setOemChecked]=useState(false)
@@ -43,6 +44,9 @@ export default function PPMDetails(){
  },[importedOem,id])
  const planProcedure=kind==='plan'?data?.procedures.find(p=>p.id===row?.procedure_id):null
  const linkedPlan=kind==='procedure'?data?.plans.find(p=>p.id===routeState?.linkedPlanId&&p.procedure_id===id):null
+ const deskAsset=ppmDeskAsset||row?.asset_id||linkedPlan?.asset_id
+ const backToDesk=deskAsset?'/ppm?asset='+encodeURIComponent(deskAsset):'/ppm'
+
  const relatedProcedure=kind==='plan'?planProcedure:kind==='procedure'?row:null
  const medicalTemplateId=relatedProcedure?.source_type==='oem'?relatedProcedure.master_template_id:null
  const hasMedicalManage=!!row&&can('medical.ppm.manage',row.organization_id)
@@ -113,7 +117,7 @@ export default function PPMDetails(){
  const editStep=s=>{setEditingStep(s.id);setStep({...blankStep,...s,min_value:s.min_value??'',max_value:s.max_value??''})}
  const deleteStep=s=>{if(confirm(t('confirmAction')))run('delete_step',{step_id:s.id})}
  return <section className="facility-module">
-  <div className="page-head"><div><Link to="/ppm">← {t('ppm')}</Link><h1>{row?.code||row?.job_number||t('loading')}</h1><p className="muted">{row&&t(row.frequency||'')}{row?.version?' · '+t('version')+' '+row.version:''}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
+  <div className="page-head"><div><Link to={backToDesk}>← {t('ppm')}</Link><h1>{row?.code||row?.job_number||t('loading')}</h1><p className="muted">{row&&t(row.frequency||'')}{row?.version?' · '+t('version')+' '+row.version:''}</p></div><button className="btn secondary" onClick={load}>{t('refresh')}</button></div>
   <Notice error={error} success={success}/>
   {!row?data?<p>{t('noData')}</p>:<p>{t('loading')}</p>:<>
    <div className="facility-panel">
@@ -126,7 +130,7 @@ export default function PPMDetails(){
     {kind==='procedure'&&!planToResume&&['draft','approved'].includes(row.status)&&(can('ppm.manage',row.organization_id)
      ||can('facilities.ppm.manage',row.organization_id)||can('medical.ppm.manage',row.organization_id))&&
      <Link className="btn primary" to="/ppm" state={{planProcedure:{id:row.id,code:row.code,organization_id:row.organization_id}}}>{t('ppmUseInPlan')}</Link>}
-    {planToResume&&<Link className="btn primary" to="/ppm" state={{resumePlan:planToResume}}>{lang==='ar'?'متابعة إنشاء خطة المعدة':'Continue creating the asset plan'}</Link>}
+    {planToResume&&<Link className="btn primary" to={backToDesk} state={{resumePlan:planToResume,pendingDeskForm:!!ppmDeskAsset}}>{lang==='ar'?'متابعة إنشاء خطة المعدة':'Continue creating the asset plan'}</Link>}
    </div>
    {kind==='procedure'&&<>
     {oem&&<div className="facility-panel">
