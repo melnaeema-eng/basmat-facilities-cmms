@@ -1,6 +1,6 @@
 import CompanyField from '../components/CompanyField'
 
-import {useEffect,useMemo,useState} from 'react'
+import {useEffect,useMemo,useRef,useState} from 'react'
 import {Link,useLocation,useNavigate,useOutletContext} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
@@ -25,11 +25,12 @@ export default function PPM(){
  const workspaceId=useOutletContext()
  const location=useLocation()
  const deskAsset=new URLSearchParams(location.search).get('asset')||''
+ const saving=useRef(false)
  const [deskForm,setDeskForm]=useState(!!location.state?.pendingDeskForm)
- const openDeskAsset=id=>{
+ const openDeskAsset=(id,{replace=false}={})=>{
   const params=new URLSearchParams()
   if(id)params.set('asset',id)
-  navigate({pathname:'/ppm',search:params.toString()})
+  navigate({pathname:'/ppm',search:params.toString()},{replace})
   setTab('desk')
  }
  const L=(ar,en)=>lang==='ar'?ar:en
@@ -161,15 +162,23 @@ export default function PPM(){
  const submit=async e=>{
   e.preventDefault()
   const kind=tab==='procedures'?'procedure':'plan'
-  if(busy||(kind==='plan'?!canSubmitPlan:!can('ppm.manage',form.organization_id)))return
-  setBusy(true);setError('')
+  if(saving.current||busy||(kind==='plan'?!canSubmitPlan:!can('ppm.manage',form.organization_id)))return
+  saving.current=true
+  setBusy(true);setError('');setSuccess('')
   try{
    const procedure=suggestedProcedures.find(p=>p.id===form.procedure_id)
    const payload=kind==='plan'&&procedure?.status==='draft'?{...form,allow_draft_procedure:true}:form
    const id=await ppmAction(kind,null,'create',payload)
    setOpen(false)
-   navigate('/ppm/'+kind+'/'+id,{state:pendingPlan?{pendingPlan,ppmDeskAsset:deskForm?pendingPlan.asset_id:null}:deskForm?{ppmDeskAsset:form.asset_id}:null})
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+   if(kind==='plan'){
+    setDeskForm(false)
+    openDeskAsset(form.asset_id,{replace:true})
+    setSuccess(L('تم حفظ الخطة لهذه المعدة.','Plan saved for this asset.'))
+    await load()
+    return
+   }
+   navigate('/ppm/procedure/'+id,{state:pendingPlan?{pendingPlan,ppmDeskAsset:deskForm?pendingPlan.asset_id:null}:null})
+  }catch(e){setError(e.message)}finally{saving.current=false;setBusy(false)}
  }
  const run=async(kind,id,command,payload={})=>{
   if(!confirm(t('confirmAction')))return
