@@ -4,7 +4,7 @@ import {useEffect,useMemo,useState} from 'react'
 import {Link,useLocation,useNavigate,useOutletContext} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
-import {loadPPM,ppmAction,frequencies} from '../lib/ppm'
+import {loadPPM,ppmAction,frequencies,findMedicalPpmAsset} from '../lib/ppm'
 import {Field,Select,Dialog,Notice,Status,FormActions} from '../components/FacilityFields'
 import DataTable from '../components/DataTable'
 import {focusNextField} from '../lib/smartLanguage'
@@ -17,6 +17,7 @@ export default function PPM(){
  const requestedPlan=useLocation().state?.resumePlan
  const resumePlan=requestedPlan&&(!workspaceId||requestedPlan.organization_id===workspaceId)&&can('ppm.manage',requestedPlan.organization_id)?requestedPlan:null
  const [pendingPlan,setPendingPlan]=useState(null)
+ const [medicalEntry,setMedicalEntry]=useState(null)
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [year,setYear]=useState(new Date().getFullYear()),[month,setMonth]=useState(0)
  const [tab,setTab]=useState(resumePlan?'plans':'procedures'),[form,setForm]=useState(resumePlan||blankProcedure),[open,setOpen]=useState(!!resumePlan),[query,setQuery]=useState(''),[filter,setFilter]=useState('')
@@ -45,6 +46,19 @@ export default function PPM(){
  const suggestedProcedures=matchingProcedures()
  const canCreateForAsset=selectedAsset?.status==='active'&&selectedAsset.organization_id===form.organization_id&&can('ppm.manage',form.organization_id)
  const canSubmitPlan=canCreateForAsset&&suggestedProcedures.some(p=>p.id===form.procedure_id)
+ const restrictedAsset=open&&tab==='plans'&&!canCreateForAsset?selectedAsset:null
+ const restrictedAssetId=restrictedAsset?.id
+ const restrictedOrganizationId=restrictedAsset?.organization_id
+ const medicalAssetId=medicalEntry?.assetId===restrictedAssetId?medicalEntry?.medicalAssetId:null
+ useEffect(()=>{
+  if(!restrictedAssetId||!restrictedOrganizationId)return
+  let active=true
+  findMedicalPpmAsset(restrictedAssetId,restrictedOrganizationId).then(
+   id=>{if(active)setMedicalEntry({assetId:restrictedAssetId,medicalAssetId:id})},
+   ()=>{if(active)setMedicalEntry({assetId:restrictedAssetId,medicalAssetId:null})}
+  )
+  return()=>{active=false}
+ },[restrictedAssetId,restrictedOrganizationId])
  const change=(key,value)=>setForm(f=>{
   if(key==='organization_id')return {...f,organization_id:value,asset_id:'',procedure_id:'',contract_id:'',category_id:''}
   if(key==='asset_id'){const matches=matchingProcedures(value,f.organization_id);return {...f,asset_id:value,procedure_id:matches[0]?.id||'',contract_id:''}}
@@ -130,8 +144,16 @@ export default function PPM(){
      <Field label={t('asset')} required><Select required value={form.asset_id} onChange={v=>change('asset_id',v)} options={options(data?.assets.filter(x=>x.organization_id===form.organization_id&&x.status==='active'),x=>x.asset_tag+' · '+name(x))}/></Field>
      <Field label={t('procedure')} required><Select required disabled={!suggestedProcedures.length} value={form.procedure_id} onChange={v=>change('procedure_id',v)} options={suggestedProcedures.map(x=>({value:x.id,label:x.code+' · '+name(x)+' · '+t(x.frequency)}))}/></Field>
      {selectedAsset&&!suggestedProcedures.length&&<div className="span-2">
-      <p className="muted">{lang==='ar'?'لا يوجد إجراء وقائي معتمد مطابق لهذه المعدة. أنشئ الإجراء واعتمده أولًا.':'No approved preventive procedure matches this asset. Create and approve the procedure first.'}</p>
+      <p className="muted">{lang==='ar'?'لا يوجد إجراء وقائي معتمد مطابق لهذه المعدة.':'No approved preventive procedure matches this asset.'}</p>
       {canCreateForAsset&&<button type="button" className="btn secondary" onClick={startProcedureForAsset}>{lang==='ar'?'إنشاء إجراء لهذه المعدة':'Create procedure for this asset'}</button>}
+     </div>}
+     {restrictedAsset&&<div className="span-2">
+      <p className="muted">{medicalAssetId
+       ?(lang==='ar'?'هذه المعدة مسجّلة في نظام الطبية. افتحها هناك لإعداد الصيانة الوقائية.':'This asset is registered in Medical. Open it there to set up preventive maintenance.')
+       :(lang==='ar'?'إنشاء إجراء أو خطة هنا يتطلب صلاحية إدارة الصيانة الوقائية في المرافق لهذه الشركة.':'Creating a procedure or plan here requires Facilities preventive maintenance permission for this company.')}</p>
+      {medicalAssetId&&<a className="btn secondary" href={`https://medical.basmat-alnawabig.com.sa/medical-asset-cockpit?ppmAsset=${encodeURIComponent(medicalAssetId)}`} target="_blank" rel="noopener noreferrer">
+       {lang==='ar'?'فتح المعدة في الطبية':'Open asset in Medical'}
+      </a>}
      </div>}
      <Field label={t('contractNumber')}><Select value={form.contract_id} onChange={v=>change('contract_id',v)} options={options(data?.contracts.filter(x=>x.organization_id===form.organization_id&&x.client_id===data?.assets.find(a=>a.id===form.asset_id)?.client_id),x=>x.contract_number)}/></Field>
      <Field label={t('startDate')} required><input type="date" required value={form.start_date} onChange={e=>change('start_date',e.target.value)}/></Field>

@@ -73,6 +73,13 @@ export async function loadPPM(){
   return Object.fromEntries(entries)
 }
 
+export async function findMedicalPpmAsset(assetId,organizationId){
+  const {data,error}=await supabase.from('bf_med_asset_service_overview')
+    .select('asset_id').eq('organization_id',organizationId).eq('asset_id',assetId).limit(1)
+  if(error)throw error
+  return data?.[0]?.asset_id||null
+}
+
 export async function loadPPMDirectory(){
   const {data,error}=await supabase.rpc('bf5_staff_directory')
 
