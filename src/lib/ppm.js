@@ -73,6 +73,19 @@ export async function loadPPM(){
   return Object.fromEntries(entries)
 }
 
+export async function facilityOemTemplates(assetId){
+ const {data,error}=await supabase.rpc('bf_fac_ppm_matching_oem',{p_asset:assetId})
+ if(error)throw error
+ return data||[]
+}
+
+export async function importFacilityOemTemplate(assetId,templateId){
+ const {data,error}=await supabase.rpc('bf_fac_ppm_import_oem',{p_asset:assetId,p_template:templateId})
+ if(error)throw error
+ emitNotificationRefresh()
+ return data
+}
+
 export async function findMedicalPpmAsset(assetId,organizationId){
   const {data,error}=await supabase.from('bf_med_asset_service_overview')
     .select('asset_id').eq('organization_id',organizationId).eq('asset_id',assetId).limit(1)

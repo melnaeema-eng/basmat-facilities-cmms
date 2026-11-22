@@ -1,3 +1,6 @@
+import {supabase} from '../lib/supabaseClient'
+import {medicalOemAction} from '../components/MedicalOemProcedure'
+import {emitNotificationRefresh} from '../lib/notifications'
 import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
 import {maintenanceAction,checklistFocus} from '../lib/maintenanceFocus'
 import {readCycle,migrationMissing} from '../lib/maintenanceCycle'
@@ -10,7 +13,10 @@ import {Field,Select,Notice,Status} from '../components/FacilityFields'
 const blankStep={title_ar:'',title_en:'',instructions_ar:'',instructions_en:'',task_type:'inspection',response_type:'pass_fail',required:true,unit:'',min_value:'',max_value:'',safety_notes:'',tools:'',materials:'',reference:''}
 export default function PPMDetails(){
  const {kind,id}=useParams(),navigate=useNavigate(),{can,user}=useAuth(),{t,lang}=useLanguage()
- const pendingPlan=useLocation().state?.pendingPlan
+ const routeState=useLocation().state
+ const pendingPlan=routeState?.pendingPlan
+ const [medicalMaster,setMedicalMaster]=useState(null)
+ const [oemReference,setOem]=useState(null),[reviewComment,setReviewComment]=useState(''),[oemChecked,setOemChecked]=useState(false)
  const [data,setData]=useState(null),[directory,setDirectory]=useState([]),[history,setHistory]=useState([]),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState(''),[reviewStep,setReviewStep]=useState(null)
  const [cycleProjects,setCycleProjects]=useState([]),[cycleProject,setCycleProject]=useState('')
@@ -27,8 +33,31 @@ export default function PPMDetails(){
  const matchingProjects=cycleProjects.filter(p=>p.policy?.status==='active'&&p.policy.contract_id===data?.plans.find(pl=>pl.id===row?.plan_id)?.contract_id)
  const selectedProject=cycleProject||(matchingProjects.length===1?matchingProjects[0].id:'')
  const linkedOrder=data?.workOrders?.find(w=>w.id===row?.work_order_id)
- const manager=row&&can('ppm.manage',row.organization_id),approver=row&&can('ppm.approve',row.organization_id)
- const planToResume=kind==='procedure'&&manager&&row.status==='approved'&&pendingPlan?.organization_id===row.organization_id
+ const oem=oemReference?.procedure_id===id?oemReference:null
+ const importedOem=kind==='procedure'&&row?.source_type==='oem'&&!row.master_template_id
+ useEffect(()=>{
+  if(!importedOem)return
+  let active=true
+  medicalOemAction('reference',{p_procedure:id}).then(value=>{if(active)setOem(value)},e=>{if(active)setError(e.message)})
+  return()=>{active=false}
+ },[importedOem,id])
+ const planProcedure=kind==='plan'?data?.procedures.find(p=>p.id===row?.procedure_id):null
+ const linkedPlan=kind==='procedure'?data?.plans.find(p=>p.id===routeState?.linkedPlanId&&p.procedure_id===id):null
+ const relatedProcedure=kind==='plan'?planProcedure:kind==='procedure'?row:null
+ const medicalTemplateId=relatedProcedure?.source_type==='oem'?relatedProcedure.master_template_id:null
+ const hasMedicalManage=!!row&&can('medical.ppm.manage',row.organization_id)
+ useEffect(()=>{
+  if(!medicalTemplateId||!hasMedicalManage)return
+  let active=true
+  supabase.from('bf_med_master_pm_templates').select('id').eq('id',medicalTemplateId).limit(1)
+   .then(({data})=>{if(active&&data?.length)setMedicalMaster(medicalTemplateId)})
+  return()=>{active=false}
+ },[medicalTemplateId,hasMedicalManage])
+ const medicalSetup=importedOem||(kind==='plan'&&planProcedure?.source_type==='oem'&&!planProcedure.master_template_id)
+  ||(!!medicalTemplateId&&medicalMaster===medicalTemplateId)
+ const manager=row&&(can('ppm.manage',row.organization_id)||(medicalSetup&&can('medical.ppm.manage',row.organization_id)))
+ const approver=row&&(can('ppm.approve',row.organization_id)||(importedOem&&can('medical.ppm.review',row.organization_id)))
+ const planToResume=kind==='procedure'&&manager&&['draft','approved'].includes(row.status)&&pendingPlan?.organization_id===row.organization_id
   ?{...pendingPlan,procedure_id:id}:null
  const executor=row&&can('ppm.execute',row.organization_id)&&row.assigned_to===user?.id
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
@@ -43,6 +72,26 @@ export default function PPMDetails(){
    await load();setSuccess(t('saved'))
    if(['add_step','update_step','delete_step'].includes(command)){setStep(blankStep);setEditingStep(null)}
   }catch(e){setError(e.message)}finally{setBusy(false)}
+ }
+ const reviewOem=async decision=>{
+  if(busy||!oem||reviewComment.trim().length<5||(decision==='approve'&&!oemChecked))return
+  setBusy(true);setError('');setSuccess('')
+  try{
+   await medicalOemAction('review',{p_procedure:id,p_decision:decision,p_comment:reviewComment,
+    p_attestations:{original:oemChecked,model:oemChecked,steps:oemChecked}})
+   emitNotificationRefresh()
+   setOem(await medicalOemAction('reference',{p_procedure:id}))
+   await load()
+   setSuccess(t('saved'))
+   setReviewComment('');setOemChecked(false)
+  }catch(e){
+   const message=lang==='ar'?{
+    OEM_INDEPENDENT:'اعتماد دليل المصنع يتطلب مراجعًا مخوّلًا غير منشئ الإجراء.',
+    OEM_STEP_SOURCE:'أكمل تعليمات الخطوات ومراجعها من دليل المصنع.',
+    OEM_REVIEW_REQUIRED:'أضف ملاحظات المراجعة وأكّد مطابقة الدليل للموديل والخطوات.'
+   }[e.message]:null
+   setError(message||e.message)
+  }finally{setBusy(false)}
  }
  const button=(command,enabled,payload={},primary=false)=>enabled?<button type="button" disabled={busy} className={'btn '+(primary?'primary':'secondary')} onClick={()=>run(command,payload)}>{t(command)}</button>:null
  const details=(items)=><div className="form-grid">{items.map(([key,value])=><div key={key}><span className="muted">{t(key)}</span><p>{value??'—'}</p></div>)}</div>
@@ -73,14 +122,32 @@ export default function PPMDetails(){
     kind==='plan'?details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['procedure',data.procedures.find(x=>x.id===row.procedure_id)?.code],['frequency',t(row.frequency)],['startDate',row.start_date],['nextDue',row.next_due],['intervalCount',row.interval_count],['status',t(row.status)]]):
     details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||t('noAssignee')],['workOrder',row.work_order_id?<Link to={(linkedOrder?.project_id?'/maintenance-cycle/':'/corrective/work_order/')+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
     {kind==='procedure'&&<p className="muted">{t('procedureNotice')}</p>}
+    {linkedPlan&&<Link className="btn secondary" to={'/ppm/plan/'+linkedPlan.id}>{lang==='ar'?'العودة إلى الخطة المرتبطة':'Return to linked plan'} · {linkedPlan.code}</Link>}
     {planToResume&&<Link className="btn primary" to="/ppm" state={{resumePlan:planToResume}}>{lang==='ar'?'متابعة إنشاء خطة المعدة':'Continue creating the asset plan'}</Link>}
    </div>
    {kind==='procedure'&&<>
+    {oem&&<div className="facility-panel">
+     <h3>{lang==='ar'?'مرجع المصنع ومراجعته':'Manufacturer reference and review'}</h3>
+     <p>{oem.document_title} · {oem.document_revision} · {oem.frequency_reference}</p>
+     {oem.source_url?.startsWith('https://')&&<a href={oem.source_url} target="_blank" rel="noopener noreferrer">{lang==='ar'?'فتح دليل المصنع':'Open manufacturer manual'}</a>}
+     {oem.review_comment&&<p>{oem.review_comment}</p>}
+     {row.status==='draft'&&oem.review_status==='pending'&&oem.created_by===user?.id&&<p>{lang==='ar'?'يتولى المراجعة مستخدم مخوّل آخر.':'Another authorized user must review this source.'}</p>}
+     {row.status==='draft'&&oem.review_status==='pending'&&oem.created_by!==user?.id&&approver&&<div className="form-grid">
+      <Field label={lang==='ar'?'ملاحظات المراجعة':'Review comments'}><textarea value={reviewComment} onChange={e=>setReviewComment(e.target.value)}/></Field>
+      <label><input type="checkbox" checked={oemChecked} onChange={e=>setOemChecked(e.target.checked)}/>{lang==='ar'?'راجعت أصالة دليل المصنع ومطابقته للموديل وصحة الخطوات.':'I verified the original manufacturer manual, the model match, and the procedure steps.'}</label>
+      <div className="row-actions">
+       <button type="button" className="btn primary" disabled={busy||!steps.length||!oemChecked||reviewComment.trim().length<5} onClick={()=>reviewOem('approve')}>{t('approve')}</button>
+       <button type="button" className="btn secondary" disabled={busy||reviewComment.trim().length<5} onClick={()=>reviewOem('reject')}>{t('reject')}</button>
+      </div>
+     </div>}
+    </div>}
+
+
     <div className="facility-panel"><h3>{t('checklist')}</h3>
      {steps.map(s=><div key={s.id} className="facility-panel" style={{marginBlock:'12px'}}><strong>{s.seq}. {name({name_ar:s.title_ar,name_en:s.title_en})}</strong><p>{lang==='ar'?s.instructions_ar:s.instructions_en}</p>{details([['taskType',t(s.task_type)],['responseType',t(s.response_type)],['required',s.required?'✓':'—'],['unit',s.unit],['minValue',s.min_value],['maxValue',s.max_value],['safetyNotes',s.safety_notes],['tools',s.tools],['materials',s.materials],['reference',s.reference]])}{manager&&row.status==='draft'&&<div className="row-actions"><button className="btn xs secondary" onClick={()=>editStep(s)}>{t('editStep')}</button><button className="btn xs danger-soft" onClick={()=>deleteStep(s)}>{t('deleteStep')}</button></div>}</div>)}
      {!steps.length&&<p>{t('noData')}</p>}
      {manager&&row.status==='draft'&&<form className="facility-form" onSubmit={stepForm}><h3>{t(editingStep?'editStep':'addStep')}</h3><div className="form-grid">
-      {['title_ar','title_en','instructions_ar','instructions_en','safety_notes','tools','materials','reference'].map(key=><Field key={key} label={t(({title_ar:'nameAr',title_en:'nameEn',instructions_ar:'instructionsAr',instructions_en:'instructionsEn',safety_notes:'safetyNotes'})[key]||key)} required={['title_ar','title_en'].includes(key)}><textarea required={['title_ar','title_en'].includes(key)} value={step[key]} onChange={e=>setStep(f=>({...f,[key]:e.target.value}))}/></Field>)}
+      {['title_ar','title_en','instructions_ar','instructions_en','safety_notes','tools','materials','reference'].map(key=><Field key={key} label={t(({title_ar:'nameAr',title_en:'nameEn',instructions_ar:'instructionsAr',instructions_en:'instructionsEn',safety_notes:'safetyNotes'})[key]||key)} required={['title_ar','title_en'].includes(key)||(importedOem&&key==='reference')}><textarea required={['title_ar','title_en'].includes(key)||(importedOem&&key==='reference')} value={step[key]} onChange={e=>setStep(f=>({...f,[key]:e.target.value}))}/></Field>)}
       <Field label={t('taskType')}><Select value={step.task_type} onChange={v=>setStep(f=>({...f,task_type:v}))} options={['inspection','cleaning','lubrication','adjustment','test','replacement','safety','other'].map(x=>({value:x,label:t(x)}))}/></Field>
       <Field label={t('responseType')}><Select value={step.response_type} onChange={v=>setStep(f=>({...f,response_type:v}))} options={['pass_fail','reading','text'].map(x=>({value:x,label:t(x)}))}/></Field>
       <Field label={t('unit')}><input value={step.unit} onChange={e=>setStep(f=>({...f,unit:e.target.value}))}/></Field>
@@ -88,11 +155,15 @@ export default function PPMDetails(){
       <Field label={t('maxValue')}><input type="number" step="any" value={step.max_value} onChange={e=>setStep(f=>({...f,max_value:e.target.value}))}/></Field>
       <label><input type="checkbox" checked={step.required} onChange={e=>setStep(f=>({...f,required:e.target.checked}))}/>{t('required')}</label>
      </div><div className="row-actions"><button disabled={busy} className="btn primary" type="submit">{t(editingStep?'save':'addStep')}</button>{editingStep&&<button type="button" className="btn secondary" onClick={()=>{setEditingStep(null);setStep(blankStep)}}>{t('cancel')}</button>}</div></form>}
-     {manager&&<div className="row-actions">{button('approve',row.status==='draft'&&steps.length>0,{},true)}{button('revise',row.status==='approved')}{button('archive',['draft','approved'].includes(row.status))}</div>}
+     {manager&&<div className="row-actions">{button('approve',!importedOem&&(!medicalSetup||row.created_by!==user?.id&&can('medical.ppm.review',row.organization_id))&&row.status==='draft'&&steps.length>0,{},true)}{button('revise',row.status==='approved')}{button('archive',['draft','approved'].includes(row.status))}</div>}
     </div>
    </>}
    {kind==='plan'&&<>
-    <div className="facility-panel"><h3>{t('actions')}</h3><div className="row-actions">{button('activate',manager&&['draft','paused'].includes(row.status),{},true)}{button('pause',manager&&row.status==='active')}{button('archive',manager&&['draft','paused'].includes(row.status))}</div></div>
+    {planProcedure&&planProcedure.status!=='approved'&&['draft','paused'].includes(row.status)&&<div className="facility-panel">
+     <p>{t('ppmPlanApprovalWait')}</p>
+     <Link className="btn secondary" to={'/ppm/procedure/'+planProcedure.id} state={{linkedPlanId:row.id}}>{t('ppmOpenProcedure')} · {planProcedure.code}</Link>
+    </div>}
+    <div className="facility-panel"><h3>{t('actions')}</h3><div className="row-actions">{button('activate',manager&&planProcedure?.status==='approved'&&['draft','paused'].includes(row.status),{},true)}{button('pause',manager&&row.status==='active')}{button('archive',manager&&['draft','paused'].includes(row.status))}</div></div>
     {manager&&row.status==='active'&&<div className="facility-panel"><h3>{t('generate')}</h3><p className="muted">{t('scheduleNotice')}</p><Field label={t('throughDate')}><input type="date" value={through} onChange={e=>setThrough(e.target.value)}/></Field><div className="row-actions">{button('generate',true,{through_date:through},true)}</div></div>}
     <div className="facility-panel"><h3>{t('ppmJobs')}</h3>{data.jobs.filter(x=>x.plan_id===id).sort((a,b)=>a.due_date.localeCompare(b.due_date)).map(j=><div key={j.id} className="row-actions" style={{padding:'8px 0'}}><Link to={'/ppm/job/'+j.id}>{j.job_number}</Link><span>{j.due_date}</span><Status value={j.status}/></div>)}</div>
    </>}
