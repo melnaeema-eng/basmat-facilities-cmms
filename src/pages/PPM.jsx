@@ -11,6 +11,12 @@ import {focusNextField} from '../lib/smartLanguage'
 import GuidedDevicePPM from '../components/GuidedDevicePPM'
 const blankProcedure={organization_id:'',name_ar:'',name_en:'',category_id:'',manufacturer:'',model:'',frequency:'monthly',reference:'',estimated_minutes:60}
 const blankPlan={organization_id:'',asset_id:'',procedure_id:'',contract_id:'',start_date:'',interval_count:1}
+const workflowSteps=[
+ ['ppmGuideProcedure','ppmGuideProcedureHelp','procedures','ppmProcedures'],
+ ['ppmGuideApprove','ppmGuideApproveHelp'],
+ ['ppmGuidePlan','ppmGuidePlanHelp','plans','ppmPlans'],
+ ['ppmGuideSchedule','ppmGuideScheduleHelp','jobs','ppmSchedule']
+]
 export default function PPM(){
  const {can}=useAuth(),{t,lang}=useLanguage(),navigate=useNavigate()
  const workspaceId=useOutletContext()
@@ -100,6 +106,8 @@ export default function PPM(){
   setBusy(true);setError('')
   try{await ppmAction(kind,id,command,payload);await load();setSuccess(t('saved'))}catch(e){setError(e.message)}finally{setBusy(false)}
  }
+ const selectTab=next=>{setTab(next);setFilter('');setQuery('')}
+ const openProcedureLibrary=()=>{setOpen(false);setError('');selectTab('procedures')}
  const canManage=can('ppm.manage')
  const columns=[
   {key:'code',label:t(tab==='jobs'?'jobNumber':tab==='plans'?'planCode':'procedureCode'),render:x=><Link to={'/ppm/'+(tab==='procedures'?'procedure':tab==='plans'?'plan':'job')+'/'+x.id}>{x.code||x.job_number}</Link>},
@@ -114,9 +122,19 @@ export default function PPM(){
  return <section className="facility-module">
   <div className="page-head"><h1>{t('ppm')}</h1><div className="row-actions"><button className="btn secondary" onClick={load}>{t('refresh')}</button>{canManage&&['procedures','plans'].includes(tab)&&<button className="btn primary" onClick={start}>{t(tab==='procedures'?'newProcedure':'newPlan')}</button>}</div></div>
   <Notice error={open?'':error} success={success}/>
+  <details className="facility-panel" open>
+   <summary><strong>{t('ppmGuideTitle')}</strong></summary>
+   <ol className="form-grid" style={{paddingInlineStart:24,marginBlockEnd:0}}>
+    {workflowSteps.map(([title,help,key,label])=><li key={title}>
+     <strong>{t(title)}</strong>
+     <p className="muted">{t(help)}</p>
+     {key&&tab!==key&&<button type="button" className="btn xs secondary" onClick={()=>selectTab(key)}>{t(label)}</button>}
+    </li>)}
+   </ol>
+  </details>
   <div className="row-actions module-tabs" role="group" aria-label={t('ppm')}>
-   <button type="button" className={'btn '+(tab==='asset'?'primary':'secondary')} aria-pressed={tab==='asset'} onClick={()=>setTab('asset')}>{lang==='ar'?'صيانة الأصل':'Asset maintenance'}</button>
-   {[['procedures','ppmProcedures'],['plans','ppmPlans'],['jobs','ppmSchedule']].map(([key,label])=><button type="button" key={key} className={'btn '+(tab===key?'primary':'secondary')} aria-pressed={tab===key} onClick={()=>{setTab(key);setFilter('');setQuery('')}}>{t(label)} ({(data?.[key]||[]).length})</button>)}
+   <button type="button" className={'btn '+(tab==='asset'?'primary':'secondary')} aria-pressed={tab==='asset'} onClick={()=>selectTab('asset')}>{lang==='ar'?'صيانة الأصل':'Asset maintenance'}</button>
+   {[['procedures','ppmProcedures'],['plans','ppmPlans'],['jobs','ppmSchedule']].map(([key,label])=><button type="button" key={key} className={'btn '+(tab===key?'primary':'secondary')} aria-pressed={tab===key} onClick={()=>selectTab(key)}>{t(label)} ({(data?.[key]||[]).length})</button>)}
   </div>
   {tab==='asset'&&data&&<GuidedDevicePPM data={data} onRefresh={load}/>}
   {tab!=='asset'&&<>
@@ -144,8 +162,11 @@ export default function PPM(){
      <Field label={t('asset')} required><Select required value={form.asset_id} onChange={v=>change('asset_id',v)} options={options(data?.assets.filter(x=>x.organization_id===form.organization_id&&x.status==='active'),x=>x.asset_tag+' · '+name(x))}/></Field>
      <Field label={t('procedure')} required><Select required disabled={!suggestedProcedures.length} value={form.procedure_id} onChange={v=>change('procedure_id',v)} options={suggestedProcedures.map(x=>({value:x.id,label:x.code+' · '+name(x)+' · '+t(x.frequency)}))}/></Field>
      {selectedAsset&&!suggestedProcedures.length&&<div className="span-2">
-      <p className="muted">{lang==='ar'?'لا يوجد إجراء وقائي معتمد مطابق لهذه المعدة.':'No approved preventive procedure matches this asset.'}</p>
+      <p className="muted">{t('ppmProcedureMissing')}</p>
+      <div className="row-actions">
       {canCreateForAsset&&<button type="button" className="btn secondary" onClick={startProcedureForAsset}>{lang==='ar'?'إنشاء إجراء لهذه المعدة':'Create procedure for this asset'}</button>}
+       <button type="button" className="btn secondary" onClick={openProcedureLibrary}>{t('ppmProcedures')}</button>
+      </div>
      </div>}
      {restrictedAsset&&<div className="span-2">
       <p className="muted">{medicalAssetId
