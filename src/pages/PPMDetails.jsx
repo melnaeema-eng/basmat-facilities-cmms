@@ -2,7 +2,7 @@ import {NextActionCard,StageSection} from '../components/MaintenanceFocus'
 import {maintenanceAction,checklistFocus} from '../lib/maintenanceFocus'
 import {readCycle,migrationMissing} from '../lib/maintenanceCycle'
 import {useEffect,useState} from 'react'
-import {Link,useNavigate,useParams} from 'react-router-dom'
+import {Link,useLocation,useNavigate,useParams} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadPPM,loadPPMDirectory,loadPPMHistory,ppmAction,frequencies} from '../lib/ppm'
@@ -10,6 +10,7 @@ import {Field,Select,Notice,Status} from '../components/FacilityFields'
 const blankStep={title_ar:'',title_en:'',instructions_ar:'',instructions_en:'',task_type:'inspection',response_type:'pass_fail',required:true,unit:'',min_value:'',max_value:'',safety_notes:'',tools:'',materials:'',reference:''}
 export default function PPMDetails(){
  const {kind,id}=useParams(),navigate=useNavigate(),{can,user}=useAuth(),{t,lang}=useLanguage()
+ const pendingPlan=useLocation().state?.pendingPlan
  const [data,setData]=useState(null),[directory,setDirectory]=useState([]),[history,setHistory]=useState([]),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [editingStep,setEditingStep]=useState(null),[step,setStep]=useState(blankStep),[inputs,setInputs]=useState({}),[assignee,setAssignee]=useState(''),[through,setThrough]=useState(new Date(new Date().getFullYear(),11,31).toISOString().slice(0,10)),[reason,setReason]=useState(''),[reviewStep,setReviewStep]=useState(null)
  const [cycleProjects,setCycleProjects]=useState([]),[cycleProject,setCycleProject]=useState('')
@@ -27,6 +28,8 @@ export default function PPMDetails(){
  const selectedProject=cycleProject||(matchingProjects.length===1?matchingProjects[0].id:'')
  const linkedOrder=data?.workOrders?.find(w=>w.id===row?.work_order_id)
  const manager=row&&can('ppm.manage',row.organization_id),approver=row&&can('ppm.approve',row.organization_id)
+ const planToResume=kind==='procedure'&&manager&&row.status==='approved'&&pendingPlan?.organization_id===row.organization_id
+  ?{...pendingPlan,procedure_id:id}:null
  const executor=row&&can('ppm.execute',row.organization_id)&&row.assigned_to===user?.id
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
  const options=(rows,label)=>[{value:'',label:t('select')},...(rows||[]).map(x=>({value:x.id,label:label(x)}))]
@@ -70,6 +73,7 @@ export default function PPMDetails(){
     kind==='plan'?details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['procedure',data.procedures.find(x=>x.id===row.procedure_id)?.code],['frequency',t(row.frequency)],['startDate',row.start_date],['nextDue',row.next_due],['intervalCount',row.interval_count],['status',t(row.status)]]):
     details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||t('noAssignee')],['workOrder',row.work_order_id?<Link to={(linkedOrder?.project_id?'/maintenance-cycle/':'/corrective/work_order/')+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
     {kind==='procedure'&&<p className="muted">{t('procedureNotice')}</p>}
+    {planToResume&&<Link className="btn primary" to="/ppm" state={{resumePlan:planToResume}}>{lang==='ar'?'متابعة إنشاء خطة المعدة':'Continue creating the asset plan'}</Link>}
    </div>
    {kind==='procedure'&&<>
     <div className="facility-panel"><h3>{t('checklist')}</h3>

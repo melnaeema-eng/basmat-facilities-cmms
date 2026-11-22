@@ -1,7 +1,7 @@
 import CompanyField from '../components/CompanyField'
 
 import {useEffect,useMemo,useState} from 'react'
-import {Link,useNavigate} from 'react-router-dom'
+import {Link,useLocation,useNavigate,useOutletContext} from 'react-router-dom'
 import {useAuth} from '../context/AuthContext'
 import {useLanguage} from '../i18n/LanguageContext'
 import {loadPPM,ppmAction,frequencies} from '../lib/ppm'
@@ -13,9 +13,13 @@ const blankProcedure={organization_id:'',name_ar:'',name_en:'',category_id:'',ma
 const blankPlan={organization_id:'',asset_id:'',procedure_id:'',contract_id:'',start_date:'',interval_count:1}
 export default function PPM(){
  const {can}=useAuth(),{t,lang}=useLanguage(),navigate=useNavigate()
+ const workspaceId=useOutletContext()
+ const requestedPlan=useLocation().state?.resumePlan
+ const resumePlan=requestedPlan&&(!workspaceId||requestedPlan.organization_id===workspaceId)&&can('ppm.manage',requestedPlan.organization_id)?requestedPlan:null
+ const [pendingPlan,setPendingPlan]=useState(null)
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [year,setYear]=useState(new Date().getFullYear()),[month,setMonth]=useState(0)
- const [tab,setTab]=useState('procedures'),[form,setForm]=useState(blankProcedure),[open,setOpen]=useState(false),[query,setQuery]=useState(''),[filter,setFilter]=useState('')
+ const [tab,setTab]=useState(resumePlan?'plans':'procedures'),[form,setForm]=useState(resumePlan||blankProcedure),[open,setOpen]=useState(!!resumePlan),[query,setQuery]=useState(''),[filter,setFilter]=useState('')
  const load=async()=>{setError('');try{setData(await loadPPM())}catch(e){setError(e.message)}}
  useEffect(()=>{load()},[])
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
@@ -34,11 +38,13 @@ export default function PPM(){
  }
  const matchingProcedures=(assetId=form.asset_id,org=form.organization_id)=>{
   const a=data?.assets.find(x=>x.id===assetId)
-  if(!a)return[]
+  if(!a||a.status!=='active'||a.organization_id!==org)return[]
   return procedures.map(p=>({p,rank:matchRank(p,a,org)})).filter(x=>x.rank>=0).sort((a,b)=>b.rank-a.rank||(Number(b.p.version||1)-Number(a.p.version||1))).map(x=>x.p)
  }
  const selectedAsset=data?.assets.find(a=>a.id===form.asset_id)
  const suggestedProcedures=matchingProcedures()
+ const canCreateForAsset=selectedAsset?.status==='active'&&selectedAsset.organization_id===form.organization_id&&can('ppm.manage',form.organization_id)
+ const canSubmitPlan=canCreateForAsset&&suggestedProcedures.some(p=>p.id===form.procedure_id)
  const change=(key,value)=>setForm(f=>{
   if(key==='organization_id')return {...f,organization_id:value,asset_id:'',procedure_id:'',contract_id:'',category_id:''}
   if(key==='asset_id'){const matches=matchingProcedures(value,f.organization_id);return {...f,asset_id:value,procedure_id:matches[0]?.id||'',contract_id:''}}
@@ -49,11 +55,31 @@ export default function PPM(){
   const source=tab==='procedures'?procedures:tab==='plans'?plans:jobs
   return source.filter(x=>(tab!=='jobs'||(x.due_date?.startsWith(String(year))&&(!month||Number(x.due_date.slice(5,7))===month)))&&(!filter||x.status===filter)&&(!query||Object.values(x).some(v=>typeof v==='string'&&v.toLowerCase().includes(query.toLowerCase()))))
  },[data,tab,query,filter,year,month])
- const start=()=>{setForm(tab==='procedures'?blankProcedure:{...blankPlan,start_date:new Date().toISOString().slice(0,10)});setOpen(true);setError('')}
+ const start=()=>{setPendingPlan(null);setForm(tab==='procedures'?blankProcedure:{...blankPlan,start_date:new Date().toISOString().slice(0,10)});setOpen(true);setError('')}
+ const startProcedureForAsset=()=>{
+  if(!canCreateForAsset)return
+  setPendingPlan(form)
+  const category=data.categories.find(row=>row.id===selectedAsset.category_id&&row.organization_id===form.organization_id)
+  setForm({...blankProcedure,organization_id:form.organization_id,category_id:category?.id||'',
+   manufacturer:selectedAsset.manufacturer||'',model:selectedAsset.model||''})
+  setTab('procedures');setError('')
+ }
+ const closeForm=()=>{
+  if(busy)return
+  setError('')
+  if(pendingPlan){setTab('plans');setForm(pendingPlan);setPendingPlan(null)}
+  else setOpen(false)
+ }
  const submit=async e=>{
-  e.preventDefault();if(busy)return;setBusy(true);setError('')
-  try{const id=await ppmAction(tab==='procedures'?'procedure':'plan',null,'create',form);setOpen(false);await load();navigate('/ppm/'+(tab==='procedures'?'procedure':'plan')+'/'+id)}
-  catch(e){setError(e.message)}finally{setBusy(false)}
+  e.preventDefault()
+  const kind=tab==='procedures'?'procedure':'plan'
+  if(busy||!can('ppm.manage',form.organization_id)||(kind==='plan'&&!canSubmitPlan))return
+  setBusy(true);setError('')
+  try{
+   const id=await ppmAction(kind,null,'create',form)
+   setOpen(false)
+   navigate('/ppm/'+kind+'/'+id,{state:pendingPlan?{pendingPlan}:null})
+  }catch(e){setError(e.message)}finally{setBusy(false)}
  }
  const run=async(kind,id,command,payload={})=>{
   if(!confirm(t('confirmAction')))return
@@ -73,7 +99,7 @@ export default function PPM(){
  const annual=jobs.filter(j=>j.due_date?.startsWith(String(year)))
  return <section className="facility-module">
   <div className="page-head"><h1>{t('ppm')}</h1><div className="row-actions"><button className="btn secondary" onClick={load}>{t('refresh')}</button>{canManage&&['procedures','plans'].includes(tab)&&<button className="btn primary" onClick={start}>{t(tab==='procedures'?'newProcedure':'newPlan')}</button>}</div></div>
-  <Notice error={error} success={success}/>
+  <Notice error={open?'':error} success={success}/>
   <div className="row-actions module-tabs" role="group" aria-label={t('ppm')}>
    <button type="button" className={'btn '+(tab==='asset'?'primary':'secondary')} aria-pressed={tab==='asset'} onClick={()=>setTab('asset')}>{lang==='ar'?'صيانة الأصل':'Asset maintenance'}</button>
    {[['procedures','ppmProcedures'],['plans','ppmPlans'],['jobs','ppmSchedule']].map(([key,label])=><button type="button" key={key} className={'btn '+(tab===key?'primary':'secondary')} aria-pressed={tab===key} onClick={()=>{setTab(key);setFilter('');setQuery('')}}>{t(label)} ({(data?.[key]||[]).length})</button>)}
@@ -87,9 +113,12 @@ export default function PPM(){
   {tab==='jobs'&&data&&<div className="facility-panel"><h3>{t('ppmSchedule')}</h3><div className="form-grid"><Field label={t('frequency')}><p>{t('scheduleNotice')}</p></Field><Field label={t('dueDate')}><p>{annual.length} {t('ppmJobs')}</p></Field></div></div>}
   </>}
   {tab==='asset'&&!data&&!error&&<p role="status">{t('loading')}</p>}
-  <Dialog open={open} title={t(tab==='procedures'?'newProcedure':'newPlan')} onClose={()=>!busy&&setOpen(false)}>
-   <form className="facility-form" onSubmit={submit}><div className="form-grid">
-    <CompanyField label={t('organization')} required><Select required value={form.organization_id} onChange={v=>change('organization_id',v)} options={options(data?.organizations.filter(x=>x.status==='active'&&can('ppm.manage',x.id)),name)}/></CompanyField>
+  <Dialog open={open} title={t(tab==='procedures'?'newProcedure':'newPlan')} onClose={closeForm}>
+   <form className="facility-form" onSubmit={submit}>
+    <Notice error={error}/>
+    <div className="form-grid">
+    {!pendingPlan&&<CompanyField label={t('organization')} required><Select required value={form.organization_id} onChange={v=>change('organization_id',v)} options={options(data?.organizations.filter(x=>x.status==='active'&&can('ppm.manage',x.id)),name)}/></CompanyField>}
+    {pendingPlan&&<p className="muted span-2">{t('asset')} · {data?.assets.find(a=>a.id===pendingPlan.asset_id)?.asset_tag}</p>}
     {tab==='procedures'?<>
      {['name_ar','name_en'].map(key=><Field key={key} label={t(key==='name_ar'?'nameAr':'nameEn')} required><input name={key} required value={form[key]} onChange={e=>change(key,e.target.value)} onBlur={e=>e.target.value&&focusNextField(e.target)}/></Field>)}
      <Field label={t('category')}><Select value={form.category_id} onChange={v=>change('category_id',v)} options={options(data?.categories.filter(x=>x.organization_id===form.organization_id),name)}/></Field>
@@ -99,16 +128,17 @@ export default function PPM(){
      <p className="muted span-2">{t('procedureNotice')}</p>
     </>:<>
      <Field label={t('asset')} required><Select required value={form.asset_id} onChange={v=>change('asset_id',v)} options={options(data?.assets.filter(x=>x.organization_id===form.organization_id&&x.status==='active'),x=>x.asset_tag+' · '+name(x))}/></Field>
-     <Field label={t('procedure')} required><Select required value={form.procedure_id} onChange={v=>change('procedure_id',v)} options={options(suggestedProcedures,x=>x.code+' · '+name(x)+' · '+t(x.frequency))}/></Field>
-     {selectedAsset&&<p className="muted span-2">{suggestedProcedures.length
-      ?(lang==='ar'?`تم العثور على ${suggestedProcedures.length} خطة مناسبة. تم اختيار الأفضل تلقائياً حسب الموديل ثم الشركة المصنعة ثم التصنيف.`:`${suggestedProcedures.length} matching maintenance procedure(s) found. Best match selected automatically by model, manufacturer, then category.`)
-      :(lang==='ar'?'لا توجد خطة معتمدة مطابقة لهذا الأصل. اعتمد قالب الصيانة من المكتبة أولاً ثم ارجع لإنشاء الخطة.':'No approved procedure matches this asset. Adopt the maintenance template in the library first, then create the plan.')}</p>}
+     <Field label={t('procedure')} required><Select required disabled={!suggestedProcedures.length} value={form.procedure_id} onChange={v=>change('procedure_id',v)} options={suggestedProcedures.map(x=>({value:x.id,label:x.code+' · '+name(x)+' · '+t(x.frequency)}))}/></Field>
+     {selectedAsset&&!suggestedProcedures.length&&<div className="span-2">
+      <p className="muted">{lang==='ar'?'لا يوجد إجراء وقائي معتمد مطابق لهذه المعدة. أنشئ الإجراء واعتمده أولًا.':'No approved preventive procedure matches this asset. Create and approve the procedure first.'}</p>
+      {canCreateForAsset&&<button type="button" className="btn secondary" onClick={startProcedureForAsset}>{lang==='ar'?'إنشاء إجراء لهذه المعدة':'Create procedure for this asset'}</button>}
+     </div>}
      <Field label={t('contractNumber')}><Select value={form.contract_id} onChange={v=>change('contract_id',v)} options={options(data?.contracts.filter(x=>x.organization_id===form.organization_id&&x.client_id===data?.assets.find(a=>a.id===form.asset_id)?.client_id),x=>x.contract_number)}/></Field>
      <Field label={t('startDate')} required><input type="date" required value={form.start_date} onChange={e=>change('start_date',e.target.value)}/></Field>
      <Field label={t('intervalCount')}><input type="number" min="1" max="100" value={form.interval_count} onChange={e=>change('interval_count',e.target.value)}/></Field>
      <p className="muted span-2">{t('planNotice')}</p>
     </>}
-   </div><FormActions busy={busy} onCancel={()=>setOpen(false)}/></form>
+   </div><FormActions busy={busy} disabled={tab==='plans'&&!canSubmitPlan} onCancel={closeForm}/></form>
   </Dialog>
  </section>
 }
