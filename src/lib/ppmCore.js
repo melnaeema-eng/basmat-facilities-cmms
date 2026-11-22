@@ -13,3 +13,12 @@ export function recurrenceDates(start,frequency,interval,count=12){
  }
  return out
 }
+
+export function procedurePlanMismatch(procedure, asset, organizationId){
+ if(!asset||asset.status!=='active'||asset.organization_id!==organizationId||procedure.organization_id!==organizationId)return 'ppmProcedureCompanyMismatch'
+ if(!['approved','draft'].includes(procedure.status))return 'ppmProcedureUnavailable'
+ if(procedure.category_id&&procedure.category_id!==asset.category_id)return 'ppmProcedureCategoryMismatch'
+ if(procedure.manufacturer&&procedure.manufacturer.toLowerCase()!==(asset.manufacturer||'').toLowerCase())return 'ppmProcedureManufacturerMismatch'
+ if(procedure.model&&procedure.model.toLowerCase()!==(asset.model||'').toLowerCase())return 'ppmProcedureModelMismatch'
+ return ''
+}

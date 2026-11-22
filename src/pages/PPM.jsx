@@ -8,6 +8,7 @@ import {loadPPM,ppmAction,frequencies,findMedicalPpmAsset,facilityOemTemplates,i
 import {Field,Select,Dialog,Notice,Status,FormActions} from '../components/FacilityFields'
 import DataTable from '../components/DataTable'
 import {focusNextField} from '../lib/smartLanguage'
+import {procedurePlanMismatch} from '../lib/ppmCore'
 import GuidedDevicePPM from '../components/GuidedDevicePPM'
 import MedicalOemProcedure from '../components/MedicalOemProcedure'
 const blankProcedure={organization_id:'',name_ar:'',name_en:'',category_id:'',manufacturer:'',model:'',frequency:'monthly',reference:'',estimated_minutes:60}
@@ -23,7 +24,14 @@ export default function PPM(){
  const workspaceId=useOutletContext()
  const location=useLocation()
  const requestedPlan=location.state?.resumePlan
- const resumePlan=requestedPlan&&(!workspaceId||requestedPlan.organization_id===workspaceId)&&(can('ppm.manage',requestedPlan.organization_id)||can('medical.ppm.manage',requestedPlan.organization_id))?requestedPlan:null
+ const resumePlan=requestedPlan&&(!workspaceId||requestedPlan.organization_id===workspaceId)&&(can('ppm.manage',requestedPlan.organization_id)||can('facilities.ppm.manage',requestedPlan.organization_id)||can('medical.ppm.manage',requestedPlan.organization_id))?requestedPlan:null
+ const requestedProcedure=location.state?.planProcedure
+ const planProcedure=requestedProcedure&&(!workspaceId||requestedProcedure.organization_id===workspaceId)
+  &&(can('ppm.manage',requestedProcedure.organization_id)||can('facilities.ppm.manage',requestedProcedure.organization_id)
+   ||can('medical.ppm.manage',requestedProcedure.organization_id))?requestedProcedure:null
+ const [preferredProcedureId,setPreferredProcedureId]=useState(planProcedure?.id||'')
+ const [showProcedurePicker,setShowProcedurePicker]=useState(!!planProcedure)
+ const [procedureQuery,setProcedureQuery]=useState(planProcedure?.code||'')
  const [pendingPlan,setPendingPlan]=useState(null)
  const [medicalEntry,setMedicalEntry]=useState(null)
  const [showOem,setShowOem]=useState(false)
@@ -31,7 +39,9 @@ export default function PPM(){
  const [templateId,setTemplateId]=useState('')
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [year,setYear]=useState(new Date().getFullYear()),[month,setMonth]=useState(0)
- const [tab,setTab]=useState(resumePlan?'plans':'procedures'),[form,setForm]=useState(resumePlan||blankProcedure),[open,setOpen]=useState(!!resumePlan),[query,setQuery]=useState(''),[filter,setFilter]=useState('')
+ const [tab,setTab]=useState(resumePlan||planProcedure?'plans':'procedures'),[form,setForm]=useState(resumePlan||(planProcedure?{
+  ...blankPlan,organization_id:planProcedure.organization_id,start_date:new Date().toISOString().slice(0,10)
+ }:blankProcedure)),[open,setOpen]=useState(!!(resumePlan||planProcedure)),[query,setQuery]=useState(''),[filter,setFilter]=useState('')
  useEffect(()=>{
   if(new URLSearchParams(location.search).get('tab')!=='plans')return
   setTab('plans');setQuery('');setFilter('')
@@ -41,12 +51,8 @@ export default function PPM(){
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
  const options=(rows,label)=>[{value:'',label:t('select')},...(rows||[]).map(x=>({value:x.id,label:label(x)}))]
  const procedures=data?.procedures||[],plans=data?.plans||[],jobs=data?.jobs||[]
- const norm=v=>(v||'').trim().toLowerCase()
  const matchRank=(p,a,org)=>{
-  if(!a||p.organization_id!==org||!['approved','draft'].includes(p.status))return -1
-  if(p.category_id&&p.category_id!==a.category_id)return -1
-  if(p.manufacturer&&norm(p.manufacturer)!==norm(a.manufacturer))return -1
-  if(p.model&&norm(p.model)!==norm(a.model))return -1
+  if(procedurePlanMismatch(p,a,org))return -1
   if(p.model)return 40
   if(p.manufacturer)return 30
   if(p.category_id)return 20
@@ -59,13 +65,18 @@ export default function PPM(){
  }
  const selectedAsset=data?.assets.find(a=>a.id===form.asset_id)
  const suggestedProcedures=matchingProcedures()
- const canCreateForAsset=selectedAsset?.status==='active'&&selectedAsset.organization_id===form.organization_id&&can('ppm.manage',form.organization_id)
+ const canManageFacilityPlan=org=>can('ppm.manage',org)||can('facilities.ppm.manage',org)
+ const canCreateForAsset=selectedAsset?.status==='active'&&selectedAsset.organization_id===form.organization_id&&canManageFacilityPlan(form.organization_id)
  const inspectedAsset=open&&tab==='plans'?selectedAsset:null
  const inspectedAssetId=inspectedAsset?.id
  const inspectedCompanyId=inspectedAsset?.organization_id
  const medicalAssetId=medicalEntry?.assetId===inspectedAssetId?medicalEntry?.medicalAssetId:null
  const canManageMedicalAsset=!!medicalAssetId&&can('medical.ppm.manage',inspectedCompanyId)
- const applicableProcedures=canCreateForAsset?suggestedProcedures:suggestedProcedures.filter(p=>canManageMedicalAsset&&p.source_type==='oem')
+ // The plan API accepts either product's management permission. Approval and activation still enforce OEM requirements.
+ const applicableProcedures=canCreateForAsset||canManageMedicalAsset?suggestedProcedures:[]
+ const lookup=procedureQuery.trim().toLowerCase()
+ const libraryResults=lookup?procedures.filter(p=>p.organization_id===form.organization_id&&
+  [p.code,p.name_ar,p.name_en].some(value=>value?.toLowerCase().includes(lookup))).slice(0,20):applicableProcedures.slice(0,20)
  const canSubmitPlan=applicableProcedures.some(p=>p.id===form.procedure_id)
  const assetTemplates=templatePicker?.assetId===inspectedAssetId?templatePicker:null
  useEffect(()=>{
@@ -96,7 +107,11 @@ export default function PPM(){
  }
  const change=(key,value)=>setForm(f=>{
   if(key==='organization_id')return {...f,organization_id:value,asset_id:'',procedure_id:'',contract_id:'',category_id:''}
-  if(key==='asset_id'){const matches=matchingProcedures(value,f.organization_id);return {...f,asset_id:value,procedure_id:matches.find(p=>p.status==='approved')?.id||'',contract_id:''}}
+  if(key==='asset_id'){
+   const matches=matchingProcedures(value,f.organization_id)
+   const selected=preferredProcedureId?matches.find(p=>p.id===preferredProcedureId):matches.find(p=>p.status==='approved')
+   return {...f,asset_id:value,procedure_id:selected?.id||'',contract_id:''}
+  }
   return {...f,[key]:value}
  })
  const rows=useMemo(()=>{
@@ -104,7 +119,7 @@ export default function PPM(){
   const source=tab==='procedures'?procedures:tab==='plans'?plans:jobs
   return source.filter(x=>(tab!=='jobs'||(x.due_date?.startsWith(String(year))&&(!month||Number(x.due_date.slice(5,7))===month)))&&(!filter||x.status===filter)&&(!query||Object.values(x).some(v=>typeof v==='string'&&v.toLowerCase().includes(query.toLowerCase()))))
  },[data,tab,query,filter,year,month])
- const start=()=>{setPendingPlan(null);setForm(tab==='procedures'?blankProcedure:{...blankPlan,start_date:new Date().toISOString().slice(0,10)});setOpen(true);setError('')}
+ const start=()=>{setPendingPlan(null);setPreferredProcedureId('');setProcedureQuery('');setShowProcedurePicker(false);setForm(tab==='procedures'?blankProcedure:{...blankPlan,start_date:new Date().toISOString().slice(0,10)});setOpen(true);setError('')}
  const startProcedureForAsset=()=>{
   if(!canCreateForAsset)return
   setPendingPlan(form)
@@ -138,8 +153,7 @@ export default function PPM(){
   try{await ppmAction(kind,id,command,payload);await load();setSuccess(t('saved'))}catch(e){setError(e.message)}finally{setBusy(false)}
  }
  const selectTab=next=>{setTab(next);setFilter('');setQuery('')}
- const openProcedureLibrary=()=>{setOpen(false);setError('');selectTab('procedures')}
- const canManage=tab==='plans'?(can('ppm.manage')||can('medical.ppm.manage',workspaceId)):can('ppm.manage')
+ const canManage=tab==='plans'?(canManageFacilityPlan(workspaceId)||can('medical.ppm.manage',workspaceId)):can('ppm.manage')
  const columns=[
   {key:'code',label:t(tab==='jobs'?'jobNumber':tab==='plans'?'planCode':'procedureCode'),render:x=><Link to={'/ppm/'+(tab==='procedures'?'procedure':tab==='plans'?'plan':'job')+'/'+x.id}>{x.code||x.job_number}</Link>},
   {key:'name',label:t(tab==='procedures'?'procedure':tab==='plans'?'asset':'plan'),render:x=>tab==='procedures'?name(x):tab==='plans'?(data?.assets.find(a=>a.id===x.asset_id)?.asset_tag||'—'):(data?.plans.find(p=>p.id===x.plan_id)?.code||'—')},
@@ -182,8 +196,9 @@ export default function PPM(){
     onCancel={()=>setShowOem(false)} onSave={id=>navigate('/ppm/procedure/'+id,{state:{pendingPlan:form}})}/>:<>
    <form className="facility-form" onSubmit={submit}>
     <Notice error={error}/>
+    {tab==='plans'&&preferredProcedureId&&!selectedAsset&&<p className="muted">{t('ppmChooseAssetForProcedure')} · {procedureQuery}</p>}
     <div className="form-grid">
-    {!pendingPlan&&<CompanyField label={t('organization')} required><Select required value={form.organization_id} onChange={v=>change('organization_id',v)} options={options(data?.organizations.filter(x=>x.status==='active'&&can('ppm.manage',x.id)),name)}/></CompanyField>}
+    {!pendingPlan&&<CompanyField label={t('organization')} required><Select required value={form.organization_id} onChange={v=>change('organization_id',v)} options={options(data?.organizations.filter(x=>x.status==='active'&&(can('ppm.manage',x.id)||(tab==='plans'&&(canManageFacilityPlan(x.id)||can('medical.ppm.manage',x.id))))),name)}/></CompanyField>}
     {pendingPlan&&<p className="muted span-2">{t('asset')} · {data?.assets.find(a=>a.id===pendingPlan.asset_id)?.asset_tag}</p>}
     {tab==='procedures'?<>
      {['name_ar','name_en'].map(key=><Field key={key} label={t(key==='name_ar'?'nameAr':'nameEn')} required><input name={key} required value={form[key]} onChange={e=>change(key,e.target.value)} onBlur={e=>e.target.value&&focusNextField(e.target)}/></Field>)}
@@ -197,12 +212,32 @@ export default function PPM(){
      <Field label={t('asset')} required><Select required value={form.asset_id} onChange={v=>change('asset_id',v)} options={options(data?.assets.filter(x=>x.organization_id===form.organization_id&&x.status==='active'),x=>x.asset_tag+' · '+name(x))}/></Field>
      <Field label={t('procedure')} required><Select required disabled={!applicableProcedures.length} value={form.procedure_id} onChange={v=>change('procedure_id',v)} options={applicableProcedures.map(x=>({value:x.id,label:x.code+' · '+name(x)+' · '+t(x.frequency)+' · '+t(x.status)}))}/></Field>
      {suggestedProcedures.some(p=>p.id===form.procedure_id&&p.status==='draft')&&<p className="muted span-2">{t('ppmPlanApprovalWait')}</p>}
+     {selectedAsset&&<div className="span-2">
+      <button type="button" className="btn secondary" aria-expanded={showProcedurePicker}
+       onClick={()=>setShowProcedurePicker(value=>!value)}>{t('ppmPickFromLibrary')}</button>
+      {showProcedurePicker&&<div className="facility-panel">
+       <Field label={t('ppmSearchProcedure')}><input value={procedureQuery} onChange={e=>setProcedureQuery(e.target.value)}/></Field>
+       <p className="muted">{t('ppmPickerHelp')}</p>
+       <div aria-live="polite">
+        {!libraryResults.length&&<p>{t('noData')}</p>}
+        {libraryResults.map(row=>{
+         const mismatch=procedurePlanMismatch(row,selectedAsset,form.organization_id)
+         const allowed=applicableProcedures.some(p=>p.id===row.id)
+         return <div className="row-actions" key={row.id}>
+          <span>{row.code} · {name(row)} · {t(row.frequency)} · {t(row.status)}</span>
+          {allowed?<button type="button" className="btn xs primary" disabled={busy||form.procedure_id===row.id}
+           onClick={()=>{change('procedure_id',row.id);setShowProcedurePicker(false);setPreferredProcedureId(row.id)}}>{t(form.procedure_id===row.id?'ppmSelectedForPlan':'ppmSelectForPlan')}</button>
+           :<span className="muted">{t(mismatch||'ppmProcedurePermission')}</span>}
+         </div>
+        })}
+       </div>
+      </div>}
+     </div>}
      {selectedAsset&&!applicableProcedures.length&&<div className="span-2">
       <p className="muted">{t('ppmProcedureMissing')}</p>
       <div className="row-actions">
       {canCreateForAsset&&<button type="button" className="btn secondary" onClick={startProcedureForAsset}>{lang==='ar'?'إنشاء إجراء لهذه المعدة':'Create procedure for this asset'}</button>}
        {can('assets.view',form.organization_id)&&<Link className="btn secondary" to="/asset-library" target="_blank" rel="noopener noreferrer">{t('ppmGuideLibrary')}</Link>}
-       <button type="button" className="btn secondary" onClick={openProcedureLibrary}>{t('ppmProcedures')}</button>
       </div>
      </div>}
      {canCreateForAsset&&selectedAsset&&assetTemplates&&<div className="span-2">

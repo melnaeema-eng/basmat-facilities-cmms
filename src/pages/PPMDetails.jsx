@@ -123,6 +123,9 @@ export default function PPMDetails(){
     details([['asset',data.assets.find(x=>x.id===row.asset_id)?.asset_tag],['plan',data.plans.find(x=>x.id===row.plan_id)?.code],['dueDate',row.due_date],['status',t(row.status)],['assignedTo',directory.find(x=>x.id===row.assigned_to)?.full_name||t('noAssignee')],['workOrder',row.work_order_id?<Link to={(linkedOrder?.project_id?'/maintenance-cycle/':'/corrective/work_order/')+row.work_order_id}>{data.workOrders?.find(x=>x.id===row.work_order_id)?.work_order_number||row.work_order_id}</Link>:'—'],['version',row.procedure_snapshot?.version]])}
     {kind==='procedure'&&<p className="muted">{t('procedureNotice')}</p>}
     {linkedPlan&&<Link className="btn secondary" to={'/ppm/plan/'+linkedPlan.id}>{lang==='ar'?'العودة إلى الخطة المرتبطة':'Return to linked plan'} · {linkedPlan.code}</Link>}
+    {kind==='procedure'&&!planToResume&&['draft','approved'].includes(row.status)&&(can('ppm.manage',row.organization_id)
+     ||can('facilities.ppm.manage',row.organization_id)||can('medical.ppm.manage',row.organization_id))&&
+     <Link className="btn primary" to="/ppm" state={{planProcedure:{id:row.id,code:row.code,organization_id:row.organization_id}}}>{t('ppmUseInPlan')}</Link>}
     {planToResume&&<Link className="btn primary" to="/ppm" state={{resumePlan:planToResume}}>{lang==='ar'?'متابعة إنشاء خطة المعدة':'Continue creating the asset plan'}</Link>}
    </div>
    {kind==='procedure'&&<>
