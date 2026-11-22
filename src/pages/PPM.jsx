@@ -20,13 +20,18 @@ const workflowSteps=[
 export default function PPM(){
  const {can}=useAuth(),{t,lang}=useLanguage(),navigate=useNavigate()
  const workspaceId=useOutletContext()
- const requestedPlan=useLocation().state?.resumePlan
+ const location=useLocation()
+ const requestedPlan=location.state?.resumePlan
  const resumePlan=requestedPlan&&(!workspaceId||requestedPlan.organization_id===workspaceId)&&can('ppm.manage',requestedPlan.organization_id)?requestedPlan:null
  const [pendingPlan,setPendingPlan]=useState(null)
  const [medicalEntry,setMedicalEntry]=useState(null)
  const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false)
  const [year,setYear]=useState(new Date().getFullYear()),[month,setMonth]=useState(0)
  const [tab,setTab]=useState(resumePlan?'plans':'procedures'),[form,setForm]=useState(resumePlan||blankProcedure),[open,setOpen]=useState(!!resumePlan),[query,setQuery]=useState(''),[filter,setFilter]=useState('')
+ useEffect(()=>{
+  if(new URLSearchParams(location.search).get('tab')!=='plans')return
+  setTab('plans');setQuery('');setFilter('')
+ },[location.key,location.search])
  const load=async()=>{setError('');try{setData(await loadPPM())}catch(e){setError(e.message)}}
  useEffect(()=>{load()},[])
  const name=x=>lang==='ar'?x?.name_ar||x?.name_en||x?.name:x?.name_en||x?.name_ar||x?.name
